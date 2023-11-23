@@ -1,0 +1,49 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: The type of release
+        required: true
+        type: choice
+        options: ["release", "beta", "alpha"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: "gradle"
+
+      - name: Read mod version
+        id: versions
+        uses: christian-draeger/read-properties@1.1.0
+        with:
+          path: gradle.properties
+          properties: "version"
+
+      - name: Read changelog
+        uses: juliangruber/read-file-action@v1
+        id: changelog
+        with:
+          path: "./changelog/${{ steps.versions.outputs.version }}.md"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - uses: "marvinpinto/action-automatic-releases@1.2.1"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "v${{ steps.versions.outputs.version }}"
+          prerelease: "${{ inputs.version-type != 'release' }}"
+          title: "${{ steps.versions.outputs.version }}"
+          files: |
+            ./build/libs/*.jar

@@ -1,0 +1,46 @@
+name: Bug Report
+description: Something is not working quite right
+title: "[Bug]: "
+labels: ["bug", "unconfirmed"]
+body:
+  - type: markdown
+    attributes:
+      value: "# General Information"
+  - type: textarea
+    attributes:
+      label: Description of the issue
+      description: Describe what is not working correctly
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+      description: Step for step instructions on how to reproduce the issue
+      placeholder: "1.\n2.\n3.\n..."
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "# Environment"
+  - type: input
+    attributes:
+      label: Version
+      description: "'latest' is not a valid version, please specify the specific version"
+      placeholder: eg. v1.0.0
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Operating System
+      placeholder: eg. Windows 10
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "# Other Info"
+  - type: textarea
+    attributes:
+      label: Extra Context
+      description: Extra context for the bug. For example images, videos, related problems...
