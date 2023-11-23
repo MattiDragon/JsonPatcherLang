@@ -27,7 +27,7 @@ public class Parser {
         this.metadata = new PatchMetadata();
     }
 
-    public static ParseResult parse(List<PositionedToken<?>> tokens) {
+    public static Result parse(List<PositionedToken<?>> tokens) {
         return new Parser(tokens).program();
     }
 
@@ -50,7 +50,7 @@ public class Parser {
         return expression;
     }
 
-    public ParseResult program() {
+    public Result program() {
         while (hasNext(Token.SimpleToken.AT_SIGN)) {
             next();
             var id = expectWord().value();
@@ -67,9 +67,9 @@ public class Parser {
         } catch (EndParsingException ignored) {}
 
         if (!errors.isEmpty()) {
-            return new ParseResult.Fail(errors);
+            return new Result.Fail(errors);
         }
-        return new ParseResult.Success(new Program(statements), metadata);
+        return new Result.Success(new Program(statements), metadata);
     }
 
     private Statement statement() {
@@ -204,5 +204,10 @@ public class Parser {
     }
 
     public record Position(int current, List<ParseException> errors) {
+    }
+
+    public sealed interface Result {
+        record Success(Program program, PatchMetadata metadata) implements Result {}
+        record Fail(List<ParseException> errors) implements Result {}
     }
 }

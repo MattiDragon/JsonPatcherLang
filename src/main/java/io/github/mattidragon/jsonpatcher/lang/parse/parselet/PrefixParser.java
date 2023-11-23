@@ -1,6 +1,9 @@
 package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.*;
+import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
+import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.parse.Token;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.ReturnStatement;

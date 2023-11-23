@@ -35,9 +35,9 @@ public class TestUtils {
 
     public static void testCode(String code, Value expected) {
         var result = Parser.parse(Lexer.lex(code, "test file").tokens());
-        if (!(result instanceof ParseResult.Success success)) {
+        if (!(result instanceof Parser.Result.Success success)) {
             var error = new RuntimeException("Expected successful parse");
-            ((ParseResult.Fail) result).errors().forEach(error::addSuppressed);
+            ((Parser.Result.Fail) result).errors().forEach(error::addSuppressed);
             AssertionFailureBuilder.assertionFailure()
                     .message("Expected successful parse")
                     .cause(error)
