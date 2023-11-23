@@ -6,6 +6,7 @@ build/
 
 ### IntelliJ IDEA ###
 .idea/
+*.iml
 
 ### Eclipse ###
 .apt_generated
