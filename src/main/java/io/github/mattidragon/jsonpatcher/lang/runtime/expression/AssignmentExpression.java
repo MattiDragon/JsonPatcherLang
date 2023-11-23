@@ -12,9 +12,4 @@ public record AssignmentExpression(Reference target, Expression value, BinaryExp
         target.set(context, operator.apply(original, value, pos));
         return value;
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

@@ -31,4 +31,15 @@ public class PrecedenceTests {
         TestUtils.testExpression("-1 + 2", new Value.NumberValue(1));
         TestUtils.testExpression("-1 - 2", new Value.NumberValue(-3));
     }
+
+    @Test
+    public void testTernaryChaining() {
+        TestUtils.testExpression("false ? 0 : true ? 3 : 4", new Value.NumberValue(3));
+        TestUtils.testCode("""
+                var a = 10;
+                true ? 1 : 2;
+                false ? 0 : a = 3;
+                testResult(a);
+                """, new Value.NumberValue(3));
+    }
 }

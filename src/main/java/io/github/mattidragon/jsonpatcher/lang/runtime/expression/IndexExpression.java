@@ -59,9 +59,4 @@ public record IndexExpression(Expression parent, Expression index, SourceSpan po
         }
         throw error("Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index));
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

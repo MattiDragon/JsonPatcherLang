@@ -22,7 +22,7 @@ public record ErrorExpression(Parser.ParseException error) implements Reference 
     }
 
     @Override
-    public SourceSpan getPos() {
+    public SourceSpan pos() {
         return error.pos;
     }
 }

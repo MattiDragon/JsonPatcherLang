@@ -6,11 +6,6 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public record VariableAccessExpression(String name, SourceSpan pos) implements Reference {
     @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
-
-    @Override
     public Value get(EvaluationContext context) {
         return context.variables().getVariable(name, pos);
     }

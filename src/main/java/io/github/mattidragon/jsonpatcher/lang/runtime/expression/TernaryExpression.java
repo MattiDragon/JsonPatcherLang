@@ -4,9 +4,9 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
-public record ValueExpression(Value.Primitive value, SourceSpan pos) implements Expression {
+public record TernaryExpression(Expression condition, Expression ifTrue, Expression ifFalse, SourceSpan pos) implements Expression {
     @Override
     public Value evaluate(EvaluationContext context) {
-        return value;
+        return condition.evaluate(context).asBoolean() ? ifTrue.evaluate(context) : ifFalse.evaluate(context);
     }
 }

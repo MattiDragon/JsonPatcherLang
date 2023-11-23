@@ -89,6 +89,13 @@ public class PostfixParser {
         throw new Parser.ParseException("Expected type name, got %s".formatted(type), token.getPos());
     }
 
+    private static Expression parseTernary(Parser parser, Expression left, PositionedToken<?> token) {
+        var middle = parser.expression();
+        parser.expect(Token.SimpleToken.COLON);
+        var right = parser.expression();
+        return new TernaryExpression(left, middle, right, token.getPos());
+    }
+
     public static Expression get(Parser parser, Precedence precedence, Expression left) {
         var token = parser.peek();
         if (token instanceof PositionedToken.KeywordToken keywordToken && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
@@ -116,6 +123,7 @@ public class PostfixParser {
                     case OR_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.OR);
                     case XOR_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.XOR);
                     case AND_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.AND);
+                    case QUESTION_MARK -> parseTernary(parser, left, parser.next());
                     default -> null;
                 };
                 if (expression != null) return expression;

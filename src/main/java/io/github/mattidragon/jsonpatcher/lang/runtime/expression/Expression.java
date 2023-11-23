@@ -7,9 +7,9 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public interface Expression {
     Value evaluate(EvaluationContext context);
-    SourceSpan getPos();
+    SourceSpan pos();
 
     default EvaluationException error(String message) {
-        return new EvaluationException(message, getPos());
+        return new EvaluationException(message, pos());
     }
 }

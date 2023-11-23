@@ -12,6 +12,6 @@ public record ExpressionStatement(Expression expression) implements Statement {
 
     @Override
     public SourceSpan getPos() {
-        return expression.getPos();
+        return expression.pos();
     }
 }

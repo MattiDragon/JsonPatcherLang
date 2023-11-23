@@ -4,15 +4,10 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
-public record ShortedBinaryExpression(Expression first, Expression second, Operator op, SourceSpan opPos) implements Expression {
+public record ShortedBinaryExpression(Expression first, Expression second, Operator op, SourceSpan pos) implements Expression {
     @Override
     public Value evaluate(EvaluationContext context) {
         return op.apply(first, second, context);
-    }
-
-    @Override
-    public SourceSpan getPos() {
-        return opPos;
     }
 
     public interface Operator {

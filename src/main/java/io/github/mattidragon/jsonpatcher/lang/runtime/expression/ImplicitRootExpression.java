@@ -19,9 +19,4 @@ public record ImplicitRootExpression(String name, SourceSpan pos) implements Ref
     public void delete(EvaluationContext context) {
         context.root().remove(name, pos);
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

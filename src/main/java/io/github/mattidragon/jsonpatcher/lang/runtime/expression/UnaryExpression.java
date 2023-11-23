@@ -11,11 +11,6 @@ public record UnaryExpression(Expression input, Operator op, SourceSpan pos) imp
         return op.apply(input.evaluate(context), pos);
     }
 
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
-
     public interface Operator {
         Value apply(Value value, SourceSpan pos);
 

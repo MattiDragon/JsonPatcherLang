@@ -75,7 +75,7 @@ public class StatementParser {
     private static Statement deleteStatement(Parser parser) {
         var begin = parser.next().getFrom();
         var expression = parser.expression();
-        if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't delete to %s".formatted(expression), expression.getPos());
+        if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't delete to %s".formatted(expression), expression.pos());
         parser.expect(SimpleToken.SEMICOLON);
         return new DeleteStatement(ref, new SourceSpan(begin, parser.previous().getTo()));
     }

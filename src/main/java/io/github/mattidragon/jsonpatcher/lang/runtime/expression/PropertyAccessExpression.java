@@ -60,9 +60,4 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
             throw error("Tried to delete property %s of %s. Only objects have properties.".formatted(name, parent));
         }
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

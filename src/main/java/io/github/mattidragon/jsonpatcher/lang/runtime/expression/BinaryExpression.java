@@ -7,15 +7,10 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.function.BiPredicate;
 
-public record BinaryExpression(Expression first, Expression second, Operator op, SourceSpan opPos) implements Expression {
+public record BinaryExpression(Expression first, Expression second, Operator op, SourceSpan pos) implements Expression {
     @Override
     public Value evaluate(EvaluationContext context) {
-        return op.apply(first.evaluate(context), second.evaluate(context), opPos);
-    }
-
-    @Override
-    public SourceSpan getPos() {
-        return opPos;
+        return op.apply(first.evaluate(context), second.evaluate(context), pos);
     }
 
     public interface Operator {

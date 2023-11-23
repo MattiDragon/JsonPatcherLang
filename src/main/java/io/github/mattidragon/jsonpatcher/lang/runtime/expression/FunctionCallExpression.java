@@ -21,9 +21,4 @@ public record FunctionCallExpression(Expression function, List<Expression> argum
                 pos
         );
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

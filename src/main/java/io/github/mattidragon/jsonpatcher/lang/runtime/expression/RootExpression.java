@@ -9,9 +9,4 @@ public record RootExpression(SourceSpan pos) implements Expression {
     public Value evaluate(EvaluationContext context) {
         return context.root();
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

@@ -18,9 +18,4 @@ public record FunctionExpression(Statement body, List<Optional<String>> args, So
     public Value evaluate(EvaluationContext context) {
         return new Value.FunctionValue(new PatchFunction.DefinedPatchFunction(body, args, context));
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

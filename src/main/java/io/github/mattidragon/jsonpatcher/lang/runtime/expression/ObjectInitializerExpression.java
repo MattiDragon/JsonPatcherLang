@@ -17,9 +17,4 @@ public record ObjectInitializerExpression(Map<String, Expression> contents, Sour
         contents.forEach((key, value) -> object.value().put(key, value.evaluate(context)));
         return object;
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

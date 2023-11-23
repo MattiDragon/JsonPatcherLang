@@ -12,6 +12,6 @@ public record FunctionDeclarationStatement(String name, FunctionExpression value
 
     @Override
     public SourceSpan getPos() {
-        return value.getPos();
+        return value.pos();
     }
 }

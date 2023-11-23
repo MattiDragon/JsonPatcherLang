@@ -20,11 +20,6 @@ public record IsInstanceExpression(Expression input, Type type, SourceSpan pos) 
         return Value.BooleanValue.of(matches);
     }
 
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
-
     public enum Type {
         NUMBER,
         STRING,

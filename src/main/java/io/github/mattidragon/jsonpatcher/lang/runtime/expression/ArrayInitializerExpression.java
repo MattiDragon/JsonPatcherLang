@@ -17,9 +17,4 @@ public record ArrayInitializerExpression(List<Expression> contents, SourceSpan p
                 .map(expression -> expression.evaluate(context))
                 .toList());
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }

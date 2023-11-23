@@ -13,9 +13,4 @@ public record UnaryModificationExpression(boolean postfix, Reference target, Una
 
         return postfix ? oldValue : newValue;
     }
-
-    @Override
-    public SourceSpan getPos() {
-        return pos;
-    }
 }
