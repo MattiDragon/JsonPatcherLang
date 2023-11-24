@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.lang.runtime;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.function.PatchFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -10,6 +11,11 @@ public sealed interface Value {
     ThreadLocal<Set<Value>> TO_STRING_RECURSION_TRACKER = ThreadLocal.withInitial(HashSet::new);
 
     boolean asBoolean();
+
+    @NotNull
+    static Value convertNull(@Nullable Value value) {
+        return value == null ? NullValue.NULL : value;
+    }
 
     record ObjectValue(Map<String, Value> value) implements Value {
         public ObjectValue {

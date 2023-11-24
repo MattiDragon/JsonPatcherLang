@@ -22,7 +22,7 @@ public class LibraryBuilder {
     private final Class<? extends Annotation> filterAnnotation;
 
     public LibraryBuilder(Class<?> libraryClass) {
-        this(libraryClass, null);
+        this(libraryClass, (Class<? extends Annotation>) null);
     }
 
     public LibraryBuilder(Class<?> libraryClass, Class<? extends Annotation> filterAnnotation) {
@@ -33,6 +33,18 @@ public class LibraryBuilder {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             throw new IllegalStateException("Failed to build library object", e);
         }
+        buildFunctions();
+        buildConstants();
+    }
+
+    public <T> LibraryBuilder(Class<T> libraryClass, T instance) {
+        this(libraryClass, instance, null);
+    }
+
+    public <T> LibraryBuilder(Class<T> libraryClass, T instance, Class<? extends Annotation> filterAnnotation) {
+        this.libraryClass = libraryClass;
+        this.filterAnnotation = filterAnnotation;
+        this.instance = instance;
         buildFunctions();
         buildConstants();
     }
