@@ -73,9 +73,9 @@ public class PrefixParser {
     private static Expression objectInit(Parser parser, PositionedToken<?> token) {
         var children = new HashMap<String, Expression>();
         while (parser.peek().getToken() != Token.SimpleToken.END_CURLY) {
-            var key = parser.expectWord();
+            var key = parser.expectWordOrString();
             parser.expect(Token.SimpleToken.COLON);
-            children.put(key.value(), parser.expression());
+            children.put(key, parser.expression());
 
             if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
                 parser.next();

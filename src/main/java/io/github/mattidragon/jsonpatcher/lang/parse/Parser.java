@@ -120,6 +120,13 @@ public class Parser {
         return expectFail("string");
     }
 
+    public String expectWordOrString() {
+        var token = next().getToken();
+        if (token instanceof Token.WordToken wordToken) return wordToken.value();
+        if (token instanceof Token.StringToken stringToken) return stringToken.value();
+        return expectFail("word or string");
+    }
+
     public Token.NumberToken expectNumber() {
         var token = next().getToken();
         if (token instanceof Token.NumberToken numberToken) return numberToken;
