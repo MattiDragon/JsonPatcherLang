@@ -9,7 +9,7 @@ public class PatchMetadata {
     private final Map<String, Value> values = new LinkedHashMap<>();
 
     public void add(String key, Parser parser) {
-        var value = new JsonParser(parser).parse();
+        var value = parser.hasNext(Token.SimpleToken.SEMICOLON) ? Value.NullValue.NULL : new JsonParser(parser).parse();
         values.put(key, value);
     }
 
