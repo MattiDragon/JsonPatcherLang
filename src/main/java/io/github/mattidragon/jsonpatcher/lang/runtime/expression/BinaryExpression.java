@@ -171,7 +171,7 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 && second instanceof Value.FunctionValue function2) {
                 return function1 == function2;
             }
-            return false;
+            return first == Value.NullValue.NULL && second == Value.NullValue.NULL;
         }
 
         private static Operator numberComparison(BiPredicate<Double, Double> predicate) {
