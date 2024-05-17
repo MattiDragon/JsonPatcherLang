@@ -18,7 +18,7 @@ import java.util.List;
 
 public class Parser {
     private final List<PositionedToken<?>> tokens;
-    private List<ParseException> errors = new ArrayList<>();
+    private final List<ParseException> errors = new ArrayList<>();
     private final PatchMetadata metadata;
     private int current = 0;
 
@@ -182,7 +182,8 @@ public class Parser {
 
     public void loadPos(Position pos) {
         current = pos.current;
-        errors = pos.errors;
+        errors.clear();
+        errors.addAll(pos.errors);
     }
 
     /**
