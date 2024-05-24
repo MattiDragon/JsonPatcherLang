@@ -1,18 +1,13 @@
 package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
-import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.parse.Token;
+import io.github.mattidragon.jsonpatcher.lang.parse.*;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.ReturnStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.Statement;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Optional;
+import java.util.*;
 
 public class PrefixParser {
     private PrefixParser() {
@@ -88,26 +83,62 @@ public class PrefixParser {
         return new ObjectInitializerExpression(children, new SourceSpan(token.getFrom(), parser.previous().getTo()));
     }
 
-    static ArrayList<Optional<String>> parseArgumentList(Parser parser) {
-        var arguments = new ArrayList<Optional<String>>();
+    static FunctionArguments parseArgumentList(Parser parser) {
+        var targets = new HashSet<FunctionArgument.Target>();
+        var arguments = new ArrayList<FunctionArgument>();
+        // Position of the last varargs argument. Used in the error if there are more arguments.
+        SourceSpan varargsPos = null;
+        var varargs = false;
+        var optionalArg = false;
+        
         while (parser.peek().getToken() != Token.SimpleToken.END_PAREN) {
-            Optional<String> optionalArgument;
+            // If we end up here with the varargs flag set we are trying to parse an argument after the varargs argument
+            if (varargs) {
+                parser.addError(new Parser.ParseException("Varargs parameter must be last in list", varargsPos));
+                varargs = false;
+            }
+            
+            FunctionArgument.Target target;
             if (parser.hasNext(Token.SimpleToken.DOLLAR)) {
                 parser.next();
-                optionalArgument = Optional.empty();
+                target = FunctionArgument.Target.Root.INSTANCE;
             } else {
-                var argument = parser.expectWord().value();
-                optionalArgument = Optional.of(argument);
+                var argumentName = parser.expectWord().value();
+                target = new FunctionArgument.Target.Variable(argumentName);
             }
 
-            if (arguments.contains(optionalArgument)) {
-                if (optionalArgument.isPresent()) {
-                    parser.addError(new Parser.ParseException("Duplicate parameter name: '%s'".formatted(optionalArgument.get()), parser.previous().getPos()));
+            if (targets.contains(target)) {
+                if (target instanceof FunctionArgument.Target.Variable variable) {
+                    parser.addError(new Parser.ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), parser.previous().getPos()));
                 } else {
                     parser.addError(new Parser.ParseException("Duplicate root parameter", parser.previous().getPos()));
                 }
             }
-            arguments.add(optionalArgument);
+            targets.add(target);
+            
+            var defaultValue = Optional.<Expression>empty();
+            var peek = parser.peek().getToken();
+            if (peek == Token.SimpleToken.STAR) {
+                varargsPos = parser.next().getPos();
+                varargs = true;
+                defaultValue = Optional.of(new ArrayInitializerExpression(List.of(), varargsPos));
+                optionalArg = true;
+                if (parser.peek().getToken() == Token.SimpleToken.ASSIGN) {
+                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", parser.peek().getPos()));
+                }
+            }
+            // We parse default values after varargs to avoid garbage errors. 
+            // This won't ever actually be used because we add an error above.
+            if (peek == Token.SimpleToken.ASSIGN) {
+                parser.next();
+                defaultValue = Optional.of(parser.expression());
+                optionalArg = true;
+            } 
+            if (defaultValue.isEmpty() && optionalArg) {
+                parser.addError(new Parser.ParseException("All required arguments must appear before optional arguments", parser.previous().getPos()));
+            }
+            
+            arguments.add(new FunctionArgument(target, defaultValue));
             if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
                 parser.next();
             } else {
@@ -115,7 +146,7 @@ public class PrefixParser {
             }
         }
         parser.expect(Token.SimpleToken.END_PAREN);
-        return arguments;
+        return new FunctionArguments(arguments, varargs);
     }
 
     @Nullable

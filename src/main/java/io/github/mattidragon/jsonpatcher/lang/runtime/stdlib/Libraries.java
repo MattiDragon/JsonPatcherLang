@@ -30,6 +30,7 @@ public class Libraries {
     public static final Map<String, Supplier<Value.ObjectValue>> BUILTIN = Map.of(
             "math", new LibraryBuilder(MathLibrary.class)::build,
             "arrays", new LibraryBuilder(ArraysLibrary.class)::build,
+            "objects", new LibraryBuilder(ObjectsLibrary.class)::build,
             "strings", new LibraryBuilder(StringsLibrary.class)::build,
             "functions", new LibraryBuilder(FunctionsLibrary.class)::build,
             "debug", new LibraryBuilder(DebugLibrary.class)::build);
@@ -181,6 +182,11 @@ public class Libraries {
             }
             return newArray;
         }
+        
+        @Method
+        public Value.NumberValue indexOf(Value.ArrayValue array, Value value) {
+            return new Value.NumberValue(array.value().indexOf(value));
+        }
 
         // Can't use same algorithm as normal access, because you can also add at the end.
         @DontBind
@@ -191,11 +197,24 @@ public class Libraries {
             return index;
         }
     }
+    
+    public static class ObjectsLibrary {
+        public Value.ArrayValue keys(Value.ObjectValue object) {
+            var array = new Value.ArrayValue();
+            object.value().keySet().stream().map(Value.StringValue::new).forEach(array.value()::add);
+            return array;
+        }
+    }
 
     public static class StringsLibrary {
         @DontBind
         public static final Map<String, PatchFunction.BuiltInPatchFunction> METHODS = new LibraryBuilder(StringsLibrary.class, Method.class).getFunctions();
 
+        @Method
+        public Value.BooleanValue matches(Value.StringValue string,  Value.StringValue pattern) {
+            return Value.BooleanValue.of(string.value().matches(pattern.value()));
+        }
+        
         @Method
         public Value.StringValue replace(LibraryBuilder.FunctionContext context, Value.StringValue string, Value.StringValue pattern, Value.StringValue replacement) {
             return new Value.StringValue(string.value().replace(pattern.value(), replacement.value()));
@@ -398,16 +417,19 @@ public class Libraries {
             context.context().log(value);
         }
 
+        @DisableErrorWrapping
         @FunctionName("throw")
         public void throw_(LibraryBuilder.FunctionContext context, Value value) {
             throw new EvaluationException(value.toString(), context.callPos());
         }
 
+        @DisableErrorWrapping
         @FunctionName("assert")
         public void assert_(LibraryBuilder.FunctionContext context, Value value) {
             assert_(context, value, new Value.StringValue("Assertion failed"));
         }
 
+        @DisableErrorWrapping
         @FunctionName("assert")
         public void assert_(LibraryBuilder.FunctionContext context, Value value, Value message) {
             if (!value.asBoolean()) throw new EvaluationException(message.toString(), context.callPos());

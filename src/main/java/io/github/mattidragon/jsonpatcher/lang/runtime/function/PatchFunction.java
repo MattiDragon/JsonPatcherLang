@@ -1,5 +1,7 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime.function;
 
+import io.github.mattidragon.jsonpatcher.lang.parse.FunctionArgument;
+import io.github.mattidragon.jsonpatcher.lang.parse.FunctionArguments;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
@@ -29,35 +31,47 @@ public sealed interface PatchFunction {
         }
     }
 
-    record DefinedPatchFunction(Statement body, List<Optional<String>> args, EvaluationContext context) implements PatchFunction {
-        public DefinedPatchFunction {
-            args = List.copyOf(args);
-        }
-
+    record DefinedPatchFunction(Statement body, FunctionArguments args, EvaluationContext context) implements PatchFunction {
         @Override
         public Value execute(EvaluationContext context, List<Value> args, SourceSpan callPos) {
-            if (this.args.size() != args.size()) {
-                throw new EvaluationException("Incorrect function argument count: expected %s but found %s".formatted(this.args.size(), args.size()), callPos);
+            if (args.size() < this.args.requiredArguments()) {
+                throw new EvaluationException("Incorrect function argument count: expected at least %s but found %s".formatted(this.args.requiredArguments(), args.size()), callPos);
+            }
+            var argEntryCount = this.args.arguments().size();
+            if (!this.args.varargs() && args.size() > argEntryCount) {
+                throw new EvaluationException("Incorrect function argument count: expected at most %s but found %s".formatted(argEntryCount, args.size()), callPos);
             }
 
             // We use the context the function was created in, not the one it was called in.
             // This allows for closures if we ever allow a function to escape its original scope
             var functionContext = this.context.newScope();
-
-            var rootIndex = this.args.indexOf(Optional.<String>empty());
-            if (rootIndex != -1) {
-                if (args.get(rootIndex) instanceof Value.ObjectValue root) {
-                    functionContext = functionContext.withRoot(root);
+            
+            for (int i = 0; i < argEntryCount; i++) {
+                var argument = this.args.arguments().get(i);
+                
+                Value value;
+                if (i >= args.size()) {
+                    // Default arguments past the passed in values
+                    value = argument.defaultValue()
+                            .orElseThrow(() -> new IllegalStateException("No value for non-default argument got past checks"))
+                            .evaluate(functionContext);
+                } else if (i == argEntryCount - 1 && this.args.varargs()) {
+                    // If we're on the last argument of a varargs function, grab 'em all
+                    value = new Value.ArrayValue(args.stream().skip(i).toList());
                 } else {
-                    throw new EvaluationException("Only objects can be used in apply statements, tried to use %s".formatted(args.get(rootIndex)), callPos);
+                    // Normal argument passing
+                    value = args.get(i);
                 }
-            }
-
-            var variables = functionContext.variables();
-            for (int i = 0; i < args.size(); i++) {
-                var argName = this.args.get(i);
-                var argVal = args.get(i);
-                argName.ifPresent(s -> variables.createVariableUnsafe(s, argVal, false));
+                
+                if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
+                    functionContext.variables().createVariableUnsafe(variable.name(), value, false);
+                } else {
+                    if (value instanceof Value.ObjectValue root) {
+                        functionContext = functionContext.withRoot(root);
+                    } else {
+                        throw new EvaluationException("Only objects can be used in apply statements, tried to use %s".formatted(value), callPos);
+                    }
+                }
             }
 
             try {

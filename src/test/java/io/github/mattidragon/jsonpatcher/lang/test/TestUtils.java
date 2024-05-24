@@ -33,6 +33,26 @@ public class TestUtils {
         return new LibraryBuilder.FunctionContext(createTestContext(), POS);
     }
 
+    public static void testCode(String code) {
+        var result = Parser.parse(Lexer.lex(code, "test file").tokens());
+        if (!(result instanceof Parser.Result.Success success)) {
+            var error = new RuntimeException("Expected successful parse");
+            ((Parser.Result.Fail) result).errors().forEach(error::addSuppressed);
+            AssertionFailureBuilder.assertionFailure()
+                    .message("Expected successful parse")
+                    .cause(error)
+                    .buildAndThrow();
+            return;
+        }
+
+        var program = success.program();
+        
+        var context = EvaluationContext.builder()
+                .debugConsumer(EMPTY_DEBUG_CONSUMER)
+                .build();
+        Assertions.assertDoesNotThrow(() -> program.execute(context));
+    }
+
     public static void testCode(String code, Value expected) {
         var result = Parser.parse(Lexer.lex(code, "test file").tokens());
         if (!(result instanceof Parser.Result.Success success)) {
