@@ -1,7 +1,5 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime.function;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.FunctionArgument;
-import io.github.mattidragon.jsonpatcher.lang.parse.FunctionArguments;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
@@ -10,7 +8,6 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.statement.Statement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
 import java.util.List;
-import java.util.Optional;
 
 public sealed interface PatchFunction {
     Value execute(EvaluationContext context, List<Value> args, SourceSpan callPos);
@@ -63,14 +60,12 @@ public sealed interface PatchFunction {
                     value = args.get(i);
                 }
                 
-                if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
-                    functionContext.variables().createVariableUnsafe(variable.name(), value, false);
-                } else {
-                    if (value instanceof Value.ObjectValue root) {
-                        functionContext = functionContext.withRoot(root);
-                    } else {
-                        throw new EvaluationException("Only objects can be used in apply statements, tried to use %s".formatted(value), callPos);
-                    }
+                switch (argument.target()) {
+                    case FunctionArgument.Target.Variable variable -> functionContext.variables().createVariableUnsafe(variable.name(), value, false);
+                    case FunctionArgument.Target.Root ignored when value instanceof Value.ObjectValue root 
+                            -> functionContext = functionContext.withRoot(root);
+                    case FunctionArgument.Target.Root.INSTANCE -> 
+                            throw new EvaluationException("Only objects can be used in root arguments, tried to use %s".formatted(value), callPos);
                 }
             }
 

@@ -16,7 +16,7 @@ public record ContinueStatement(SourceSpan pos) implements Statement {
 
     public static class ContinueException extends RuntimeException {
         public ContinueException() {
-            super("Uncaught break statement");
+            super("Uncaught continue statement");
         }
     }
 }

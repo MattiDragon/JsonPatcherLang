@@ -8,7 +8,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.expression.ValueExpression
 import io.github.mattidragon.jsonpatcher.lang.runtime.function.PatchFunction;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.BlockStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.Statement;
-import io.github.mattidragon.jsonpatcher.lang.runtime.statement.UnnecessarySemicolonStatement;
+import io.github.mattidragon.jsonpatcher.lang.runtime.statement.EmptyStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
@@ -142,7 +142,7 @@ public class TestUtils {
     }
 
     public static Statement emptyStatement() {
-        return new UnnecessarySemicolonStatement(POS);
+        return new EmptyStatement(POS);
     }
 
     public static Statement blockStatement(Statement... statements) {

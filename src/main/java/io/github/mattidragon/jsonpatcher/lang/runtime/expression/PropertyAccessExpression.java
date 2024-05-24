@@ -10,34 +10,37 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
     public Value get(EvaluationContext context) {
         var parent = this.parent.evaluate(context);
 
-        if (parent instanceof Value.ObjectValue objectValue) {
-            return objectValue.get(name, pos);
-        } else if (parent instanceof Value.ArrayValue arrayValue) {
-            if (name.equals("length")) {
-                return new Value.NumberValue(arrayValue.value().size());
-            } else if (Libraries.ArraysLibrary.METHODS.containsKey(name)) {
-                var function = Libraries.ArraysLibrary.METHODS.get(name);
-                return new Value.FunctionValue(function.bind(arrayValue));
-            } else {
-                throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+        switch (parent) {
+            case Value.ObjectValue objectValue -> {
+                return objectValue.get(name, pos);
             }
-        } else if (parent instanceof Value.StringValue stringValue) {
-            if (Libraries.StringsLibrary.METHODS.containsKey(name)) {
-                var function = Libraries.StringsLibrary.METHODS.get(name);
-                return new Value.FunctionValue(function.bind(stringValue));
-            } else {
-                throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+            case Value.ArrayValue arrayValue -> {
+                if (name.equals("length")) {
+                    return new Value.NumberValue(arrayValue.value().size());
+                } else if (Libraries.ArraysLibrary.METHODS.containsKey(name)) {
+                    var function = Libraries.ArraysLibrary.METHODS.get(name);
+                    return new Value.FunctionValue(function.bind(arrayValue));
+                } else {
+                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                }
             }
-        } else if (parent instanceof Value.FunctionValue functionValue) {
-            if (Libraries.FunctionsLibrary.METHODS.containsKey(name)) {
-                var function = Libraries.FunctionsLibrary.METHODS.get(name);
-                return new Value.FunctionValue(function.bind(functionValue));
-            } else {
-                throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+            case Value.StringValue stringValue -> {
+                if (Libraries.StringsLibrary.METHODS.containsKey(name)) {
+                    var function = Libraries.StringsLibrary.METHODS.get(name);
+                    return new Value.FunctionValue(function.bind(stringValue));
+                } else {
+                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                }
             }
-
-        } else {
-            throw error("Tried to read property %s of %s. Only objects and arrays have properties.".formatted(name, parent));
+            case Value.FunctionValue functionValue -> {
+                if (Libraries.FunctionsLibrary.METHODS.containsKey(name)) {
+                    var function = Libraries.FunctionsLibrary.METHODS.get(name);
+                    return new Value.FunctionValue(function.bind(functionValue));
+                } else {
+                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                }
+            }
+            default -> throw error("Tried to read property %s of %s. Only objects and arrays have properties.".formatted(name, parent));
         }
     }
 

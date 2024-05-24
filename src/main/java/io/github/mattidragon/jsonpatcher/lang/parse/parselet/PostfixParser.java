@@ -12,39 +12,39 @@ import java.util.ArrayList;
 public class PostfixParser {
     private PostfixParser() {}
 
-    private static Expression parsePropertyAccess(Parser parser, Expression left, PositionedToken<?> token) {
+    private static Expression parsePropertyAccess(Parser parser, Expression left, PositionedToken token) {
         var name = parser.expectWord();
         return new PropertyAccessExpression(left, name.value(), new SourceSpan(token.getFrom(), parser.previous().getTo()));
     }
 
-    private static Expression parseIndexAccess(Parser parser, Expression left, PositionedToken<?> token) {
+    private static Expression parseIndexAccess(Parser parser, Expression left, PositionedToken token) {
         var index = parser.expression();
         parser.expect(Token.SimpleToken.END_SQUARE);
         return new IndexExpression(left, index, new SourceSpan(token.getFrom(), parser.previous().getTo()));
     }
 
-    private static Expression parseShortedBinaryOperation(Parser parser, Expression left, PositionedToken<?> token, ShortedBinaryExpression.Operator operator, Precedence precedence) {
+    private static Expression parseShortedBinaryOperation(Parser parser, Expression left, PositionedToken token, ShortedBinaryExpression.Operator operator, Precedence precedence) {
         var right = parser.expression(precedence);
         return new ShortedBinaryExpression(left, right, operator, token.getPos());
     }
 
-    private static Expression parseBinaryOperation(Parser parser, Expression left, PositionedToken<?> token, BinaryExpression.Operator operator, Precedence precedence) {
+    private static Expression parseBinaryOperation(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator, Precedence precedence) {
         var right = parser.expression(precedence);
         return new BinaryExpression(left, right, operator, token.getPos());
     }
 
-    private static Expression parseUnaryModification(Expression left, PositionedToken<?> token, UnaryExpression.Operator operator) {
+    private static Expression parseUnaryModification(Expression left, PositionedToken token, UnaryExpression.Operator operator) {
         if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't modify %s".formatted(left), token.getPos());
         return new UnaryModificationExpression(true, ref, operator, token.getPos());
     }
 
-    private static Expression parseAssignment(Parser parser, Expression left, PositionedToken<?> token, BinaryExpression.Operator operator) {
+    private static Expression parseAssignment(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator) {
         if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't assign to %s".formatted(left), token.getPos());
         var right = parser.expression(Precedence.ROOT);
         return new AssignmentExpression(ref, right, operator, token.getPos());
     }
 
-    private static Expression parseFunctionCall(Parser parser, Expression left, PositionedToken<?> token) {
+    private static Expression parseFunctionCall(Parser parser, Expression left, PositionedToken token) {
         var arguments = new ArrayList<Expression>();
         while (parser.peek().getToken() != Token.SimpleToken.END_PAREN) {
             arguments.add(parser.expression());
@@ -59,7 +59,7 @@ public class PostfixParser {
         return new FunctionCallExpression(left, arguments, new SourceSpan(token.getFrom(), parser.previous().getTo()));
     }
 
-    private static Expression parseIsInstance(Parser parser, Expression left, PositionedToken<?> token) {
+    private static Expression parseIsInstance(Parser parser, Expression left, PositionedToken token) {
         var type = parser.next().getToken();
         if (type == Token.KeywordToken.NULL) {
             return new IsInstanceExpression(left, IsInstanceExpression.Type.NULL, token.getPos());
@@ -89,7 +89,7 @@ public class PostfixParser {
         throw new Parser.ParseException("Expected type name, got %s".formatted(type), token.getPos());
     }
 
-    private static Expression parseTernary(Parser parser, Expression left, PositionedToken<?> token) {
+    private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {
         var middle = parser.expression();
         parser.expect(Token.SimpleToken.COLON);
         var right = parser.expression();
@@ -98,11 +98,11 @@ public class PostfixParser {
 
     public static Expression get(Parser parser, Precedence precedence, Expression left) {
         var token = parser.peek();
-        if (token instanceof PositionedToken.KeywordToken keywordToken && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
-            if (keywordToken.getToken() == Token.KeywordToken.IS) {
+        if (token instanceof PositionedToken(var pos, Token.KeywordToken keywordToken) && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
+            if (keywordToken == Token.KeywordToken.IS) {
                 return parseIsInstance(parser, left, parser.next());
             }
-            if (keywordToken.getToken() == Token.KeywordToken.IN) {
+            if (keywordToken == Token.KeywordToken.IN) {
                 return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.IN, Precedence.COMPARISON);
             }
         }

@@ -1,4 +1,4 @@
-package io.github.mattidragon.jsonpatcher.lang.parse;
+package io.github.mattidragon.jsonpatcher.lang.runtime.function;
 
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
 

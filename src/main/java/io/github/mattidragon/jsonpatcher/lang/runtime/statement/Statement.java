@@ -11,5 +11,4 @@ public interface Statement {
     default EvaluationException error(String message) {
         return new EvaluationException(message, getPos());
     }
-
 }

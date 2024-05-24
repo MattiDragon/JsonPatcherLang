@@ -38,17 +38,27 @@ public abstract class PositionedException extends RuntimeException {
 
         fillInError(message);
 
+        if (!LangConfig.INSTANCE.useJavaStacktrace()) {
+            if (LangConfig.INSTANCE.useShortStacktrace()) {
+                message.append("\n|");
+            }
+            fillInCause(message);
+        }
+
+        return message.toString();
+    }
+
+    private void fillInCause(StringBuilder message) {
         if (super.getCause() instanceof PositionedException cause) {
             if (LangConfig.INSTANCE.useShortStacktrace()) {
                 message.append("\n| Caused by: ");
                 cause.fillInShortError(message);
-            } else if (!LangConfig.INSTANCE.useJavaStacktrace()) {
+            } else {
                 message.append("\n| \n| Caused by:\n| ");
                 cause.fillInError(message);
             }
+            cause.fillInCause(message);
         }
-
-        return message.toString();
     }
 
     private void fillInShortError(StringBuilder message) {
@@ -64,9 +74,9 @@ public abstract class PositionedException extends RuntimeException {
         var pos = getPos();
         var location = formatLocation(pos);
         message.append("Location: ")
-                .append(location.location)
-                .append("\n| ");
+                .append(location.location);
         if (pos == null || !location.wellBehaved) return;
+        message.append("\n| ");
 
         var from = pos.from();
         var to = pos.to();

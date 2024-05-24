@@ -10,7 +10,7 @@ public class Lexer {
     public static final int TAB_WIDTH = 4;
     private final SourceFile file;
     private final String program;
-    private final ArrayList<PositionedToken<?>> tokens = new ArrayList<>();
+    private final ArrayList<PositionedToken> tokens = new ArrayList<>();
     private int current = 0;
     private int currentLine = 1;
     private int currentColumn = 1;
@@ -178,7 +178,8 @@ public class Lexer {
     public void addParsedToken(Token token, int length) {
         var from = new SourcePos(file, currentLine, currentColumn - length);
         var to = new SourcePos(file, currentLine, currentColumn - 1);
-        tokens.add(PositionedToken.of(new SourceSpan(from, to), token));
+        SourceSpan pos = new SourceSpan(from, to);
+        tokens.add(new PositionedToken(pos, token));
     }
 
     public Position savePos() {
@@ -218,7 +219,7 @@ public class Lexer {
         }
     }
 
-    public record Result(List<PositionedToken<?>> tokens) {
+    public record Result(List<PositionedToken> tokens) {
     }
 
     public record Position(int current, int currentLine, int currentColumn) {}

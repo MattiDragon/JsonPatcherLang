@@ -17,22 +17,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
-    private final List<PositionedToken<?>> tokens;
+    private final List<PositionedToken> tokens;
     private final List<ParseException> errors = new ArrayList<>();
     private final PatchMetadata metadata;
     private int current = 0;
 
-    private Parser(List<PositionedToken<?>> tokens) {
+    private Parser(List<PositionedToken> tokens) {
         this.tokens = tokens;
         this.metadata = new PatchMetadata();
     }
 
-    public static Result parse(List<PositionedToken<?>> tokens) {
+    public static Result parse(List<PositionedToken> tokens) {
         return new Parser(tokens).program();
     }
 
     @VisibleForTesting
-    public static Expression parseExpression(List<PositionedToken<?>> tokens) throws ParseException {
+    public static Expression parseExpression(List<PositionedToken> tokens) throws ParseException {
         var parser = new Parser(tokens);
         var errors = parser.errors;
         Expression expression = null;
@@ -147,7 +147,7 @@ public class Parser {
         errors.add(error);
     }
 
-    public PositionedToken<?> next() {
+    public PositionedToken next() {
         if (!hasNext()) {
             errors.add(new ParseException("Unexpected end of file", new SourceSpan(previous().getTo(), previous().getTo())));
             throw new EndParsingException();
@@ -155,12 +155,12 @@ public class Parser {
         return tokens.get(current++);
     }
 
-    public PositionedToken<?> previous() {
+    public PositionedToken previous() {
         if (current == 0) throw new IllegalStateException("No previous token (the parser is broken)");
         return tokens.get(current - 1);
     }
 
-    public PositionedToken<?> peek() {
+    public PositionedToken peek() {
         if (!hasNext()) {
             errors.add(new ParseException("Unexpected end of file", new SourceSpan(previous().getTo(), previous().getTo())));
             throw new EndParsingException();

@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.parse.Token;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpression;
@@ -139,7 +140,7 @@ public class StatementParser {
         Statement initializer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            initializer = new UnnecessarySemicolonStatement(parser.previous().getPos());
+            initializer = new EmptyStatement(parser.previous().getPos());
         } else if (parser.hasNext(KeywordToken.VAR) || parser.hasNext(KeywordToken.VAL)) {
             initializer = variableStatement(parser, parser.peek().getToken() == KeywordToken.VAR);
         } else {
@@ -158,7 +159,7 @@ public class StatementParser {
         Statement incrementer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            incrementer = new UnnecessarySemicolonStatement(parser.previous().getPos());
+            incrementer = new EmptyStatement(parser.previous().getPos());
         } else {
             incrementer = new ExpressionStatement(parser.expression());
         }
@@ -214,25 +215,26 @@ public class StatementParser {
 
     public static Statement parse(Parser parser) {
         var token = parser.peek();
-        if (token.getToken() == SimpleToken.BEGIN_CURLY) return blockStatement(parser);
-        if (token.getToken() == SimpleToken.SEMICOLON) {
-            parser.next();
-            return new UnnecessarySemicolonStatement(token.getPos());
-        }
-        if (token.getToken() == KeywordToken.APPLY) return applyStatement(parser);
-        if (token.getToken() == KeywordToken.IF) return ifStatement(parser);
-        if (token.getToken() == KeywordToken.VAR) return variableStatement(parser,true);
-        if (token.getToken() == KeywordToken.VAL) return variableStatement(parser,false);
-        if (token.getToken() == KeywordToken.DELETE) return deleteStatement(parser);
-        if (token.getToken() == KeywordToken.RETURN) return returnStatement(parser);
-        if (token.getToken() == KeywordToken.FUNCTION) return functionDeclaration(parser);
-        if (token.getToken() == KeywordToken.WHILE) return whileLoop(parser);
-        if (token.getToken() == KeywordToken.FOR) return forLoop(parser);
-        if (token.getToken() == KeywordToken.FOREACH) return forEachLoop(parser);
-        if (token.getToken() == KeywordToken.BREAK) return breakStatement(parser);
-        if (token.getToken() == KeywordToken.CONTINUE) return continueStatement(parser);
-        if (token.getToken() == KeywordToken.IMPORT) return importStatement(parser);
-        return expressionStatement(parser);
+        return switch ((Token) token.getToken()) {
+            case SimpleToken.BEGIN_CURLY -> blockStatement(parser);
+            case SimpleToken.SEMICOLON -> {
+                parser.next();
+                yield new EmptyStatement(token.getPos());
+            }
+            case KeywordToken.APPLY -> applyStatement(parser);
+            case KeywordToken.IF -> ifStatement(parser);
+            case KeywordToken.VAR -> variableStatement(parser,true);
+            case KeywordToken.VAL -> variableStatement(parser,false);
+            case KeywordToken.DELETE -> deleteStatement(parser);
+            case KeywordToken.RETURN -> returnStatement(parser);
+            case KeywordToken.FUNCTION -> functionDeclaration(parser);
+            case KeywordToken.WHILE -> whileLoop(parser);
+            case KeywordToken.FOR -> forLoop(parser);
+            case KeywordToken.FOREACH -> forEachLoop(parser);
+            case KeywordToken.BREAK -> breakStatement(parser);
+            case KeywordToken.CONTINUE -> continueStatement(parser);
+            case KeywordToken.IMPORT -> importStatement(parser);
+            default -> expressionStatement(parser);
+        };
     }
-
 }

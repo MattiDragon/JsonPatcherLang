@@ -72,8 +72,8 @@ public class Libraries {
 
         private static Value.FunctionValue numberUnary(DoubleUnaryOperator operator) {
             return new Value.FunctionValue(((PatchFunction.BuiltInPatchFunction) (context, args, callPos) -> {
-                if (!(args.get(0) instanceof Value.NumberValue value)) {
-                    throw new EvaluationException("Expected argument to be number, was %s".formatted(args.get(0)), callPos);
+                if (!(args.getFirst() instanceof Value.NumberValue value)) {
+                    throw new EvaluationException("Expected argument to be number, was %s".formatted(args.getFirst()), callPos);
                 }
                 return new Value.NumberValue(operator.applyAsDouble(value.value()));
             }).argCount(1));
@@ -99,7 +99,7 @@ public class Libraries {
         @Method
         public Value pop(LibraryBuilder.FunctionContext context, Value.ArrayValue array) {
             if (array.value().isEmpty()) throw new EvaluationException("Can't pop from empty array", context.callPos());
-            return array.value().remove(array.value().size() - 1);
+            return array.value().removeLast();
         }
 
         @Method
@@ -380,7 +380,7 @@ public class Libraries {
         public static Value.FunctionValue bind(Value.FunctionValue function, Value value) {
             return new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (context, args, callPos) -> {
                 var newArgs = new ArrayList<>(args);
-                newArgs.add(0, value);
+                newArgs.addFirst(value);
                 return function.function().execute(context, newArgs, callPos);
             });
         }
@@ -404,7 +404,7 @@ public class Libraries {
 
 
         public Value.FunctionValue identity() {
-            return new Value.FunctionValue(((PatchFunction.BuiltInPatchFunction) (context, args, callPos) -> args.get(0)).argCount(1));
+            return new Value.FunctionValue(((PatchFunction.BuiltInPatchFunction) (context, args, callPos) -> args.getFirst()).argCount(1));
         }
 
         public Value.FunctionValue constant(Value value) {
