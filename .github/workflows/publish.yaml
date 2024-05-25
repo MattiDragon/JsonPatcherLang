@@ -47,3 +47,4 @@ jobs:
           title: "${{ steps.versions.outputs.version }}"
           files: |
             ./build/libs/*.jar
+            ./doctool/build/libs/*.jar

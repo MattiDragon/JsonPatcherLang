@@ -3,55 +3,67 @@ plugins {
     `maven-publish`
 }
 
-project.version = project.property("version")!!
-project.group = project.property("maven_group")!!
+version = project.property("version")!!
+group = project.property("maven_group")!!
 base.archivesName.set(project.property("archives_base_name") as String)
 
-repositories {
-    mavenCentral()
+subprojects {
+    version = rootProject.version
+    group = rootProject.group
 }
 
-dependencies {
-    implementation("org.jetbrains:annotations:24.0.1")
-
-    // Use junit
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.test {
-    useJUnitPlatform()
-}
-
-tasks.processResources {
-    inputs.property("version", project.version)
-    filteringCharset = "UTF-8"
-
-    filesMatching("fabric.mod.json") {
-        expand(mapOf("version" to project.version))
+allprojects {
+    apply(plugin = "java-library")
+    apply(plugin = "maven-publish")
+    
+    base.archivesName = project.property("archives_base_name") as String
+    
+    repositories {
+        mavenCentral()
     }
-}
+    
+    dependencies {
+        implementation("org.jetbrains:annotations:24.0.1")
 
-tasks.withType<JavaCompile>().configureEach {
-    options.release.set(21)
-}
+        // Use junit
+        testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    }
+    
+    tasks.test {
+        useJUnitPlatform()
+    }
+    
+    tasks.processResources {
+        inputs.property("version", project.version)
+        filteringCharset = "UTF-8"
 
-java {
-    withSourcesJar()
-}
-
-tasks.jar {
-    from("LICENSE") {
-        rename { "${it}_${base.archivesName.get()}"}
+        filesMatching("fabric.mod.json") {
+            expand(mapOf("version" to project.version))
+        }
     }
 
-    manifest.attributes(mapOf("Fabric-Loom-Remap" to "false"))
-}
-
-publishing {
-    publications.create<MavenPublication>("mavenJava") {
-        from(components["java"])
-        artifactId = base.archivesName.get()
+    tasks.withType<JavaCompile>().configureEach {
+        options.release.set(21)
     }
-    repositories {}
+
+    java {
+        withSourcesJar()
+    }
+
+    tasks.jar {
+        from("LICENSE") {
+            rename { "${it}_${base.archivesName.get()}"}
+        }
+
+        manifest.attributes(mapOf("Fabric-Loom-Remap" to "false"))
+    }
+
+    publishing {
+        publications.create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifactId = base.archivesName.get()
+        }
+        repositories {}
+    }
 }

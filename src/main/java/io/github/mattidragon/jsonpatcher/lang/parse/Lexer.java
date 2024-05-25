@@ -14,6 +14,7 @@ public class Lexer {
     private int current = 0;
     private int currentLine = 1;
     private int currentColumn = 1;
+    private CommentHandler commentHandler = CommentHandler.EMPTY;
 
     private Lexer(String program, String filename) {
         this.program = program;
@@ -46,10 +47,41 @@ public class Lexer {
         return new Lexer(program, filename).lex();
     }
 
+    public static Result lex(String program, String filename, CommentHandler commentHandler) {
+        var lexer = new Lexer(program, filename);
+        lexer.commentHandler = commentHandler;
+        return lexer.lex();
+    }
+
     private void skipComment() {
-        while (hasNext() && peek() != '\n') {
-            next();
+        var comments = new ArrayList<String>();
+        var builder = new StringBuilder();
+
+        gatherBlock:
+        while (hasNext()) {
+            while (hasNext() && peek() != '\n') {
+                builder.append(next());
+            }
+            comments.add(builder.toString());
+            builder.delete(0, builder.length());
+            
+            if (hasNext() && peek() == '\n') {
+                next();
+            }
+            
+            while (hasNext()) {
+                var c = peek();
+                if (c == ' ' || c == '\t') {
+                    next();
+                } else if (c == '#') {
+                    next();
+                    break;
+                } else {
+                    break gatherBlock;
+                }
+            }
         }
+        commentHandler.acceptBlock(comments);
     }
 
     private void readSimpleToken(char c) {
