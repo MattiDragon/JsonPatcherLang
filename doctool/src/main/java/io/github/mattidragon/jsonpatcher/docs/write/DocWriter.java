@@ -20,6 +20,7 @@ public class DocWriter {
 
     private int headingLevel = 1;
     private Parser parser = DEFAULT_PARSER;
+    private boolean inlineDefinitions = false;
 
     public DocWriter(List<DocEntry> entries) {
         var values = new ArrayList<DocEntry.Value>();
@@ -57,14 +58,18 @@ public class DocWriter {
         this.parser = parser;
     }
 
+    public void setInlineDefinitions(boolean inlineDefinitions) {
+        this.inlineDefinitions = inlineDefinitions;
+    }
+
     public void buildDocument(Node document) {
         for (var module : modules) {
-            writeHeader(document, "Module", module.entry().name(), headingLevel);
+            writeHeader(document, "Module", module.entry().name(), "", headingLevel);
             document.appendChild(parser.parse(module.entry().description()));
             writeValues(document, module.values());
         }
         for (var type : types) {
-            writeHeader(document, "Type", type.entry().name(), headingLevel);
+            writeHeader(document, "Type", type.entry().name(), type.entry().definition().format(), headingLevel);
             writeTypeDefinition(document, type.entry().definition());
             document.appendChild(parser.parse(type.entry().description()));
             writeValues(document, type.values());
@@ -74,22 +79,29 @@ public class DocWriter {
     private void writeValues(Node document, List<DocEntry.Value> values) {
         for (var value : values) {
             var heading = value.definition() instanceof DocType.Function || value.definition() == DocType.Special.FUNCTION ? "Function" : "Property";
-            writeHeader(document, heading, value.owner() + "." + value.name(), headingLevel + 1);
+            writeHeader(document, heading, value.owner() + "." + value.name(), value.definition().format(), headingLevel + 1);
             writeTypeDefinition(document, value.definition());
             document.appendChild(parser.parse(value.description()));
         }
     }
 
-    private void writeHeader(Node document, String heading, String name, int level) {
+    private void writeHeader(Node document, String heading, String name, String definition, int level) {
         var moduleHead = new Paragraph();
         moduleHead.appendChild(new Text(heading + " "));
         moduleHead.appendChild(new Code(name));
+        if (inlineDefinitions && !definition.isBlank()) {
+            moduleHead.appendChild(new Text(": "));
+            moduleHead.appendChild(new Code(definition));
+        }
         document.appendChild(heading(level, moduleHead));
     }
 
     private void writeTypeDefinition(Node document, DocType definition) {
+        if (inlineDefinitions) return;
+        
         var block = new Paragraph();
         var emphasis = new Emphasis();
+
         if (definition != DocType.Special.UNKNOWN) {
             emphasis.appendChild(new Text("Definition: "));
             emphasis.appendChild(new Code(definition.format()));

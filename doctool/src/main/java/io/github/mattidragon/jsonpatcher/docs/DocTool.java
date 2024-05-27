@@ -31,6 +31,8 @@ public class DocTool {
                 Selects a file which content will be placed at the beginning of each output file
              -headings <number>:
                 Selects the depth of the first heading in the docs (allowed: 1-4, default: 2)
+             -inline-definitions:
+                Type definitions will be placed in the heading instead of on the next line
              -j, -join:
                 Combine output into a single file
              -html:
@@ -85,6 +87,7 @@ public class DocTool {
         
         var writer = new DocWriter(parser.getEntries());
         writer.setHeadingLevel(args.headingSize());
+        writer.setInlineDefinitions(args.inlineDefinitions());
         var node = new Document();
         writer.buildDocument(node);
         
@@ -107,11 +110,18 @@ public class DocTool {
             System.err.println("Error: Failed to write to output file " + outFile);
             e.printStackTrace(System.err);
             System.exit(1);
-            return;
         }
     }
     
-    private record Args(List<String> outputFiles, List<String> inputFiles, OutMode outMode, boolean join, @Nullable String headerFile, int headingSize) {}
+    private record Args(
+            List<String> outputFiles,
+            List<String> inputFiles,
+            OutMode outMode,
+            boolean join,
+            @Nullable String headerFile,
+            int headingSize,
+            boolean inlineDefinitions
+    ) {}
     
     private enum OutMode {
         MARKDOWN, HTML;
@@ -133,6 +143,7 @@ public class DocTool {
         int headings = 0;
         OutMode outMode = null;
         boolean join = false;
+        boolean inlineDefinitions = false;
         
         String argName = null;
         for (var arg : args) {
@@ -163,6 +174,13 @@ public class DocTool {
                             return null;
                         }
                         join = true;
+                    }
+                    case "inline-definitions" -> {
+                        if (inlineDefinitions) {
+                            System.err.println("Error: Tried to set inline definitions mode multiple times");
+                            return null;
+                        }
+                        inlineDefinitions = true;
                     }
                     default -> {
                         System.err.printf("Error: Unknown argument: '%s'%n", arg);
@@ -224,7 +242,7 @@ public class DocTool {
             headings = 2;
         }
         
-        return new Args(outFiles, inFiles, outMode, join, headerFile, headings);
+        return new Args(outFiles, inFiles, outMode, join, headerFile, headings, inlineDefinitions);
     }
     
     private static void printHelp() {
