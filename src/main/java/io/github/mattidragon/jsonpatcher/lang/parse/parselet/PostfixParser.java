@@ -204,6 +204,9 @@ public class PostfixParser {
                 if (expression != null) return expression;
             }
             default:
+                if (simpleToken == Token.SimpleToken.ARROW) {
+                    throw new Parser.ParseException("Unexpected arrow, did you mean to put parentheses around your function arguments?", parser.next().pos());
+                }
                 return null;
         }
     }

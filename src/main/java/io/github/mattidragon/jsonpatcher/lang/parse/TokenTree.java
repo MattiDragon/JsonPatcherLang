@@ -3,8 +3,6 @@ package io.github.mattidragon.jsonpatcher.lang.parse;
 import io.github.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
