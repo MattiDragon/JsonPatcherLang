@@ -87,7 +87,7 @@ public class PostfixParser {
                 }
             }
         }
-        throw new Parser.ParseException("Expected type name, got %s".formatted(type), token.pos());
+        throw new Parser.ParseException("Expected type name, got %s".formatted(type.explain()), token.pos());
     }
 
     private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {

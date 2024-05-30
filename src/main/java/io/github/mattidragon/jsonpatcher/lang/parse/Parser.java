@@ -143,12 +143,12 @@ public class Parser {
 
     public void expect(Token token) {
         var found = next().token();
-        if (found != token) expectFail(token.toString());
+        if (found != token) expectFail(token.explain());
     }
 
     @Contract("_ -> fail")
     private  <T> T expectFail(String expected) {
-        throw new ParseException("Expected %s, but found %s".formatted(expected, previous().token()), previous().pos());
+        throw new ParseException("Expected %s, but found %s".formatted(expected, previous().token().explain()), previous().pos());
     }
 
     public void addError(ParseException error) {

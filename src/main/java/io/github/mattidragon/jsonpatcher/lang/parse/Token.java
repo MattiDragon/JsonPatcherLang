@@ -6,69 +6,94 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public sealed interface Token {
+    String explain();
+    
     record NumberToken(double value) implements Token {
+        @Override
+        public String explain() {
+            return "number";
+        }
     }
 
     record StringToken(String value) implements Token {
+        @Override
+        public String explain() {
+            return "string";
+        }
     }
 
     record WordToken(String value) implements Token {
+        @Override
+        public String explain() {
+            return "identifier";
+        }
     }
 
     enum SimpleToken implements Token {
-        ASSIGN,
+        ASSIGN("="),
 
-        NOT_EQUALS,
-        EQUALS,
-        LESS_THAN,
-        GREATER_THAN,
-        LESS_THAN_EQUAL,
-        GREATER_THAN_EQUAL,
+        NOT_EQUALS("!="),
+        EQUALS("=="),
+        LESS_THAN("<"),
+        GREATER_THAN(">"),
+        LESS_THAN_EQUAL("<="),
+        GREATER_THAN_EQUAL(">="),
 
-        STAR_ASSIGN,
-        PLUS_ASSIGN,
-        MINUS_ASSIGN,
-        SLASH_ASSIGN,
-        PERCENT_ASSIGN,
-        AND_ASSIGN,
-        OR_ASSIGN,
-        XOR_ASSIGN,
+        STAR_ASSIGN("*="),
+        PLUS_ASSIGN("+="),
+        MINUS_ASSIGN("-="),
+        SLASH_ASSIGN("/="),
+        PERCENT_ASSIGN("%="),
+        AND_ASSIGN("&="),
+        OR_ASSIGN("|="),
+        XOR_ASSIGN("^="),
 
-        AND,
-        OR,
-        XOR,
+        AND("&"),
+        OR("|"),
+        XOR("^"),
 
-        DOUBLE_AND,
-        DOUBLE_OR,
-        DOUBLE_MINUS,
-        DOUBLE_PLUS,
-        DOUBLE_STAR,
-        DOUBLE_BANG,
+        DOUBLE_AND("&&"),
+        DOUBLE_OR("||"),
+        DOUBLE_MINUS("--"),
+        DOUBLE_PLUS("++"),
+        DOUBLE_STAR("**"),
+        DOUBLE_BANG("!!"),
 
-        BEGIN_CURLY,
-        END_CURLY,
-        BEGIN_PAREN,
-        END_PAREN,
-        BEGIN_SQUARE,
-        END_SQUARE,
+        BEGIN_CURLY("{"),
+        END_CURLY("}"),
+        BEGIN_PAREN("("),
+        END_PAREN(")"),
+        BEGIN_SQUARE("["),
+        END_SQUARE("]"),
 
-        DOT,
-        COMMA,
-        COLON,
-        SEMICOLON,
+        DOT("."),
+        COMMA(","),
+        COLON(":"),
+        SEMICOLON(";"),
 
-        BANG,
-        QUESTION_MARK,
-        DOLLAR,
-        AT_SIGN,
-        ARROW,
+        BANG("!"),
+        QUESTION_MARK("?"),
+        DOLLAR("$"),
+        AT_SIGN("@"),
+        ARROW("->"),
 
-        MINUS,
-        PLUS,
-        STAR,
-        SLASH,
-        PERCENT,
-        TILDE
+        MINUS("-"),
+        PLUS("+"),
+        STAR("*"),
+        SLASH("/"),
+        PERCENT("%"),
+        TILDE("~");
+
+        private final String value;
+
+        SimpleToken(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String explain() {
+            return "'" + value + "'";
+        }
     }
 
     enum KeywordToken implements Token {
@@ -104,6 +129,11 @@ public sealed interface Token {
 
         public String getValue() {
             return value;
+        }
+
+        @Override
+        public String explain() {
+            return "'" + value + "'";
         }
     }
 }

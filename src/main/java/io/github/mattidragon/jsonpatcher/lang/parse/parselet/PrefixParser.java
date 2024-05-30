@@ -219,7 +219,7 @@ public class PrefixParser {
             case Token.SimpleToken.BEGIN_CURLY -> objectInit(parser, token);
             case Token.SimpleToken.BEGIN_PAREN -> parenthesis(parser);
             
-            case Token other -> throw new Parser.ParseException("Unexpected token at start of expression: %s".formatted(other), pos);
+            case Token other -> throw new Parser.ParseException("Unexpected token at start of expression: %s".formatted(other.explain()), pos);
         };
     }
 }
