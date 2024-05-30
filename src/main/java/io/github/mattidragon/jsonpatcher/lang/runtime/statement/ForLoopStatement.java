@@ -2,7 +2,10 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.statement;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
+
+import java.util.List;
 
 public record ForLoopStatement(Statement initializer, Expression condition, Statement incrementer, Statement body, SourceSpan pos) implements Statement {
     @Override
@@ -22,5 +25,10 @@ public record ForLoopStatement(Statement initializer, Expression condition, Stat
     @Override
     public SourceSpan getPos() {
         return pos;
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return List.of(initializer, condition, incrementer, body);
     }
 }

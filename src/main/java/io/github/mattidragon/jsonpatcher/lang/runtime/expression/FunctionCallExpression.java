@@ -3,8 +3,10 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.expression;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public record FunctionCallExpression(Expression function, List<Expression> arguments, SourceSpan pos) implements Expression {
@@ -20,5 +22,12 @@ public record FunctionCallExpression(Expression function, List<Expression> argum
                 arguments.stream().map(expression -> expression.evaluate(context)).toList(),
                 pos
         );
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        var list = new ArrayList<>(arguments);
+        list.add(function);
+        return list;
     }
 }

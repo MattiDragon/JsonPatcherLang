@@ -24,7 +24,8 @@ public class EvaluationException extends PositionedException {
     }
 
     @Override
-    protected @Nullable SourceSpan getPos() {
+    @Nullable
+    public SourceSpan getPos() {
         return pos;
     }
 }

@@ -14,7 +14,7 @@ public class PostfixParser {
 
     private static Expression parsePropertyAccess(Parser parser, Expression left, PositionedToken token) {
         var name = parser.expectWord();
-        return new PropertyAccessExpression(left, name.value(), new SourceSpan(token.getFrom(), parser.previous().getTo()));
+        return new PropertyAccessExpression(left, name.value(), new SourceSpan(token.getFrom(), parser.previous().getTo()), parser.previous().pos());
     }
 
     private static Expression parseIndexAccess(Parser parser, Expression left, PositionedToken token) {
@@ -25,30 +25,30 @@ public class PostfixParser {
 
     private static Expression parseShortedBinaryOperation(Parser parser, Expression left, PositionedToken token, ShortedBinaryExpression.Operator operator, Precedence precedence) {
         var right = parser.expression(precedence);
-        return new ShortedBinaryExpression(left, right, operator, token.getPos());
+        return new ShortedBinaryExpression(left, right, operator, token.pos());
     }
 
     private static Expression parseBinaryOperation(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator, Precedence precedence) {
         var right = parser.expression(precedence);
-        return new BinaryExpression(left, right, operator, token.getPos());
+        return new BinaryExpression(left, right, operator, token.pos());
     }
 
     private static Expression parseUnaryModification(Expression left, PositionedToken token, UnaryExpression.Operator operator) {
-        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't modify %s".formatted(left), token.getPos());
-        return new UnaryModificationExpression(true, ref, operator, token.getPos());
+        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't modify %s".formatted(left), token.pos());
+        return new UnaryModificationExpression(true, ref, operator, token.pos());
     }
 
     private static Expression parseAssignment(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator) {
-        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't assign to %s".formatted(left), token.getPos());
+        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't assign to %s".formatted(left), token.pos());
         var right = parser.expression(Precedence.ROOT);
-        return new AssignmentExpression(ref, right, operator, token.getPos());
+        return new AssignmentExpression(ref, right, operator, token.pos());
     }
 
     private static Expression parseFunctionCall(Parser parser, Expression left, PositionedToken token) {
         var arguments = new ArrayList<Expression>();
-        while (parser.peek().getToken() != Token.SimpleToken.END_PAREN) {
+        while (parser.peek().token() != Token.SimpleToken.END_PAREN) {
             arguments.add(parser.expression());
-            if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
+            if (parser.peek().token() == Token.SimpleToken.COMMA) {
                 parser.next();
             } else {
                 break;
@@ -60,40 +60,41 @@ public class PostfixParser {
     }
 
     private static Expression parseIsInstance(Parser parser, Expression left, PositionedToken token) {
-        var type = parser.next().getToken();
+        PositionedToken positionedToken = parser.next();
+        var type = positionedToken.token();
         if (type == Token.KeywordToken.NULL) {
-            return new IsInstanceExpression(left, IsInstanceExpression.Type.NULL, token.getPos());
+            return new IsInstanceExpression(left, IsInstanceExpression.Type.NULL, token.pos());
         }
         if (type instanceof Token.WordToken word) {
             switch (word.value()) {
                 case "number" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.NUMBER, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.NUMBER, token.pos());
                 }
                 case "string" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.STRING, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.STRING, token.pos());
                 }
                 case "boolean" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.BOOLEAN, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.BOOLEAN, token.pos());
                 }
                 case "array" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.ARRAY, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.ARRAY, token.pos());
                 }
                 case "object" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.OBJECT, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.OBJECT, token.pos());
                 }
                 case "function" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.FUNCTION, token.getPos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.FUNCTION, token.pos());
                 }
             }
         }
-        throw new Parser.ParseException("Expected type name, got %s".formatted(type), token.getPos());
+        throw new Parser.ParseException("Expected type name, got %s".formatted(type), token.pos());
     }
 
     private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {
         var middle = parser.expression();
         parser.expect(Token.SimpleToken.COLON);
         var right = parser.expression();
-        return new TernaryExpression(left, middle, right, token.getPos());
+        return new TernaryExpression(left, middle, right, token.pos());
     }
 
     public static Expression get(Parser parser, Precedence precedence, Expression left) {
@@ -107,7 +108,7 @@ public class PostfixParser {
             }
         }
 
-        if (!(token.getToken() instanceof Token.SimpleToken simpleToken)) return null;
+        if (!(token.token() instanceof Token.SimpleToken simpleToken)) return null;
 
         // abuse fallthrough to check precedence levels in order
         switch (precedence) {
@@ -129,23 +130,23 @@ public class PostfixParser {
                 if (expression != null) return expression;
             }
             case OR:
-                if (token.getToken() == Token.SimpleToken.DOUBLE_OR) {
+                if (token.token() == Token.SimpleToken.DOUBLE_OR) {
                     return parseShortedBinaryOperation(parser, left, parser.next(), ShortedBinaryExpression.Operator.OR, Precedence.OR);
                 }
             case AND:
-                if (token.getToken() == Token.SimpleToken.DOUBLE_AND) {
+                if (token.token() == Token.SimpleToken.DOUBLE_AND) {
                     return parseShortedBinaryOperation(parser, left, parser.next(), ShortedBinaryExpression.Operator.AND, Precedence.AND);
                 }
             case BITWISE_OR:
-                if (token.getToken() == Token.SimpleToken.OR) {
+                if (token.token() == Token.SimpleToken.OR) {
                     return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.OR, Precedence.BITWISE_OR);
                 }
             case BITWISE_XOR:
-                if (token.getToken() == Token.SimpleToken.XOR) {
+                if (token.token() == Token.SimpleToken.XOR) {
                     return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.XOR, Precedence.BITWISE_XOR);
                 }
             case BITWISE_AND:
-                if (token.getToken() == Token.SimpleToken.AND) {
+                if (token.token() == Token.SimpleToken.AND) {
                     return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.AND, Precedence.BITWISE_AND);
                 }
             case EQUALITY: {

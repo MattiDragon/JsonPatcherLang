@@ -246,7 +246,8 @@ public class Lexer {
         }
 
         @Override
-        protected @Nullable SourceSpan getPos() {
+        @Nullable
+        public SourceSpan getPos() {
             return new SourceSpan(pos, pos);
         }
     }

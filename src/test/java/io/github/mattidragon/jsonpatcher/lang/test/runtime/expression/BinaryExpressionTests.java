@@ -1,7 +1,10 @@
 package io.github.mattidragon.jsonpatcher.lang.test.runtime.expression;
 
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Value.*;
+import io.github.mattidragon.jsonpatcher.lang.runtime.Value.ArrayValue;
+import io.github.mattidragon.jsonpatcher.lang.runtime.Value.NumberValue;
+import io.github.mattidragon.jsonpatcher.lang.runtime.Value.ObjectValue;
+import io.github.mattidragon.jsonpatcher.lang.runtime.Value.StringValue;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.BinaryExpression;
 import io.github.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Test;
@@ -9,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 public class BinaryExpressionTests {
     // TODO: implement more tests. Not very high priority as these are unlikely to be broken

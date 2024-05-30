@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.statement;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 
 import java.util.List;
 
@@ -21,5 +22,10 @@ public record BlockStatement(List<Statement> statements, SourceSpan pos) impleme
     @Override
     public SourceSpan getPos() {
         return null;
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return statements;
     }
 }

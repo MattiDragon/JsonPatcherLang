@@ -1,6 +1,7 @@
 package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
+import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.parse.Token;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
@@ -25,8 +26,9 @@ public class StatementParser {
         var beginPos = parser.previous().getFrom();
         var statements = new ArrayList<Statement>();
         try {
-            while (parser.peek().getToken() != SimpleToken.END_CURLY)
+            while (parser.peek().token() != SimpleToken.END_CURLY) {
                 statements.add(parse(parser));
+            }
         } catch (Parser.ParseException e) {
             parser.addError(e);
             parser.seek(SimpleToken.END_CURLY);
@@ -67,10 +69,11 @@ public class StatementParser {
     private static Statement variableStatement(Parser parser, boolean mutable) {
         var begin = parser.next().getFrom();
         var name = parser.expectWord();
+        var namePos = parser.previous().pos();
         parser.expect(SimpleToken.ASSIGN);
         var initializer = parser.expression();
         parser.expect(SimpleToken.SEMICOLON);
-        return new VariableCreationStatement(name.value(), initializer, mutable, new SourceSpan(begin, parser.previous().getTo()));
+        return new VariableCreationStatement(name.value(), initializer, mutable, new SourceSpan(begin, parser.previous().getTo()), namePos);
     }
 
     private static Statement deleteStatement(Parser parser) {
@@ -84,7 +87,8 @@ public class StatementParser {
     private static Statement returnStatement(Parser parser) {
         var begin = parser.next().getFrom();
         Optional<Expression> value;
-        if (parser.peek().getToken() == SimpleToken.SEMICOLON) {
+        PositionedToken positionedToken = parser.peek();
+        if (positionedToken.token() == SimpleToken.SEMICOLON) {
             value = Optional.empty();
         } else {
             value = Optional.of(parser.expression());
@@ -116,7 +120,12 @@ public class StatementParser {
             parser.seek(SimpleToken.SEMICOLON);
             return new ErrorStatement(e);
         }
-        parser.expect(SimpleToken.SEMICOLON);
+        
+        var lastTokenPos = parser.previous().pos().to();
+        if (parser.next().token() != SimpleToken.SEMICOLON) {
+            throw new Parser.ParseException("Semicolon expected", new SourceSpan(lastTokenPos, lastTokenPos));
+        }
+        
         return new ExpressionStatement(expression);
     }
 
@@ -140,9 +149,11 @@ public class StatementParser {
         Statement initializer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            initializer = new EmptyStatement(parser.previous().getPos());
+            PositionedToken positionedToken = parser.previous();
+            initializer = new EmptyStatement(positionedToken.pos());
         } else if (parser.hasNext(KeywordToken.VAR) || parser.hasNext(KeywordToken.VAL)) {
-            initializer = variableStatement(parser, parser.peek().getToken() == KeywordToken.VAR);
+            PositionedToken positionedToken = parser.peek();
+            initializer = variableStatement(parser, positionedToken.token() == KeywordToken.VAR);
         } else {
             initializer = expressionStatement(parser);
         }
@@ -150,7 +161,8 @@ public class StatementParser {
 
         Expression condition;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
-            condition = new ValueExpression(Value.BooleanValue.TRUE, parser.peek().getPos());
+            PositionedToken positionedToken = parser.peek();
+            condition = new ValueExpression(Value.BooleanValue.TRUE, positionedToken.pos());
         } else {
             condition = parser.expression();
         }
@@ -159,7 +171,8 @@ public class StatementParser {
         Statement incrementer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            incrementer = new EmptyStatement(parser.previous().getPos());
+            PositionedToken positionedToken = parser.previous();
+            incrementer = new EmptyStatement(positionedToken.pos());
         } else {
             incrementer = new ExpressionStatement(parser.expression());
         }
@@ -215,11 +228,11 @@ public class StatementParser {
 
     public static Statement parse(Parser parser) {
         var token = parser.peek();
-        return switch ((Token) token.getToken()) {
+        return switch ((Token) token.token()) {
             case SimpleToken.BEGIN_CURLY -> blockStatement(parser);
             case SimpleToken.SEMICOLON -> {
                 parser.next();
-                yield new EmptyStatement(token.getPos());
+                yield new EmptyStatement(token.pos());
             }
             case KeywordToken.APPLY -> applyStatement(parser);
             case KeywordToken.IF -> ifStatement(parser);

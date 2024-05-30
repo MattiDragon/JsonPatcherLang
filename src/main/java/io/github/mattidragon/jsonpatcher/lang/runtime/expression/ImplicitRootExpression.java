@@ -2,7 +2,10 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.expression;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
+
+import java.util.List;
 
 public record ImplicitRootExpression(String name, SourceSpan pos) implements Reference {
     @Override
@@ -18,5 +21,10 @@ public record ImplicitRootExpression(String name, SourceSpan pos) implements Ref
     @Override
     public void delete(EvaluationContext context) {
         context.root().remove(name, pos);
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return List.of();
     }
 }

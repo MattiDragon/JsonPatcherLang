@@ -3,8 +3,11 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.statement;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
+
+import java.util.List;
 
 public record ForEachLoopStatement(Expression iterable, String variableName, Statement body, SourceSpan pos) implements Statement {
     @Override
@@ -29,5 +32,10 @@ public record ForEachLoopStatement(Expression iterable, String variableName, Sta
     @Override
     public SourceSpan getPos() {
         return pos;
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return List.of(iterable, body);
     }
 }

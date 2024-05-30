@@ -2,10 +2,13 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.expression;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
-public record PropertyAccessExpression(Expression parent, String name, SourceSpan pos) implements Reference {
+import java.util.List;
+
+public record PropertyAccessExpression(Expression parent, String name, SourceSpan pos, SourceSpan namePos) implements Reference {
     @Override
     public Value get(EvaluationContext context) {
         var parent = this.parent.evaluate(context);
@@ -62,5 +65,10 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
         } else {
             throw error("Tried to delete property %s of %s. Only objects have properties.".formatted(name, parent));
         }
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return List.of(parent);
     }
 }

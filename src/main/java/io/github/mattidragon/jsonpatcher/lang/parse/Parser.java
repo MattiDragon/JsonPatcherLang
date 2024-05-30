@@ -52,24 +52,30 @@ public class Parser {
 
     public Result program() {
         while (hasNext(Token.SimpleToken.AT_SIGN)) {
-            next();
-            var id = expectWord().value();
-            metadata.add(id, this);
-            expect(Token.SimpleToken.SEMICOLON);
+            try {
+                next();
+                var id = expectWord().value();
+                metadata.add(id, this);
+                expect(Token.SimpleToken.SEMICOLON);
+            } catch (ParseException e) {
+                errors.add(e);
+            }
         }
-
+        
         var statements = new ArrayList<Statement>();
         try {
-            while (hasNext())
+            while (hasNext()) {
                 statements.add(statement());
+            }
         } catch (ParseException e) {
             errors.add(e);
         } catch (EndParsingException ignored) {}
 
+        var program = new Program(statements);
         if (!errors.isEmpty()) {
-            return new Result.Fail(errors);
+            return new Result.Fail(program, metadata, errors);
         }
-        return new Result.Success(new Program(statements), metadata);
+        return new Result.Success(program, metadata);
     }
 
     private Statement statement() {
@@ -104,43 +110,45 @@ public class Parser {
     }
 
     public void seek(Token token) {
-        while (hasNext() && peek().getToken() != token) next();
+        while (hasNext() && peek().token() != token) {
+            next();
+        }
         expect(token);
     }
 
     public Token.WordToken expectWord() {
-        var token = next().getToken();
+        var token = next().token();
         if (token instanceof Token.WordToken wordToken) return wordToken;
         return expectFail("word");
     }
 
     public Token.StringToken expectString() {
-        var token = next().getToken();
+        var token = next().token();
         if (token instanceof Token.StringToken stringToken) return stringToken;
         return expectFail("string");
     }
 
     public String expectWordOrString() {
-        var token = next().getToken();
+        var token = next().token();
         if (token instanceof Token.WordToken wordToken) return wordToken.value();
         if (token instanceof Token.StringToken stringToken) return stringToken.value();
         return expectFail("word or string");
     }
 
     public Token.NumberToken expectNumber() {
-        var token = next().getToken();
+        var token = next().token();
         if (token instanceof Token.NumberToken numberToken) return numberToken;
         return expectFail("number");
     }
 
     public void expect(Token token) {
-        var found = next().getToken();
+        var found = next().token();
         if (found != token) expectFail(token.toString());
     }
 
     @Contract("_ -> fail")
-    public <T> T expectFail(String expected) {
-        throw new ParseException("Expected %s, but found %s".formatted(expected, previous().getToken()), previous().getPos());
+    private  <T> T expectFail(String expected) {
+        throw new ParseException("Expected %s, but found %s".formatted(expected, previous().token()), previous().pos());
     }
 
     public void addError(ParseException error) {
@@ -173,7 +181,9 @@ public class Parser {
     }
 
     public boolean hasNext(Token token) {
-        return hasNext() && peek().getToken() == token;
+        if (!hasNext()) return false;
+        PositionedToken positionedToken = peek();
+        return positionedToken.token() == token;
     }
 
     public Position savePos() {
@@ -206,7 +216,8 @@ public class Parser {
         }
 
         @Override
-        protected @Nullable SourceSpan getPos() {
+        @Nullable
+        public SourceSpan getPos() {
             return pos;
         }
     }
@@ -216,6 +227,6 @@ public class Parser {
 
     public sealed interface Result {
         record Success(Program program, PatchMetadata metadata) implements Result {}
-        record Fail(List<ParseException> errors) implements Result {}
+        record Fail(Program partialProgram, PatchMetadata metadata, List<ParseException> errors) implements Result {}
     }
 }

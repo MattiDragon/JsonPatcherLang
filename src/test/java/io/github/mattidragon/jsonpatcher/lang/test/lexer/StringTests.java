@@ -15,7 +15,8 @@ public class StringTests {
                 """;
         var tokens = Lexer.lex(program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
-        var token = tokens.getFirst().getToken();
+        PositionedToken positionedToken = tokens.getFirst();
+        var token = positionedToken.token();
         assertInstanceOf(Token.StringToken.class, token, "Expected StringToken");
         assertEquals("A", ((Token.StringToken) token).value(), "Expected A");
     }
@@ -35,7 +36,8 @@ public class StringTests {
                 """;
         var tokens = Lexer.lex(program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
-        var token = tokens.getFirst().getToken();
+        PositionedToken positionedToken = tokens.getFirst();
+        var token = positionedToken.token();
         assertInstanceOf(Token.KeywordToken.class, token, "Expected KeywordToken");
         assertEquals(Token.KeywordToken.TRUE, token, "Expected true");
     }
@@ -47,7 +49,8 @@ public class StringTests {
                 """;
         var tokens = Lexer.lex(program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
-        var token = tokens.getFirst().getToken();
+        PositionedToken positionedToken = tokens.getFirst();
+        var token = positionedToken.token();
         assertInstanceOf(Token.WordToken.class, token, "Expected WordToken");
         assertEquals("true", ((Token.WordToken) token).value(), "Expected true");
     }

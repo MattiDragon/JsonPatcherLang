@@ -14,7 +14,11 @@ public abstract class PositionedException extends RuntimeException {
 
     protected abstract String getBaseMessage();
     @Nullable
-    protected abstract SourceSpan getPos();
+    public abstract SourceSpan getPos();
+    
+    public final String getInternalMessage() {
+        return super.getMessage();
+    }
 
     @Override
     public synchronized Throwable fillInStackTrace() {

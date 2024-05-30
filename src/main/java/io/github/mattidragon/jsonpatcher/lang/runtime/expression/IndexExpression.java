@@ -2,7 +2,10 @@ package io.github.mattidragon.jsonpatcher.lang.runtime.expression;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
+
+import java.util.List;
 
 public record IndexExpression(Expression parent, Expression index, SourceSpan pos) implements Reference {
     @Override
@@ -58,5 +61,10 @@ public record IndexExpression(Expression parent, Expression index, SourceSpan po
             return;
         }
         throw error("Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index));
+    }
+
+    @Override
+    public Iterable<? extends ProgramNode> getChildren() {
+        return List.of(parent, index);
     }
 }

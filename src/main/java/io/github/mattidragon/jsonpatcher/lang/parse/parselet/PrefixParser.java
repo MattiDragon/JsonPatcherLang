@@ -12,7 +12,10 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.statement.ReturnStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.Statement;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 public class PrefixParser {
     private PrefixParser() {
@@ -29,14 +32,14 @@ public class PrefixParser {
     private static Expression root(Parser parser, PositionedToken token) {
         if (parser.hasNext() && parser.peek() instanceof PositionedToken(var pos, Token.WordToken word)) {
             parser.next();
-            return new ImplicitRootExpression(word.value(), pos);
+            return new PropertyAccessExpression(new RootExpression(token.pos()), word.value(), pos, pos);
         }
 
-        return new RootExpression(token.getPos());
+        return new RootExpression(token.pos());
     }
 
     private static ValueExpression constant(PositionedToken token, Value.Primitive value) {
-        return new ValueExpression(value, token.getPos());
+        return new ValueExpression(value, token.pos());
     }
 
     private static Expression variable(SourceSpan pos, Token.WordToken token) {
@@ -44,22 +47,22 @@ public class PrefixParser {
     }
 
     private static UnaryExpression unary(Parser parser, PositionedToken token, UnaryExpression.Operator operator) {
-        return new UnaryExpression(parser.expression(Precedence.PREFIX), operator, token.getPos());
+        return new UnaryExpression(parser.expression(Precedence.PREFIX), operator, token.pos());
     }
 
     private static Expression unaryModification(Parser parser, PositionedToken token, UnaryExpression.Operator operator) {
         var expression = parser.expression(Precedence.PREFIX);
-        if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't modify to %s".formatted(expression), token.getPos());
+        if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't modify to %s".formatted(expression), token.pos());
 
-        return new UnaryModificationExpression(false, ref, operator, token.getPos());
+        return new UnaryModificationExpression(false, ref, operator, token.pos());
     }
 
     private static Expression arrayInit(Parser parser, PositionedToken token) {
         var children = new ArrayList<Expression>();
-        while (parser.peek().getToken() != Token.SimpleToken.END_SQUARE) {
+        while (parser.peek().token() != Token.SimpleToken.END_SQUARE) {
             children.add(parser.expression());
 
-            if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
+            if (parser.peek().token() == Token.SimpleToken.COMMA) {
                 parser.next();
             } else {
                 // If there is no comma we have to be at the last element.
@@ -71,13 +74,15 @@ public class PrefixParser {
     }
 
     private static Expression objectInit(Parser parser, PositionedToken token) {
-        var children = new HashMap<String, Expression>();
-        while (parser.peek().getToken() != Token.SimpleToken.END_CURLY) {
+        var children = new ArrayList<ObjectInitializerExpression.Entry>();
+        while (parser.peek().token() != Token.SimpleToken.END_CURLY) {
             var key = parser.expectWordOrString();
+            var keyPos = parser.previous().pos();
             parser.expect(Token.SimpleToken.COLON);
-            children.put(key, parser.expression());
+            children.add(new ObjectInitializerExpression.Entry(key, keyPos, parser.expression()));
 
-            if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
+            PositionedToken positionedToken = parser.peek();
+            if (positionedToken.token() == Token.SimpleToken.COMMA) {
                 parser.next();
             } else {
                 // If there is no comma we have to be at the last element.
@@ -96,7 +101,7 @@ public class PrefixParser {
         var varargs = false;
         var optionalArg = false;
         
-        while (parser.peek().getToken() != Token.SimpleToken.END_PAREN) {
+        while (parser.peek().token() != Token.SimpleToken.END_PAREN) {
             // If we end up here with the varargs flag set we are trying to parse an argument after the varargs argument
             if (varargs) {
                 parser.addError(new Parser.ParseException("Varargs parameter must be last in list", varargsPos));
@@ -114,22 +119,28 @@ public class PrefixParser {
 
             if (targets.contains(target)) {
                 if (target instanceof FunctionArgument.Target.Variable variable) {
-                    parser.addError(new Parser.ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), parser.previous().getPos()));
+                    PositionedToken positionedToken = parser.previous();
+                    parser.addError(new Parser.ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), positionedToken.pos()));
                 } else {
-                    parser.addError(new Parser.ParseException("Duplicate root parameter", parser.previous().getPos()));
+                    PositionedToken positionedToken = parser.previous();
+                    parser.addError(new Parser.ParseException("Duplicate root parameter", positionedToken.pos()));
                 }
             }
             targets.add(target);
             
             var defaultValue = Optional.<Expression>empty();
-            var peek = parser.peek().getToken();
+            PositionedToken positionedToken3 = parser.peek();
+            var peek = positionedToken3.token();
             if (peek == Token.SimpleToken.STAR) {
-                varargsPos = parser.next().getPos();
+                PositionedToken positionedToken1 = parser.next();
+                varargsPos = positionedToken1.pos();
                 varargs = true;
                 defaultValue = Optional.of(new ArrayInitializerExpression(List.of(), varargsPos));
                 optionalArg = true;
-                if (parser.peek().getToken() == Token.SimpleToken.ASSIGN) {
-                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", parser.peek().getPos()));
+                PositionedToken positionedToken2 = parser.peek();
+                if (positionedToken2.token() == Token.SimpleToken.ASSIGN) {
+                    PositionedToken positionedToken = parser.peek();
+                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", positionedToken.pos()));
                 }
             }
             // We parse default values after varargs to avoid garbage errors. 
@@ -140,11 +151,13 @@ public class PrefixParser {
                 optionalArg = true;
             } 
             if (defaultValue.isEmpty() && optionalArg) {
-                parser.addError(new Parser.ParseException("All required arguments must appear before optional arguments", parser.previous().getPos()));
+                PositionedToken positionedToken = parser.previous();
+                parser.addError(new Parser.ParseException("All required arguments must appear before optional arguments", positionedToken.pos()));
             }
             
             arguments.add(new FunctionArgument(target, defaultValue));
-            if (parser.peek().getToken() == Token.SimpleToken.COMMA) {
+            PositionedToken positionedToken = parser.peek();
+            if (positionedToken.token() == Token.SimpleToken.COMMA) {
                 parser.next();
             } else {
                 break;
@@ -160,7 +173,8 @@ public class PrefixParser {
             var beginPos = parser.previous().getFrom();
             var arguments = parseArgumentList(parser);
             parser.expect(Token.SimpleToken.ARROW);
-            var arrowPos = parser.previous().getPos();
+            PositionedToken positionedToken = parser.previous();
+            var arrowPos = positionedToken.pos();
 
             Statement body = parser.hasNext(Token.SimpleToken.BEGIN_CURLY)
                     ? StatementParser.blockStatement(parser)
@@ -185,8 +199,8 @@ public class PrefixParser {
     }
 
     public static Expression parse(Parser parser, PositionedToken token) {
-        var pos = token.getPos();
-        return switch (token.getToken()) {
+        var pos = token.pos();
+        return switch (token.token()) {
             case Token.StringToken stringToken -> string(pos, stringToken);
             case Token.NumberToken numberToken -> number(pos, numberToken);
             case Token.WordToken wordToken -> variable(pos, wordToken);

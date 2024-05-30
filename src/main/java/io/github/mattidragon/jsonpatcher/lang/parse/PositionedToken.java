@@ -8,12 +8,4 @@ public record PositionedToken(SourceSpan pos, Token token) {
     public SourcePos getTo() {
         return pos.to();
     }
-
-    public Token getToken() {
-        return token;
-    }
-
-    public SourceSpan getPos() {
-        return pos;
-    }
 }
