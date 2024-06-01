@@ -71,11 +71,7 @@ public class Parser {
             errors.add(e);
         } catch (EndParsingException ignored) {}
 
-        var program = new Program(statements);
-        if (!errors.isEmpty()) {
-            return new Result.Fail(program, metadata, errors);
-        }
-        return new Result.Success(program, metadata);
+        return new Result(new Program(statements), metadata, errors);
     }
 
     private Statement statement() {
@@ -225,8 +221,6 @@ public class Parser {
     public record Position(int current, List<ParseException> errors) {
     }
 
-    public sealed interface Result {
-        record Success(Program program, PatchMetadata metadata) implements Result {}
-        record Fail(Program partialProgram, PatchMetadata metadata, List<ParseException> errors) implements Result {}
+    public record Result(Program program, PatchMetadata metadata, List<ParseException> errors) {
     }
 }

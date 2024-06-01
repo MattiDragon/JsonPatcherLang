@@ -15,5 +15,4 @@ tasks.jar {
 
 tasks.shadowJar {
     exclude("META-INF/maven/org.commonmark/**")
-    configurations = listOf(project.configurations["shade"])
 }

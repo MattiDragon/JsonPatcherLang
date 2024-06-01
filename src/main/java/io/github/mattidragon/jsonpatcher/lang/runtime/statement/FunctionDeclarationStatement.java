@@ -7,7 +7,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpress
 
 import java.util.List;
 
-public record FunctionDeclarationStatement(String name, FunctionExpression value) implements Statement {
+public record FunctionDeclarationStatement(String name, FunctionExpression value, SourceSpan namePos) implements Statement {
     @Override
     public void run(EvaluationContext context) {
         context.variables().createVariable(name, value.evaluate(context), false, value.pos());

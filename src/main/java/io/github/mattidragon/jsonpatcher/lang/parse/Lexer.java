@@ -10,7 +10,8 @@ public class Lexer {
     public static final int TAB_WIDTH = 4;
     private final SourceFile file;
     private final String program;
-    private final ArrayList<PositionedToken> tokens = new ArrayList<>();
+    private final List<PositionedToken> tokens = new ArrayList<>();
+    private final List<Lexer.LexException> errors = new ArrayList<>();
     private int current = 0;
     private int currentLine = 1;
     private int currentColumn = 1;
@@ -22,25 +23,31 @@ public class Lexer {
     }
 
     private Result lex() {
-        while (hasNext()) {
-            var c = next();
-            if (c == ' ' || c == '\r' || c == '\n' || c == '\t') {
-                continue;
-            }
+        try {
+            while (hasNext()) {
+                var c = next();
+                if (c == ' ' || c == '\r' || c == '\n' || c == '\t') {
+                    continue;
+                }
 
-            if (c == '"' || c == '\'') {
-                readString(c);
-            } else if (c == '#') {
-                skipComment();
-            } else {
-                if (c >= '0' && c <= '9') readNumber(c);
-                else if (TokenTree.isStart(c)) readSimpleToken(c);
-                else if (isWordStartChar(c)) readWord(c);
-                else throw error("Unexpected character: %c (0x%x)".formatted(c, (int) c), 1);
+                if (c == '"' || c == '\'') {
+                    readString(c);
+                } else if (c == '#') {
+                    skipComment();
+                } else {
+                    if (c >= '0' && c <= '9') readNumber(c);
+                    else if (TokenTree.isStart(c)) readSimpleToken(c);
+                    else if (isWordStartChar(c)) readWord(c);
+                    else {
+                        addParsedToken(new Token.ErrorToken("Unexpected character: %c (0x%x)".formatted(c, (int) c)), 1);
+                    }
+                }
             }
+        } catch (Lexer.LexException e) {
+            errors.add(e);
         }
 
-        return new Result(tokens);
+        return new Result(tokens, errors);
     }
 
     public static Result lex(String program, String filename) {
@@ -86,7 +93,9 @@ public class Lexer {
 
     private void readSimpleToken(char c) {
         var success = TokenTree.parse(this, c);
-        if (!success) throw error("Unable to parse token", 1);
+        if (!success) {
+            errors.add(error("Unable to parse token", 1));
+        }
     }
 
     // TODO: Find a better way to deal with EOF in number parsing
@@ -158,10 +167,10 @@ public class Lexer {
                         case '0' -> string.append('\0');
                         case 'x' -> string.append(readUnicodeEscape(2));
                         case 'u' -> string.append(readUnicodeEscape(4));
-                        default -> throw error("Unknown escape sequence: \\%c".formatted(escaped), 1);
+                        default -> errors.add(error("Unknown escape sequence: \\%c".formatted(escaped), 1));
                     }
                 }
-                case '\n', '\r' -> throw error("Multiline strings aren't supported. Did you forget a quote?");
+                case '\n', '\r' -> errors.add(error("Multiline strings aren't supported. Did you forget a quote?"));
                 default -> string.append(c);
             }
         }
@@ -178,7 +187,7 @@ public class Lexer {
             if (c >= '0' && c <= '9') value += (char) (c - '0');
             else if (c >= 'a' && c <= 'f') value += (char) (c - 'a' + 10);
             else if (c >= 'A' && c <= 'F') value += (char) (c - 'A' + 10);
-            else throw error("Invalid character in unicode escape: %c".formatted(c), 1);
+            else errors.add(error("Invalid character in unicode escape: %c".formatted(c), 1));
         }
         return value;
     }
@@ -211,7 +220,11 @@ public class Lexer {
         var from = new SourcePos(file, currentLine, currentColumn - length);
         var to = new SourcePos(file, currentLine, currentColumn - 1);
         SourceSpan pos = new SourceSpan(from, to);
-        tokens.add(new PositionedToken(pos, token));
+        if (token instanceof Token.ErrorToken errorToken) {
+            errors.add(new LexException(errorToken.error(), pos.from()));
+        } else {
+            tokens.add(new PositionedToken(pos, token));
+        }
     }
 
     public Position savePos() {
@@ -252,7 +265,7 @@ public class Lexer {
         }
     }
 
-    public record Result(List<PositionedToken> tokens) {
+    public record Result(List<PositionedToken> tokens, List<LexException> errors) {
     }
 
     public record Position(int current, int currentLine, int currentColumn) {}

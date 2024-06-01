@@ -21,9 +21,13 @@ public record ObjectInitializerExpression(List<Entry> contents, SourceSpan pos) 
 
     @Override
     public Iterable<? extends ProgramNode> getChildren() {
-        return contents.stream().map(Entry::value).toList();
+        return contents.stream().toList();
     }
     
-    public record Entry(String name, SourceSpan namePos, Expression value) {
+    public record Entry(String name, SourceSpan namePos, Expression value) implements ProgramNode {
+        @Override
+        public Iterable<? extends ProgramNode> getChildren() {
+            return List.of(value);
+        }
     }
 }

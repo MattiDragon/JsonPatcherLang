@@ -99,16 +99,17 @@ public class StatementParser {
 
     private static FunctionDeclarationStatement functionDeclaration(Parser parser) {
         parser.expect(KeywordToken.FUNCTION);
-
-        var name = parser.expectWord().value();
         var begin = parser.previous().getFrom();
+        
+        var name = parser.expectWord().value();
+        var namePos = parser.previous().pos();
 
         parser.expect(SimpleToken.BEGIN_PAREN);
         var arguments = PrefixParser.parseArgumentList(parser);
         var body = blockStatement(parser);
         var expression = new FunctionExpression(body, arguments, new SourceSpan(begin, parser.previous().getTo()));
 
-        return new FunctionDeclarationStatement(name, expression);
+        return new FunctionDeclarationStatement(name, expression, namePos);
     }
 
     private static Statement expressionStatement(Parser parser) {

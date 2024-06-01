@@ -1,6 +1,6 @@
 package io.github.mattidragon.jsonpatcher.server;
 
-import io.github.mattidragon.jsonpatcher.server.document.JsonPatcherTextDocumentService;
+import io.github.mattidragon.jsonpatcher.server.document.DocumentManager;
 import io.github.mattidragon.jsonpatcher.server.document.SemanticTokenizer;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.services.*;
@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class JsonPatcherLanguageServer implements LanguageServer, LanguageClientAware {
     private int statusCode = 1;
-    private final JsonPatcherTextDocumentService documentService = new JsonPatcherTextDocumentService();
+    private final DocumentManager documentService = new DocumentManager();
 
     @Override
     public void connect(LanguageClient client) {

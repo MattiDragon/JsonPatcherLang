@@ -129,23 +129,19 @@ public class PrefixParser {
             targets.add(target);
             
             var defaultValue = Optional.<Expression>empty();
-            PositionedToken positionedToken3 = parser.peek();
-            var peek = positionedToken3.token();
-            if (peek == Token.SimpleToken.STAR) {
+            if (parser.peek().token() == Token.SimpleToken.STAR) {
                 PositionedToken positionedToken1 = parser.next();
                 varargsPos = positionedToken1.pos();
                 varargs = true;
                 defaultValue = Optional.of(new ArrayInitializerExpression(List.of(), varargsPos));
                 optionalArg = true;
-                PositionedToken positionedToken2 = parser.peek();
-                if (positionedToken2.token() == Token.SimpleToken.ASSIGN) {
-                    PositionedToken positionedToken = parser.peek();
-                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", positionedToken.pos()));
+                if (parser.peek().token() == Token.SimpleToken.ASSIGN) {
+                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", parser.peek().pos()));
                 }
             }
             // We parse default values after varargs to avoid garbage errors. 
             // This won't ever actually be used because we add an error above.
-            if (peek == Token.SimpleToken.ASSIGN) {
+            if (parser.peek().token() == Token.SimpleToken.ASSIGN) {
                 parser.next();
                 defaultValue = Optional.of(parser.expression());
                 optionalArg = true;

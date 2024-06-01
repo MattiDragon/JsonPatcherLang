@@ -20,7 +20,8 @@ public class TokenTree {
             .add('.', SimpleToken.DOT)
 
             .add('=', SimpleToken.ASSIGN,
-                    branch().add('=', SimpleToken.EQUALS))
+                    branch().add('=', SimpleToken.EQUALS)
+                            .add('>', new Token.ErrorToken("Fat arrows are not a valid token. Did you mean '->'?")))
             .add('<', SimpleToken.LESS_THAN,
                     branch().add('=', SimpleToken.LESS_THAN_EQUAL))
             .add('>', SimpleToken.GREATER_THAN,
@@ -68,7 +69,7 @@ public class TokenTree {
         var depth = 1;
 
         Lexer.Position candidatePos = lexer.savePos();
-        SimpleToken candidate = null;
+        Token candidate = null;
         var candidateDepth = 0;
 
         for (var currentChar = c; currentChar != 0; currentChar = lexer.hasNext() ? lexer.next() : 0, depth++) {
@@ -98,13 +99,13 @@ public class TokenTree {
         return new Builder();
     }
 
-    public record Node(@Nullable SimpleToken token, Map<Character, Node> children) {
+    public record Node(@Nullable Token token, Map<Character, Node> children) {
     }
 
     private static class Builder {
         private final Map<Character, Node> children = new HashMap<>();
 
-        public Builder add(char c, SimpleToken token) {
+        public Builder add(char c, Token token) {
             children.put(c, new Node(token, Map.of()));
             return this;
         }
@@ -114,7 +115,7 @@ public class TokenTree {
             return this;
         }
 
-        public Builder add(char c, SimpleToken token, Builder branch) {
+        public Builder add(char c, Token token, Builder branch) {
             children.put(c, new Node(token, Map.copyOf(branch.children)));
             return this;
         }

@@ -35,9 +35,9 @@ public class TestUtils {
 
     public static void testCode(String code) {
         var result = Parser.parse(Lexer.lex(code, "test file").tokens());
-        if (!(result instanceof Parser.Result.Success success)) {
+        if (!result.errors().isEmpty()) {
             var error = new RuntimeException("Expected successful parse");
-            ((Parser.Result.Fail) result).errors().forEach(error::addSuppressed);
+            result.errors().forEach(error::addSuppressed);
             AssertionFailureBuilder.assertionFailure()
                     .message("Expected successful parse")
                     .cause(error)
@@ -45,8 +45,7 @@ public class TestUtils {
             return;
         }
 
-        var program = success.program();
-        
+        var program = result.program();
         var context = EvaluationContext.builder()
                 .debugConsumer(EMPTY_DEBUG_CONSUMER)
                 .build();
@@ -55,9 +54,9 @@ public class TestUtils {
 
     public static void testCode(String code, Value expected) {
         var result = Parser.parse(Lexer.lex(code, "test file").tokens());
-        if (!(result instanceof Parser.Result.Success success)) {
+        if (!result.errors().isEmpty()) {
             var error = new RuntimeException("Expected successful parse");
-            ((Parser.Result.Fail) result).errors().forEach(error::addSuppressed);
+            result.errors().forEach(error::addSuppressed);
             AssertionFailureBuilder.assertionFailure()
                     .message("Expected successful parse")
                     .cause(error)
@@ -65,13 +64,13 @@ public class TestUtils {
             return;
         }
 
-        var program = success.program();
+        var program = result.program();
 
         var output = new Value[1];
         var context = EvaluationContext.builder()
                 .debugConsumer(EMPTY_DEBUG_CONSUMER)
                 .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args, pos) -> {
-                    output[0] = args.get(0);
+                    output[0] = args.getFirst();
                     return Value.NullValue.NULL;
                 }))
                 .build();

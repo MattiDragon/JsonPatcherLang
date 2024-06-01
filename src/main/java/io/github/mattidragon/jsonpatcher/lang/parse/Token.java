@@ -28,6 +28,13 @@ public sealed interface Token {
             return "identifier";
         }
     }
+    
+    record ErrorToken(String error) implements Token {
+        @Override
+        public String explain() {
+            return "lexing error";
+        }
+    }
 
     enum SimpleToken implements Token {
         ASSIGN("="),

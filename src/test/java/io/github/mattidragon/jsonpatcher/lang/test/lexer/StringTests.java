@@ -26,7 +26,8 @@ public class StringTests {
         var program = """
                 "\\u0gggg"
                 """;
-        assertThrowsExactly(Lexer.LexException.class, () -> Lexer.lex(program, "test file"), "Expected exception from invalid escape");
+        var result = Lexer.lex(program, "test file");
+        assertFalse(result.errors().isEmpty(), "Expected error from invalid escape");
     }
 
     @Test

@@ -20,13 +20,12 @@ public class DocParser {
     private String currentFile;
 
     public void parse(String code, String file) {
-        try {
-            currentFile = file;
-            Lexer.lex(code, file, this::handleBlock);
-            currentFile = null;
-        } catch (Lexer.LexException e) {
-            errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, e.getMessage())));
+        currentFile = file;
+        var result = Lexer.lex(code, file, this::handleBlock);
+        for (var error : result.errors()) {
+            errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, error.getMessage())));
         }
+        currentFile = null; 
     }
 
     public List<DocEntry> getEntries() {
