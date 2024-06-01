@@ -21,6 +21,7 @@ public class DocumentState {
 
     private CompletableFuture<Result<List<PositionedToken>>> tokens = CompletableFuture.completedFuture(Result.empty());
     private CompletableFuture<Result<Program>> tree = CompletableFuture.completedFuture(Result.empty());
+    private CompletableFuture<Optional<TreeAnalysis>> treeAnalysis = CompletableFuture.completedFuture(Optional.empty());
     
     public DocumentState(String name, LanguageClient client) {
         this.name = name;
@@ -40,7 +41,9 @@ public class DocumentState {
             combinedErrors.addAll(lexResult.errors);
             return Result.partial(parseResult.program(), Collections.unmodifiableList(combinedErrors));
         }, DocumentManager.EXECUTOR);
-        tree.thenAcceptAsync(result -> {
+        treeAnalysis = tree.thenApplyAsync(treeResult -> treeResult.result.map(TreeAnalysis::new), DocumentManager.EXECUTOR);
+        
+        tree.thenAcceptBothAsync(treeAnalysis, (result, analysis) -> {
             var errors = result.errors();
             var diagnostics = new ArrayList<Diagnostic>();
 
@@ -52,13 +55,23 @@ public class DocumentState {
                 diagnostic.setSource("JsonPatcher");
                 diagnostics.add(diagnostic);
             }
-
+            
+            analysis.map(TreeAnalysis::getUnboundVariables).ifPresent(variables -> {
+                for (var variable : variables) {
+                    var pos = variable.pos();
+                    var diagnostic = new Diagnostic(spanToRange(pos), "Cannot find variable '%s'".formatted(variable.name()));
+                    diagnostic.setSeverity(DiagnosticSeverity.Error);
+                    diagnostic.setSource("JsonPatcher");
+                    diagnostics.add(diagnostic);
+                }
+            });
+            
             client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics));
         }, DocumentManager.EXECUTOR);
     }
 
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return tree.thenApplyAsync(result -> result.result.map(SemanticTokenizer::getTokens).orElseGet(SemanticTokens::new), DocumentManager.EXECUTOR);
+        return treeAnalysis.thenApplyAsync(result -> result.map(SemanticTokenizer::getTokens).orElseGet(SemanticTokens::new), DocumentManager.EXECUTOR);
     }
     
     public static Range spanToRange(SourceSpan span) {

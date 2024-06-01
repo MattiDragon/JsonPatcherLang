@@ -6,7 +6,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 
 import java.util.List;
 
-public record ImportStatement(String libraryName, String variableName, SourceSpan pos) implements Statement {
+public record ImportStatement(String libraryName, String variableName, SourceSpan pos, SourceSpan namePos) implements Statement {
     @Override
     public void run(EvaluationContext context) {
         context.variables().createVariable(variableName, context.findLibrary(libraryName, pos), false, pos);

@@ -9,7 +9,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
 
 import java.util.List;
 
-public record ForEachLoopStatement(Expression iterable, String variableName, Statement body, SourceSpan pos) implements Statement {
+public record ForEachLoopStatement(Expression iterable, String variableName, Statement body, SourceSpan pos, SourceSpan variablePos) implements Statement {
     @Override
     public void run(EvaluationContext context) {
         var values = iterable.evaluate(context);

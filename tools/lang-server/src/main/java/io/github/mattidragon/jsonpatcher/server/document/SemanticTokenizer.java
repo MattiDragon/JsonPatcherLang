@@ -1,7 +1,6 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Program;
 import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
@@ -14,7 +13,6 @@ import org.eclipse.lsp4j.SemanticTokensLegend;
 import java.util.*;
 
 public class SemanticTokenizer {
-    private static final List<String> DEFAULT_OBJECTS = List.of("debug", "math", "strings", "arrays", "objects", "functions", "metapatch");
     public static final Map<String, Integer> TOKEN_TYPES;
     public static final Map<String, Integer> TOKEN_MODIFIERS;
     public static final SemanticTokensLegend LEGEND;
@@ -22,13 +20,17 @@ public class SemanticTokenizer {
     static {
         var tokenTypes = new HashMap<String, Integer>();
         var supportedTokens = List.of(
+                SemanticTokenTypes.Keyword,
+
+                SemanticTokenTypes.Namespace,
+                SemanticTokenTypes.Type,
+                SemanticTokenTypes.Function,
+                SemanticTokenTypes.Parameter,
                 SemanticTokenTypes.Variable,
                 SemanticTokenTypes.Property,
-                SemanticTokenTypes.Function,
+                
                 SemanticTokenTypes.String,
-                SemanticTokenTypes.Number,
-                SemanticTokenTypes.Keyword,
-                SemanticTokenTypes.Type
+                SemanticTokenTypes.Number
         );
         for (int i = 0; i < supportedTokens.size(); i++) {
             tokenTypes.put(supportedTokens.get(i), i);
@@ -48,14 +50,17 @@ public class SemanticTokenizer {
         
         LEGEND = new SemanticTokensLegend(supportedTokens, supportedModifiers);
     }
-    
+
+    private final TreeAnalysis analysis;
     private final DataBuilder builder = new DataBuilder();
 
-    private SemanticTokenizer() {}
+    private SemanticTokenizer(TreeAnalysis analysis) {
+        this.analysis = analysis;
+    }
 
-    public static SemanticTokens getTokens(Program program) {
-        var tokenizer = new SemanticTokenizer();
-        tokenizer.tokenize(program);
+    public static SemanticTokens getTokens(TreeAnalysis analysis) {
+        var tokenizer = new SemanticTokenizer(analysis);
+        tokenizer.tokenize(analysis.getTree());
         return new SemanticTokens(tokenizer.builder.getData());
     }
     
@@ -86,8 +91,29 @@ public class SemanticTokenizer {
                 builder.addToken(expression.namePos(), SemanticTokenTypes.Property);
             }
             case VariableAccessExpression expression -> {
-                var modifiers = DEFAULT_OBJECTS.contains(expression.name()) ? new String[]{SemanticTokenModifiers.DefaultLibrary} : new String[0];
-                builder.addToken(expression.pos(), SemanticTokenTypes.Variable, modifiers);
+                var modifiers = new ArrayList<>();
+                String type;
+                
+                var definition = analysis.getVariableDefinition(expression);
+                if (definition != null) {
+                    if (!definition.mutable()) {
+                        modifiers.add(SemanticTokenModifiers.Readonly);
+                    }
+                    if (definition.stdlib()) {
+                        modifiers.add(SemanticTokenModifiers.DefaultLibrary);
+                    }
+                    type = switch (definition.kind()) {
+                        case IMPORT -> SemanticTokenTypes.Namespace;
+                        case FUNCTION -> SemanticTokenTypes.Function;
+                        case LOCAL -> SemanticTokenTypes.Variable;
+                        case PARAMETER -> SemanticTokenTypes.Parameter;
+                    };
+                } else {
+                    // Assume unknown variables are locals as that's most likely
+                    type = SemanticTokenTypes.Variable;
+                }
+
+                builder.addToken(expression.pos(), type, modifiers.toArray(new String[0]));
             }
             case ObjectInitializerExpression expression -> {
                 for (var entry : expression.contents()) {

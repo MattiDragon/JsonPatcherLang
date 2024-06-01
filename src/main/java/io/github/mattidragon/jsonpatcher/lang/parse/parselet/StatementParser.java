@@ -189,13 +189,14 @@ public class StatementParser {
         var from = parser.previous().getFrom();
         parser.expect(SimpleToken.BEGIN_PAREN);
         var name = parser.expectWord();
+        var variablePos = parser.previous().pos();
         parser.expect(KeywordToken.IN);
         var expression = parser.expression();
         parser.expect(SimpleToken.END_PAREN);
         var to = parser.previous().getTo();
         var body = parse(parser);
 
-        return new ForEachLoopStatement(expression, name.value(), body, new SourceSpan(from, to));
+        return new ForEachLoopStatement(expression, name.value(), body, new SourceSpan(from, to), variablePos);
     }
 
     private static Statement breakStatement(Parser parser) {
@@ -216,14 +217,16 @@ public class StatementParser {
         parser.expect(KeywordToken.IMPORT);
         var from = parser.previous().getFrom();
         var libraryName = parser.expectString().value();
+        var namePos = parser.previous().pos();
         if (parser.hasNext(KeywordToken.AS)) {
             parser.next();
             var variableName = parser.expectWord().value();
+            namePos = parser.previous().pos();
             parser.expect(SimpleToken.SEMICOLON);
-            return new ImportStatement(libraryName, variableName, new SourceSpan(from, parser.previous().getTo()));
+            return new ImportStatement(libraryName, variableName, new SourceSpan(from, parser.previous().getTo()), namePos);
         } else {
             parser.expect(SimpleToken.SEMICOLON);
-            return new ImportStatement(libraryName, libraryName, new SourceSpan(from, parser.previous().getTo()));
+            return new ImportStatement(libraryName, libraryName, new SourceSpan(from, parser.previous().getTo()), namePos);
         }
     }
 

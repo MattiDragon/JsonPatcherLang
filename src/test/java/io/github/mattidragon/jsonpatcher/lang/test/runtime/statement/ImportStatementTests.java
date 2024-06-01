@@ -19,10 +19,10 @@ public class ImportStatementTests {
                 })
                 .build();
 
-        new ImportStatement("lib_name", "test", TestUtils.POS).run(context);
+        new ImportStatement("lib_name", "test", TestUtils.POS, TestUtils.POS).run(context);
         Assertions.assertTrue(context.variables().hasVariable("test"), "Import should have created the variable");
 
         context.variables().createVariable("test2", new Value.NumberValue(2), true, TestUtils.POS);
-        Assertions.assertThrowsExactly(EvaluationException.class, () -> new ImportStatement("lib_name", "test2", TestUtils.POS).run(context), "Import fail to overwrite existing variables");
+        Assertions.assertThrowsExactly(EvaluationException.class, () -> new ImportStatement("lib_name", "test2", TestUtils.POS, TestUtils.POS).run(context), "Import fail to overwrite existing variables");
     }
 }

@@ -116,6 +116,7 @@ public class PrefixParser {
                 var argumentName = parser.expectWord().value();
                 target = new FunctionArgument.Target.Variable(argumentName);
             }
+            var namePos = parser.previous().pos();
 
             if (targets.contains(target)) {
                 if (target instanceof FunctionArgument.Target.Variable variable) {
@@ -151,7 +152,7 @@ public class PrefixParser {
                 parser.addError(new Parser.ParseException("All required arguments must appear before optional arguments", positionedToken.pos()));
             }
             
-            arguments.add(new FunctionArgument(target, defaultValue));
+            arguments.add(new FunctionArgument(target, defaultValue, namePos));
             PositionedToken positionedToken = parser.peek();
             if (positionedToken.token() == Token.SimpleToken.COMMA) {
                 parser.next();
