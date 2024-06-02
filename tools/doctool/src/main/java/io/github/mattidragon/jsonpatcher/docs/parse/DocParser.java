@@ -1,10 +1,14 @@
 package io.github.mattidragon.jsonpatcher.docs.parse;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
+import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
+import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -17,15 +21,12 @@ public class DocParser {
     private static final Pattern HEADER_PATTERN = Pattern.compile(REGEX);
     private final List<DocEntry> entries = new ArrayList<>();
     private final List<DocParseException> errors = new ArrayList<>();
-    private String currentFile;
 
     public void parse(String code, String file) {
-        currentFile = file;
         var result = Lexer.lex(code, file, this::handleBlock);
         for (var error : result.errors()) {
-            errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, error.getMessage())));
+            errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, error.getMessage()), error.getPos()));
         }
-        currentFile = null; 
     }
 
     public List<DocEntry> getEntries() {
@@ -36,12 +37,12 @@ public class DocParser {
         return errors;
     }
 
-    private void handleBlock(List<String> block) {
-        var docBlocks = new ArrayList<List<String>>();
-        var current = new ArrayList<String>();
+    private void handleBlock(List<CommentHandler.Comment> block) {
+        var docBlocks = new ArrayList<List<CommentHandler.Comment>>();
+        var current = new ArrayList<CommentHandler.Comment>();
         for (var line : block) {
-            if (line.startsWith("|")) {
-                current.add(line.substring(1).trim());
+            if (line.text().startsWith("|")) {
+                current.add(trimStart(line));
             } else if (!current.isEmpty()) {
                 docBlocks.add(current);
             }
@@ -52,25 +53,55 @@ public class DocParser {
         
         for (var docBlock : docBlocks) {
             try {
-                var entry = parseEntry(docBlock.getFirst(), docBlock.stream().skip(1).collect(Collectors.joining("\n")));
+                var entry = parseEntry(docBlock.getFirst(), docBlock.stream().map(CommentHandler.Comment::text).skip(1).collect(Collectors.joining("\n")));
                 entries.add(entry);
             } catch (DocParseException e) {
                 errors.add(e);
             }
         }
     }
-    
-    private DocEntry parseEntry(String header, String body) {
-        var matcher = HEADER_PATTERN.matcher(header);
+
+    private static CommentHandler.Comment trimStart(CommentHandler.Comment line) {
+        var origPos = line.start();
+        var preTrim = line.text().substring(1);
+        var postTrim = preTrim.stripLeading();
+        var pos = new SourcePos(origPos.file(), origPos.row(), origPos.column() + 1 + (preTrim.length() - postTrim.length()));
+        return new CommentHandler.Comment(postTrim.stripTrailing(), pos);
+    }
+
+    private DocEntry parseEntry(CommentHandler.Comment header, String body) {
+        var matcher = HEADER_PATTERN.matcher(header.text());
         if (!matcher.matches()) {
-            throw new DocParseException("Failed to parse comment header in %s:\n%s".formatted(currentFile, header));
+            throw new DocParseException("Failed to parse comment header", header.start());
         }
 
         return switch (matcher.group("kind")) {
-            case "type" -> new DocEntry.Type(matcher.group("typename"), TypeParser.parse(matcher.group("typedefinition"), currentFile), body);
-            case "value" -> new DocEntry.Value(matcher.group("owner"), matcher.group("valuename"), TypeParser.parse(matcher.group("valuedefinition"), currentFile), body);
-            case "module" -> new DocEntry.Module(matcher.group("modulename"), body);
+            case "type" -> new DocEntry.Type(
+                    matcher.group("typename"),
+                    TypeParser.parse(matcher.group("typedefinition"), groupPos(header, matcher, "typedefinition").from()),
+                    body,
+                    groupPos(header, matcher, "typename"));
+            case "value" -> new DocEntry.Value(
+                    matcher.group("owner"),
+                    matcher.group("valuename"),
+                    TypeParser.parse(matcher.group("valuedefinition"), groupPos(header, matcher, "valuedefinition").from()),
+                    body,
+                    groupPos(header, matcher, "owner"),
+                    groupPos(header, matcher, "valuename"));
+            case "module" -> new DocEntry.Module(
+                    matcher.group("modulename"),
+                    body,
+                    groupPos(header, matcher, "modulename"));
             default -> throw new IllegalStateException("Regex produced impossible capture group");
         };
+    }
+    
+    private SourceSpan groupPos(CommentHandler.Comment header, Matcher matcher, String group) {
+        var start = header.start();
+        var file = start.file();
+        var row = start.row();
+        var col1 = start.column() + matcher.start(group);
+        var col2 = start.column() + matcher.end(group) - 1;
+        return new SourceSpan(new SourcePos(file, row, col1), new SourcePos(file, row, col2));
     }
 }

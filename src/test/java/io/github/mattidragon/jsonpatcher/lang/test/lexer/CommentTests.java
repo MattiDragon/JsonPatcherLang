@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.test.lexer;
 
+import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ public class CommentTests {
                 List.of(" comment at eof")
         );
         var blocks = new ArrayList<List<String>>();
-        Lexer.lex(code, "test file", blocks::add);
+        Lexer.lex(code, "test file", block -> blocks.add(block.stream().map(CommentHandler.Comment::text).toList()));
         
         Assertions.assertIterableEquals(
                 expected,

@@ -41,7 +41,7 @@ public class DocWriter {
             var owner = owners.get(value.owner());
             // If we don't have an owner, generate a dummy
             if (owner == null) {
-                var type = new OutputType(new DocEntry.Type(value.owner(), DocType.Special.UNKNOWN, ""), new ArrayList<>()); 
+                var type = new OutputType(new DocEntry.Type(value.owner(), DocType.Special.UNKNOWN, "", null), new ArrayList<>()); 
                 owner = type;
                 types.add(type);
             }

@@ -13,6 +13,11 @@ tasks.jar {
     manifest.attributes["Main-Class"] = "io.github.mattidragon.jsonpatcher.docs.DocTool"
 }
 
+tasks.assemble {
+    dependsOn("shadowJar")
+}
+
 tasks.shadowJar {
     exclude("META-INF/maven/org.commonmark/**")
+    from(layout.projectDirectory.dir("src/main/dist_resources"))
 }

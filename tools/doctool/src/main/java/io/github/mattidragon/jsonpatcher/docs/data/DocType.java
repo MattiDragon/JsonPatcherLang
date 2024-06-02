@@ -1,5 +1,7 @@
 package io.github.mattidragon.jsonpatcher.docs.data;
 
+import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -114,7 +116,7 @@ public sealed interface DocType {
     /**
      * A named type created using a {@code type} doc entry.
      */
-    record Name(String name) implements DocType {
+    record Name(String name, SourceSpan pos) implements DocType {
         @Override
         public String format() {
             return name;

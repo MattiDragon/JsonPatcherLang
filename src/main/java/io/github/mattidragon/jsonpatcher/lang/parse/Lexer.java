@@ -61,15 +61,17 @@ public class Lexer {
     }
 
     private void skipComment() {
-        var comments = new ArrayList<String>();
+        var comments = new ArrayList<CommentHandler.Comment>();
         var builder = new StringBuilder();
 
         gatherBlock:
         while (hasNext()) {
+            var begin = new SourcePos(file, currentLine, currentColumn);
+            
             while (hasNext() && peek() != '\n') {
                 builder.append(next());
             }
-            comments.add(builder.toString());
+            comments.add(new CommentHandler.Comment(builder.toString(), begin));
             builder.delete(0, builder.length());
             
             if (hasNext() && peek() == '\n') {
@@ -246,7 +248,7 @@ public class Lexer {
     }
 
     public static class LexException extends PositionedException {
-        public final SourcePos pos;
+        private final SourcePos pos;
         
         public LexException(String message, SourcePos pos) {
             super(message);
