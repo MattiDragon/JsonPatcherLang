@@ -8,22 +8,23 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class DocParser {
+public class DocParser implements CommentHandler {
     // Regex for parsing comment headers. Works by first checking the kind of header in a capture group and then using lookbehind to parse based on that.
     // This allows use to capture the kind in a single group, which wouldn't be possible if the capture was with the parsing.
     //                                    The kind of doc comment      If kind is type, parse type                            If kind is value, parse value                                              If kind is module, parse module
-    //                                   |------------------------|   |----------------------------------------------------| |------------------------------------------------------------------------| |------------------------------|
-    private static final String REGEX = "(?<kind>type|value|module)(?:(?<=type) *(?<typename>\\w+) *: *(?<typedefinition>.+)|(?<=value) *(?<owner>\\w+)\\.(?<valuename>\\w+) *: *(?<valuedefinition>.+)|(?<=module) *(?<modulename>\\w+))";
+    //                                   |------------------------|   |----------------------------------------------------| |------------------------------------------------------------------------| |------------------------------------------------------------------|
+    private static final String REGEX = "(?<kind>type|value|module)(?:(?<=type) *(?<typename>\\w+) *: *(?<typedefinition>.+)|(?<=value) *(?<owner>\\w+)\\.(?<valuename>\\w+) *: *(?<valuedefinition>.+)|(?<=module) *(?<modulename>\\w+)(?: +at +\"(?<modulelocation>.+)\")?)";
     private static final Pattern HEADER_PATTERN = Pattern.compile(REGEX);
     private final List<DocEntry> entries = new ArrayList<>();
     private final List<DocParseException> errors = new ArrayList<>();
 
     public void parse(String code, String file) {
-        var result = Lexer.lex(code, file, this::handleBlock);
+        var result = Lexer.lex(code, file, this);
         for (var error : result.errors()) {
             errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, error.getMessage()), error.getPos()));
         }
@@ -37,7 +38,8 @@ public class DocParser {
         return errors;
     }
 
-    private void handleBlock(List<CommentHandler.Comment> block) {
+    @Override
+    public void acceptBlock(List<CommentHandler.Comment> block) {
         var docBlocks = new ArrayList<List<CommentHandler.Comment>>();
         var current = new ArrayList<CommentHandler.Comment>();
         for (var line : block) {
@@ -90,8 +92,10 @@ public class DocParser {
                     groupPos(header, matcher, "valuename"));
             case "module" -> new DocEntry.Module(
                     matcher.group("modulename"),
+                    Optional.ofNullable(matcher.namedGroups().get("modulelocation")).map(matcher::group).orElse(matcher.group("modulename")),
                     body,
-                    groupPos(header, matcher, "modulename"));
+                    groupPos(header, matcher, "modulename")
+            );
             default -> throw new IllegalStateException("Regex produced impossible capture group");
         };
     }

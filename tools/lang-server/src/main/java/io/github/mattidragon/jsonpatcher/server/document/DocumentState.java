@@ -1,27 +1,22 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
-import io.github.mattidragon.jsonpatcher.lang.PositionedException;
+import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
+import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
-import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Program;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class DocumentState {
     private final String name;
     private final LanguageClient client;
-
-    private CompletableFuture<Result<List<PositionedToken>>> tokens = CompletableFuture.completedFuture(Result.empty());
-    private CompletableFuture<Result<Program>> tree = CompletableFuture.completedFuture(Result.empty());
-    private CompletableFuture<Optional<TreeAnalysis>> treeAnalysis = CompletableFuture.completedFuture(Optional.empty());
+    
+    private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
     
     public DocumentState(String name, LanguageClient client) {
         this.name = name;
@@ -29,72 +24,75 @@ public class DocumentState {
     }
 
     public void updateContent(String content) {
-        tokens = CompletableFuture.supplyAsync(() -> {
-            var lexResult = Lexer.lex(content, name);
-            return Result.partial(lexResult.tokens(), Collections.unmodifiableList(lexResult.errors()));
-        }, DocumentManager.EXECUTOR);
-        tree = tokens.thenApplyAsync(lexResult -> {
-            if (lexResult.result.isEmpty()) return Result.fail(lexResult.errors);
-            var parseResult = Parser.parse(lexResult.result.get());
-            
-            var combinedErrors = new ArrayList<PositionedException>(parseResult.errors());
-            combinedErrors.addAll(lexResult.errors);
-            return Result.partial(parseResult.program(), Collections.unmodifiableList(combinedErrors));
-        }, DocumentManager.EXECUTOR);
-        treeAnalysis = tree.thenApplyAsync(treeResult -> treeResult.result.map(TreeAnalysis::new), DocumentManager.EXECUTOR);
+        record LexPair(Lexer.Result result, DocParser docs) {}
         
-        tree.thenAcceptBothAsync(treeAnalysis, (result, analysis) -> {
-            var errors = result.errors();
-            var diagnostics = new ArrayList<Diagnostic>();
-
-            for (var error : errors) {
-                var pos = error.getPos();
-                if (pos == null) continue;
-                var diagnostic = new Diagnostic(spanToRange(pos), error.getInternalMessage());
-                diagnostic.setSeverity(DiagnosticSeverity.Error);
-                diagnostic.setSource("JsonPatcher");
-                diagnostics.add(diagnostic);
-            }
-            
-            analysis.map(TreeAnalysis::getUnboundVariables).ifPresent(variables -> {
-                for (var variable : variables) {
-                    var pos = variable.pos();
-                    var diagnostic = new Diagnostic(spanToRange(pos), "Cannot find variable '%s'".formatted(variable.name()));
-                    diagnostic.setSeverity(DiagnosticSeverity.Error);
-                    diagnostic.setSource("JsonPatcher");
-                    diagnostics.add(diagnostic);
-                }
-            });
-            
-            client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics));
+        var lexResult = CompletableFuture.supplyAsync(() -> {
+            var docParser = new DocParser();
+            var result = Lexer.lex(content, name, docParser);
+            return new LexPair(result, docParser);
         }, DocumentManager.EXECUTOR);
+        
+        var tokens = lexResult.thenApply(LexPair::result).thenApply(Lexer.Result::tokens);
+        var lexErrors = lexResult.thenApply(LexPair::result).thenApply(Lexer.Result::errors);
+        
+        var docResult = lexResult.thenApply(LexPair::docs);
+        var docs = docResult.thenApply(DocParser::getEntries);
+        var docErrors = docResult.thenApply(DocParser::getErrors);
+        
+        var parseResult = tokens.thenApplyAsync(Parser::parse, DocumentManager.EXECUTOR);
+        var tree = parseResult.thenApply(Parser.Result::program);
+        var metadata = parseResult.thenApply(Parser.Result::metadata);
+        var parseErrors = parseResult.thenApply(Parser.Result::errors);
+
+        analysis = tree.thenApplyAsync(TreeAnalysis::new, DocumentManager.EXECUTOR);
+
+        setupDiagnostics(lexErrors, parseErrors, docErrors, analysis);
     }
 
+    private void setupDiagnostics(CompletableFuture<List<Lexer.LexException>> lexErrors, 
+                                  CompletableFuture<List<Parser.ParseException>> parseErrors, 
+                                  CompletableFuture<List<DocParseException>> docErrors, 
+                                  CompletableFuture<TreeAnalysis> analysis) {
+        var combinedErrors = combineLists(lexErrors, parseErrors, docErrors);
+
+        var errorDiagnostics = combinedErrors.thenApply(errors -> errors.stream()
+                .filter(error -> error.getPos() != null)
+                .map(error -> new Diagnostic(spanToRange(error.getPos()), error.getInternalMessage()))
+                .peek(diagnostic -> {
+                    diagnostic.setSeverity(DiagnosticSeverity.Error);
+                    diagnostic.setSource("JsonPatcher");
+                }).toList());
+        var unknownVariableDiagnostics = analysis.thenApply(treeAnalysis -> treeAnalysis
+                .getUnboundVariables()
+                .stream()
+                .map(variable -> new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name())))
+                .peek(diagnostic -> {
+                    diagnostic.setSeverity(DiagnosticSeverity.Error);
+                    diagnostic.setSource("JsonPatcher");
+                }).toList());
+
+        combineLists(errorDiagnostics, unknownVariableDiagnostics).thenAccept(diagnostics -> client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics)));
+    }
+
+    @SafeVarargs
+    private <T> CompletableFuture<List<T>> combineLists(CompletableFuture<? extends List<? extends T>>... futures) {
+        var marker = CompletableFuture.allOf(futures);
+        return marker.thenApply(unit -> {
+            var list = new ArrayList<T>();
+            for (var future : futures) {
+                list.addAll(future.join());
+            }
+            return list;
+        });
+    } 
+    
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return treeAnalysis.thenApplyAsync(result -> result.map(SemanticTokenizer::getTokens).orElseGet(SemanticTokens::new), DocumentManager.EXECUTOR);
+        return analysis.thenApplyAsync(SemanticTokenizer::getTokens, DocumentManager.EXECUTOR);
     }
     
     public static Range spanToRange(SourceSpan span) {
         var pos1 = new Position(span.from().row() - 1, span.from().column() - 1);
         var pos2 = new Position(span.to().row() - 1, span.to().column());
         return new Range(pos1, pos2);
-    }
-
-    private record Result<T>(Optional<T> result, List<PositionedException> errors) {
-        public static <T> Result<T> empty() {
-            return new Result<>(Optional.empty(), List.of());
-        }
-
-        public static <T> Result<T> success(T value) {
-            return new Result<>(Optional.of(value), List.of());
-        }
-
-        public static <T> Result<T> partial(T value, List<PositionedException> errors) {
-            return new Result<>(Optional.of(value), errors);
-        }
-
-        public static <T> Result<T> fail(List<PositionedException> errors) {
-            return new Result<>(Optional.empty(), errors);
-        }
     }
 }

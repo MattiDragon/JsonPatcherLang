@@ -65,6 +65,7 @@ public class DocWriter {
     public void buildDocument(Node document) {
         for (var module : modules) {
             writeHeader(document, "Module", module.entry().name(), "", headingLevel);
+            addLocationData(document, module);
             document.appendChild(parser.parse(module.entry().description()));
             writeValues(document, module.values());
         }
@@ -75,7 +76,18 @@ public class DocWriter {
             writeValues(document, type.values());
         }
     }
-    
+
+    private static void addLocationData(Node document, OutputModule module) {
+        if (module.entry().location().equals(module.entry().name())) return;
+        
+        var location = new Paragraph();
+        var emp = new Emphasis();
+        emp.appendChild(new Text("Available at "));
+        emp.appendChild(new Code("\"" + module.entry().location() + "\""));
+        location.appendChild(emp);
+        document.appendChild(location);
+    }
+
     private void writeValues(Node document, List<DocEntry.Value> values) {
         for (var value : values) {
             var heading = value.definition() instanceof DocType.Function || value.definition() == DocType.Special.FUNCTION ? "Function" : "Property";
