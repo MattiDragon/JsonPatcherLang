@@ -4,6 +4,8 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
+import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
+import io.github.mattidragon.jsonpatcher.lang.runtime.statement.FunctionDeclarationStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.VariableCreationStatement;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
@@ -123,9 +125,19 @@ public class SemanticTokenizer {
             }
             
             case VariableCreationStatement statement -> {
-                var modifiers = statement.mutable() ? new String[0] : new String[] { SemanticTokenModifiers.Readonly };
+                var modifiers = statement.mutable() 
+                        ? new String[] { SemanticTokenModifiers.Declaration } 
+                        : new String[] { SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration };
                 builder.addToken(statement.namePos(), SemanticTokenTypes.Variable, modifiers);
                 tokenize(statement.initializer());
+            }
+            case FunctionArgument argument -> {
+                builder.addToken(argument.namePos(), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                argument.defaultValue().ifPresent(this::tokenize);
+            }
+            case FunctionDeclarationStatement statement -> {
+                builder.addToken(statement.namePos(), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                tokenize(statement.getChildren());
             }
             
             case ProgramNode other -> tokenize(other.getChildren());
