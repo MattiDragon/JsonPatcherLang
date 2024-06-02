@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.docs.data;
 
+import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 
 import java.util.List;
@@ -16,10 +17,26 @@ public sealed interface DocType {
      */
     String format();
 
+    default boolean isFunction() {
+        return this instanceof Special(var kind, var pos) && kind == SpecialKind.FUNCTION || this instanceof Function;
+    }
+    
+    record Special(SpecialKind kind, SourceSpan pos) implements DocType {
+        @Override
+        public String format() {
+            return kind.name().toLowerCase(Locale.ROOT);
+        }
+
+        @Override
+        public String toString() {
+            return "Special[%s]".formatted(format());
+        }
+    }
+
     /**
      * Any specially named type.
      */
-    enum Special implements DocType {
+    enum SpecialKind {
         /**
          * Any value of any runtime type
          */
@@ -40,17 +57,7 @@ public sealed interface DocType {
          */
         FUNCTION,
         NULL, 
-        UNKNOWN;
-
-        @Override
-        public String format() {
-            return name().toLowerCase(Locale.ROOT);
-        }
-        
-        @Override
-        public String toString() {
-            return "Special[%s]".formatted(format());
-        }
+        UNKNOWN
     }
 
     /**
@@ -131,7 +138,7 @@ public sealed interface DocType {
     /**
      * A union of multiple types.
      */
-    record Union(List<DocType> children) implements DocType {
+    record Union(List<DocType> children, List<SourcePos> separators) implements DocType {
         public Union {
             children = List.copyOf(children);
         }

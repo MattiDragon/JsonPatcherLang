@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
+import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -17,26 +18,27 @@ public class DocumentState {
     private final LanguageClient client;
     
     private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
-    
+    private CompletableFuture<List<DocEntry>> docs = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
+
     public DocumentState(String name, LanguageClient client) {
         this.name = name;
         this.client = client;
     }
 
     public void updateContent(String content) {
-        record LexPair(Lexer.Result result, DocParser docs) {}
+        record LexTuple(Lexer.Result result, DocParser docs) {}
         
         var lexResult = CompletableFuture.supplyAsync(() -> {
             var docParser = new DocParser();
             var result = Lexer.lex(content, name, docParser);
-            return new LexPair(result, docParser);
+            return new LexTuple(result, docParser);
         }, DocumentManager.EXECUTOR);
         
-        var tokens = lexResult.thenApply(LexPair::result).thenApply(Lexer.Result::tokens);
-        var lexErrors = lexResult.thenApply(LexPair::result).thenApply(Lexer.Result::errors);
+        var tokens = lexResult.thenApply(LexTuple::result).thenApply(Lexer.Result::tokens);
+        var lexErrors = lexResult.thenApply(LexTuple::result).thenApply(Lexer.Result::errors);
         
-        var docResult = lexResult.thenApply(LexPair::docs);
-        var docs = docResult.thenApply(DocParser::getEntries);
+        var docResult = lexResult.thenApply(LexTuple::docs);
+        docs = docResult.thenApply(DocParser::getEntries);
         var docErrors = docResult.thenApply(DocParser::getErrors);
         
         var parseResult = tokens.thenApplyAsync(Parser::parse, DocumentManager.EXECUTOR);
@@ -98,7 +100,7 @@ public class DocumentState {
     } 
     
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return analysis.thenApplyAsync(SemanticTokenizer::getTokens, DocumentManager.EXECUTOR);
+        return analysis.thenCombineAsync(docs, SemanticTokenizer::getTokens, DocumentManager.EXECUTOR);
     }
     
     public static Range spanToRange(SourceSpan span) {

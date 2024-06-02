@@ -23,17 +23,19 @@ public class TypeParser {
     
     private DocType type() {
         var types = new ArrayList<DocType>();
+        var separators = new ArrayList<SourcePos>();
         types.add(atom());
         skipWhitespace();
         
         while (hasNext() && peek() == '|') {
             next();
+            separators.add(pos());
             types.add(atom());
             skipWhitespace();
         }
         
         if (types.size() == 1) return types.getFirst();
-        else return new DocType.Union(types);
+        else return new DocType.Union(types, separators);
     }
     
     private DocType atom() {
@@ -119,16 +121,17 @@ public class TypeParser {
         var start = pos(0);
         var name = readString();
         var end = pos();
+        var pos = new SourceSpan(start, end);
         return switch (name) {
-            case "any" -> DocType.Special.ANY;
-            case "number" -> DocType.Special.NUMBER;
-            case "string" -> DocType.Special.STRING;
-            case "boolean" -> DocType.Special.BOOLEAN;
-            case "array" -> DocType.Special.ARRAY;
-            case "object" -> DocType.Special.OBJECT;
-            case "function" -> DocType.Special.FUNCTION;
-            case "null" -> DocType.Special.NULL;
-            case String other -> new DocType.Name(other, new SourceSpan(start, end));
+            case "any" -> new DocType.Special(DocType.SpecialKind.ANY, pos);
+            case "number" -> new DocType.Special(DocType.SpecialKind.NUMBER, pos);
+            case "string" -> new DocType.Special(DocType.SpecialKind.STRING, pos);
+            case "boolean" -> new DocType.Special(DocType.SpecialKind.BOOLEAN, pos);
+            case "array" -> new DocType.Special(DocType.SpecialKind.ARRAY, pos);
+            case "object" -> new DocType.Special(DocType.SpecialKind.OBJECT, pos);
+            case "function" -> new DocType.Special(DocType.SpecialKind.FUNCTION, pos);
+            case "null" -> new DocType.Special(DocType.SpecialKind.NULL, pos);
+            case String other -> new DocType.Name(other, pos);
         };
     }
 
@@ -167,6 +170,6 @@ public class TypeParser {
     }
     
     private SourcePos pos(int offset) {
-        return new SourcePos(pos.file(), pos.row(), pos.column() + index + offset);
+        return pos.offset(index + offset);
     }
 }

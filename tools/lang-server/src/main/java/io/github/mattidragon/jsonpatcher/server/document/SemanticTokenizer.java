@@ -1,5 +1,8 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
+import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
+import io.github.mattidragon.jsonpatcher.docs.data.DocType;
+import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
@@ -23,6 +26,7 @@ public class SemanticTokenizer {
         var tokenTypes = new HashMap<String, Integer>();
         var supportedTokens = List.of(
                 SemanticTokenTypes.Keyword,
+                SemanticTokenTypes.Operator,
 
                 SemanticTokenTypes.Namespace,
                 SemanticTokenTypes.Type,
@@ -60,12 +64,56 @@ public class SemanticTokenizer {
         this.analysis = analysis;
     }
 
-    public static SemanticTokens getTokens(TreeAnalysis analysis) {
+    public static SemanticTokens getTokens(TreeAnalysis analysis, List<DocEntry> docs) {
         var tokenizer = new SemanticTokenizer(analysis);
+        tokenizer.tokenizeDocs(docs);
         tokenizer.tokenize(analysis.getTree());
-        return new SemanticTokens(tokenizer.builder.getData());
+        return new SemanticTokens(tokenizer.builder.build());
+    }
+
+    private void tokenizeDocs(List<DocEntry> entries) {
+        for (var entry : entries) {
+            switch (entry) {
+                case DocEntry.Module module -> {
+                    builder.addToken(module.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
+                    if (module.locationPos() != null) {
+                        var pos = new SourceSpan(module.locationPos().from().offset(-1), module.locationPos().to().offset(1));
+                        builder.addToken(pos, SemanticTokenTypes.String);
+                    }
+                }
+                case DocEntry.Type type -> {
+                    builder.addToken(type.namePos(), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(type.definition());
+                }
+                case DocEntry.Value value -> {
+                    var type = value.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
+                    builder.addToken(value.namePos(), type, SemanticTokenModifiers.Declaration);
+                    builder.addToken(value.ownerPos(), SemanticTokenTypes.Namespace);
+                    tokenizeDocType(value.definition());
+                }
+            }
+        }
     }
     
+    private void tokenizeDocType(DocType type) {
+        switch (type) {
+            case DocType.Array array -> tokenizeDocType(array.entry());
+            case DocType.Function function -> {
+                tokenizeDocType(function.returnType());
+                function.args().forEach(arg -> tokenizeDocType(arg.type()));
+            }
+            case DocType.Name name -> builder.addToken(name.pos(), SemanticTokenTypes.Type);
+            case DocType.Object object -> tokenizeDocType(object.entry());
+            case DocType.Special special -> builder.addToken(special.pos(), SemanticTokenTypes.Type, SemanticTokenModifiers.DefaultLibrary);
+            case DocType.Union union -> {
+                union.children().forEach(this::tokenizeDocType);
+                for (var separator : union.separators()) {
+                    builder.addToken(new SourceSpan(separator, separator), SemanticTokenTypes.Operator);
+                }
+            }
+        }
+    }
+
     private void tokenize(Iterable<? extends ProgramNode> nodes) {
         for (var node : nodes) {
             tokenize(node);
@@ -145,37 +193,47 @@ public class SemanticTokenizer {
     } 
     
     private static class DataBuilder {
-        private int previousRow = 1;
-        private int previousColumn = 1;
-        private final List<Integer> data = new ArrayList<>();
+        private final List<Entry> entries = new ArrayList<>();
         
         public void addToken(SourceSpan span, String type, String... modifiers) {
-            var row1 = span.from().row();
-            var col1 = span.from().column();
-            var row2 = span.to().row();
-            var col2 = span.to().column();
-            if (row1 != row2) {
-                throw new IllegalStateException("Multiline token in data builder");
+            entries.add(new Entry(span, type, modifiers));
+        }
+
+        public List<Integer> build() {
+            int previousRow = 1;
+            int previousColumn = 1;
+            List<Integer> data = new ArrayList<>();
+            entries.sort(Comparator.comparing(entry -> entry.span().from(), Comparator.comparingInt(SourcePos::row).thenComparing(SourcePos::column)));
+            
+            for (var entry : entries) {
+                var span = entry.span();
+                
+                var row1 = span.from().row();
+                var col1 = span.from().column();
+                var row2 = span.to().row();
+                var col2 = span.to().column();
+                if (row1 != row2) {
+                    throw new IllegalStateException("Multiline token in data builder");
+                }
+
+                var deltaLine = row1 - previousRow;
+                var deltaChar = deltaLine == 0 ? col1 - previousColumn : col1 - 1;
+                var length = col2 - col1 + 1;
+                var typeId = TOKEN_TYPES.get(entry.type);
+                var modifierId = Arrays.stream(entry.modifiers).mapToInt(TOKEN_MODIFIERS::get).map(index -> 1 << index).reduce(0, (a, b) -> a | b);
+
+                data.add(deltaLine);
+                data.add(deltaChar);
+                data.add(length);
+                data.add(typeId);
+                data.add(modifierId);
+
+                previousRow = row1;
+                previousColumn = col1;
             }
-
-            var deltaLine = row1 - previousRow;
-            var deltaChar = deltaLine == 0 ? col1 - previousColumn : col1 - 1;
-            var length = col2 - col1 + 1;
-            var typeId = TOKEN_TYPES.get(type);
-            var modifierId = Arrays.stream(modifiers).mapToInt(TOKEN_MODIFIERS::get).map(index -> 1 << index).reduce(0, (a, b) -> a | b);
-            
-            data.add(deltaLine);
-            data.add(deltaChar);
-            data.add(length);
-            data.add(typeId);
-            data.add(modifierId);
-            
-            previousRow = row1;
-            previousColumn = col1;
+            return data;
         }
-
-        public List<Integer> getData() {
-            return Collections.unmodifiableList(data);
-        }
+        
+        private record Entry(SourceSpan span, String type, String[] modifiers) {}
     }
 }

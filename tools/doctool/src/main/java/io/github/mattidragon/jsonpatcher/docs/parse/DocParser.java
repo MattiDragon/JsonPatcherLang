@@ -3,12 +3,10 @@ package io.github.mattidragon.jsonpatcher.docs.parse;
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -67,7 +65,7 @@ public class DocParser implements CommentHandler {
         var origPos = line.start();
         var preTrim = line.text().substring(1);
         var postTrim = preTrim.stripLeading();
-        var pos = new SourcePos(origPos.file(), origPos.row(), origPos.column() + 1 + (preTrim.length() - postTrim.length()));
+        var pos = origPos.offset(1 + (preTrim.length() - postTrim.length()));
         return new CommentHandler.Comment(postTrim.stripTrailing(), pos);
     }
 
@@ -92,9 +90,10 @@ public class DocParser implements CommentHandler {
                     groupPos(header, matcher, "valuename"));
             case "module" -> new DocEntry.Module(
                     matcher.group("modulename"),
-                    Optional.ofNullable(matcher.namedGroups().get("modulelocation")).map(matcher::group).orElse(matcher.group("modulename")),
+                    matcher.namedGroups().containsKey("modulelocation") ? matcher.group("modulelocation") : matcher.group("modulename"),
                     body,
-                    groupPos(header, matcher, "modulename")
+                    groupPos(header, matcher, "modulename"),
+                    matcher.namedGroups().containsKey("modulelocation") ? groupPos(header, matcher, "modulelocation") : null
             );
             default -> throw new IllegalStateException("Regex produced impossible capture group");
         };
@@ -102,10 +101,6 @@ public class DocParser implements CommentHandler {
     
     private SourceSpan groupPos(CommentHandler.Comment header, Matcher matcher, String group) {
         var start = header.start();
-        var file = start.file();
-        var row = start.row();
-        var col1 = start.column() + matcher.start(group);
-        var col2 = start.column() + matcher.end(group) - 1;
-        return new SourceSpan(new SourcePos(file, row, col1), new SourcePos(file, row, col2));
+        return new SourceSpan(start.offset(matcher.start(group)), start.offset(matcher.end(group) - 1));
     }
 }

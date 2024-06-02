@@ -41,7 +41,7 @@ public class DocWriter {
             var owner = owners.get(value.owner());
             // If we don't have an owner, generate a dummy
             if (owner == null) {
-                var type = new OutputType(new DocEntry.Type(value.owner(), DocType.Special.UNKNOWN, "", null), new ArrayList<>()); 
+                var type = new OutputType(new DocEntry.Type(value.owner(), new DocType.Special(DocType.SpecialKind.UNKNOWN, null), "", null), new ArrayList<>()); 
                 owner = type;
                 types.add(type);
             }
@@ -90,7 +90,7 @@ public class DocWriter {
 
     private void writeValues(Node document, List<DocEntry.Value> values) {
         for (var value : values) {
-            var heading = value.definition() instanceof DocType.Function || value.definition() == DocType.Special.FUNCTION ? "Function" : "Property";
+            var heading = value.definition().isFunction() ? "Function" : "Property";
             writeHeader(document, heading, value.owner() + "." + value.name(), value.definition().format(), headingLevel + 1);
             writeTypeDefinition(document, value.definition());
             document.appendChild(parser.parse(value.description()));
@@ -114,11 +114,11 @@ public class DocWriter {
         var block = new Paragraph();
         var emphasis = new Emphasis();
 
-        if (definition != DocType.Special.UNKNOWN) {
+        if (definition instanceof DocType.Special special && special.kind() == DocType.SpecialKind.UNKNOWN) {
+            emphasis.appendChild(new Text("Definition unknown"));
+        } else {
             emphasis.appendChild(new Text("Definition: "));
             emphasis.appendChild(new Code(definition.format()));
-        } else {
-            emphasis.appendChild(new Text("Definition unknown"));
         }
         block.appendChild(emphasis);
         document.appendChild(block);
