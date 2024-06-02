@@ -54,24 +54,35 @@ public class DocumentState {
                                   CompletableFuture<List<DocParseException>> docErrors, 
                                   CompletableFuture<TreeAnalysis> analysis) {
         var combinedErrors = combineLists(lexErrors, parseErrors, docErrors);
-
-        var errorDiagnostics = combinedErrors.thenApply(errors -> errors.stream()
-                .filter(error -> error.getPos() != null)
-                .map(error -> new Diagnostic(spanToRange(error.getPos()), error.getInternalMessage()))
-                .peek(diagnostic -> {
-                    diagnostic.setSeverity(DiagnosticSeverity.Error);
-                    diagnostic.setSource("JsonPatcher");
-                }).toList());
-        var unknownVariableDiagnostics = analysis.thenApply(treeAnalysis -> treeAnalysis
-                .getUnboundVariables()
-                .stream()
-                .map(variable -> new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name())))
-                .peek(diagnostic -> {
-                    diagnostic.setSeverity(DiagnosticSeverity.Error);
-                    diagnostic.setSource("JsonPatcher");
-                }).toList());
-
-        combineLists(errorDiagnostics, unknownVariableDiagnostics).thenAccept(diagnostics -> client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics)));
+        
+        combinedErrors.thenAcceptBothAsync(analysis, (errors, treeAnalysis) -> {
+            var diagnostics = new ArrayList<Diagnostic>();
+            
+            for (var error : errors) {
+                if (error.getPos() == null) continue;
+                var diagnostic = new Diagnostic(spanToRange(error.getPos()), error.getInternalMessage());
+                diagnostic.setSeverity(DiagnosticSeverity.Error);
+                diagnostic.setSource("JsonPatcher");
+                diagnostics.add(diagnostic);
+            }
+            
+            for (var variable : treeAnalysis.getUnboundVariables()) {
+                var diagnostic = new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name()));
+                diagnostic.setSeverity(DiagnosticSeverity.Error);
+                diagnostic.setSource("JsonPatcher");
+                diagnostics.add(diagnostic);
+            }
+            
+            for (var variable : treeAnalysis.getUnusedVariables()) {
+                if (variable.definitionPos() == null) continue;
+                var diagnostic = new Diagnostic(spanToRange(variable.definitionPos()), "Unused declaration");
+                diagnostic.setSeverity(DiagnosticSeverity.Hint);
+                diagnostic.setTags(List.of(DiagnosticTag.Unnecessary));
+                diagnostics.add(diagnostic);
+            }
+            
+            client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics));
+        }, DocumentManager.EXECUTOR);
     }
 
     @SafeVarargs
