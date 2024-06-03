@@ -64,4 +64,9 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
             }
         };
     }
+
+    @Override
+    public void setTrace(SetTraceParams params) {
+        // Ignore. We override this to act like we handle this because there isn't a way to turn this off and the default behaviour throws an error.
+    }
 }
