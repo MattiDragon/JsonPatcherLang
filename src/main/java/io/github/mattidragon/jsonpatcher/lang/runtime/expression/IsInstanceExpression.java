@@ -7,7 +7,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.List;
 
-public record IsInstanceExpression(Expression input, Type type, SourceSpan pos) implements Expression {
+public record IsInstanceExpression(Expression input, Type type, SourceSpan pos, SourceSpan typePos) implements Expression {
     @Override
     public Value evaluate(EvaluationContext context) {
         var value = input.evaluate(context);

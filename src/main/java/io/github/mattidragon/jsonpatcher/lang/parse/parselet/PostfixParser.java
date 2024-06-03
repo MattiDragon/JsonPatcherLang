@@ -60,30 +60,30 @@ public class PostfixParser {
     }
 
     private static Expression parseIsInstance(Parser parser, Expression left, PositionedToken token) {
-        PositionedToken positionedToken = parser.next();
-        var type = positionedToken.token();
+        var type = parser.next().token();
+        var typePos = parser.previous().pos();
         if (type == Token.KeywordToken.NULL) {
-            return new IsInstanceExpression(left, IsInstanceExpression.Type.NULL, token.pos());
+            return new IsInstanceExpression(left, IsInstanceExpression.Type.NULL, token.pos(), typePos);
         }
         if (type instanceof Token.WordToken word) {
             switch (word.value()) {
                 case "number" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.NUMBER, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.NUMBER, token.pos(), typePos);
                 }
                 case "string" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.STRING, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.STRING, token.pos(), typePos);
                 }
                 case "boolean" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.BOOLEAN, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.BOOLEAN, token.pos(), typePos);
                 }
                 case "array" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.ARRAY, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.ARRAY, token.pos(), typePos);
                 }
                 case "object" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.OBJECT, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.OBJECT, token.pos(), typePos);
                 }
                 case "function" -> {
-                    return new IsInstanceExpression(left, IsInstanceExpression.Type.FUNCTION, token.pos());
+                    return new IsInstanceExpression(left, IsInstanceExpression.Type.FUNCTION, token.pos(), typePos);
                 }
             }
         }

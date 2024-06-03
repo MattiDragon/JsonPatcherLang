@@ -171,6 +171,10 @@ public class SemanticTokenizer {
                     tokenize(entry.value());
                 }
             }
+            case IsInstanceExpression expression -> {
+                tokenize(expression.input());
+                builder.addToken(expression.typePos(), SemanticTokenTypes.Type);
+            }
             
             case VariableCreationStatement statement -> {
                 var modifiers = statement.mutable() 
