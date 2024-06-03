@@ -5,12 +5,15 @@ import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
+import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import org.eclipse.lsp4j.*;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class DocumentState {
@@ -102,7 +105,35 @@ public class DocumentState {
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
         return analysis.thenCombineAsync(docs, SemanticTokenizer::getTokens, DocumentManager.EXECUTOR);
     }
-    
+
+    public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {
+        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
+        return analysis.thenApplyAsync(analysis ->
+                Either.forLeft(analysis.getVariableReferences()
+                        .getAllAt(pos)
+                        .stream()
+                        .map(TreeAnalysis.Variable::definitionPos)
+                        .filter(Objects::nonNull)
+                        .map(DocumentState::spanToRange)
+                        .map(range -> new Location(name, range))
+                        .toList()), DocumentManager.EXECUTOR);
+    }
+
+    public CompletableFuture<List<? extends Location>> getReferences(Position position) {
+        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
+        return analysis.thenApplyAsync(analysis -> {
+            var variableReferences = analysis.getVariableReferences();
+            return variableReferences
+                     .getAllAt(pos)
+                     .stream()
+                     .map(variableReferences::getPositions)
+                     .flatMap(List::stream)
+                     .map(DocumentState::spanToRange)
+                     .map(range -> new Location(name, range))
+                     .toList();
+        }, DocumentManager.EXECUTOR);
+    }
+
     public static Range spanToRange(SourceSpan span) {
         var pos1 = new Position(span.from().row() - 1, span.from().column() - 1);
         var pos2 = new Position(span.to().row() - 1, span.to().column());

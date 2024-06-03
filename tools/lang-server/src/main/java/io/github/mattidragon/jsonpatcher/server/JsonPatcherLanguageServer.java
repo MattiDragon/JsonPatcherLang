@@ -19,11 +19,16 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams initializeParams) {
         var capabilities = new ServerCapabilities();
+        
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(SemanticTokenizer.LEGEND, true));
+        
         var syncOptions = new TextDocumentSyncOptions();
         syncOptions.setChange(TextDocumentSyncKind.Full);
         syncOptions.setOpenClose(true);
         capabilities.setTextDocumentSync(syncOptions);
+        
+        capabilities.setDefinitionProvider(true);
+        capabilities.setReferencesProvider(true);
         
         var result = new InitializeResult(capabilities);
         return CompletableFuture.supplyAsync(() -> result);

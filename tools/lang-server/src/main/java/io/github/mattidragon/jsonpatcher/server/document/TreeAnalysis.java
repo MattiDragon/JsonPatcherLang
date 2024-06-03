@@ -31,7 +31,7 @@ public class TreeAnalysis {
         ));
     }
 
-    private final Map<ProgramNode, Scope> containingScopes = new HashMap<>();
+    private final PosLookup<Variable> variableReferences = new PosLookup<>();
     private final HashSet<Variable> unusedVariables = new HashSet<>();
     private final Map<VariableAccessExpression, Variable> variableMappings = new HashMap<>();
     private final Map<VariableAccessExpression, Scope> unboundVariables = new HashMap<>();
@@ -57,7 +57,6 @@ public class TreeAnalysis {
     }
     
     private void analyse(ProgramNode node, Scope currentScope) {
-        containingScopes.put(node, currentScope);
         switch (node) {
             case ImportStatement statement -> 
                     addVariable(currentScope, Variable.ofImport(statement.variableName(), statement.namePos(), currentScope));
@@ -99,7 +98,7 @@ public class TreeAnalysis {
             }
             
             case VariableAccessExpression expression -> {
-                var variable = resolveVariable(expression.name(), currentScope);
+                var variable = resolveVariable(expression.name(), currentScope, expression.pos());
                 if (variable != null) {
                     variableMappings.put(expression, variable);
                 } else {
@@ -113,6 +112,9 @@ public class TreeAnalysis {
 
     private void addVariable(Scope currentScope, Variable variable) {
         currentScope.definitions.add(variable);
+        if (variable.definitionPos() != null) {
+            variableReferences.add(variable.definitionPos(), variable);
+        }
         unusedVariables.add(variable);
     }
 
@@ -136,6 +138,7 @@ public class TreeAnalysis {
                 var variable = scope.definitions.stream().filter(candidate -> candidate.name.equals(name)).findFirst();
                 if (variable.isPresent()) {
                     variableMappings.put(key, variable.get());
+                    variableReferences.add(key.pos(), variable.get());
                     unusedVariables.remove(variable.get());
                     iterator.remove();
                     break;
@@ -146,12 +149,13 @@ public class TreeAnalysis {
     }
     
     @Nullable
-    private Variable resolveVariable(String name, Scope scope) {
+    private Variable resolveVariable(String name, Scope scope, SourceSpan pos) {
         var variable = scope.definitions.stream().filter(candidate -> candidate.name.equals(name)).findFirst()
-                .or(() -> Optional.ofNullable(scope.parent).map(parent -> resolveVariable(name, parent)))
+                .or(() -> Optional.ofNullable(scope.parent).map(parent -> resolveVariable(name, parent, pos)))
                 .orElse(null);
         if (variable != null) {
             unusedVariables.remove(variable);
+            variableReferences.add(pos, variable);
         }
         return variable;
     }
@@ -164,6 +168,10 @@ public class TreeAnalysis {
 
     public Program getTree() {
         return tree;
+    }
+
+    public PosLookup<Variable> getVariableReferences() {
+        return variableReferences;
     }
 
     public record Scope(@Nullable Scope parent, boolean immediate, List<Variable> definitions) {

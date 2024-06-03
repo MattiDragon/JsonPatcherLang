@@ -61,4 +61,22 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         }
         return null;
     }
+
+    @Override
+    public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.getReferences(params.getPosition());
+        }
+        return null;
+    }
+    
+    @Override
+    public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> definition(DefinitionParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.getDefinitions(params.getPosition());
+        }
+        return null; 
+    }
 }
