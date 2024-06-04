@@ -90,7 +90,7 @@ public class TreeAnalysis {
             case ForEachLoopStatement statement -> {
                 var scope = currentScope.child();
                 addVariable(scope, Variable.ofLocal(statement.variableName(), false, statement.variablePos(), currentScope));
-                analyse(statement.body(), scope);
+                analyse(statement.getChildren(), scope);
             }
             case ForLoopStatement statement -> {
                 var scope = currentScope.child();
