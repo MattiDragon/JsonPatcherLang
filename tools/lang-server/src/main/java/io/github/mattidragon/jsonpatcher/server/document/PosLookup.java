@@ -5,6 +5,7 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class PosLookup<T> {
     private final Map<Integer, List<Entry<T>>> entries = new HashMap<>();
@@ -36,18 +37,12 @@ public class PosLookup<T> {
         return null;
     }
     
-    public List<T> getAllAt(SourcePos pos) {
-        var found = new ArrayList<T>();
+    public Stream<T> getAllAt(SourcePos pos) {
         var entries = this.entries.get(pos.row());
-        if (entries == null) return found;
-
-        for (var entry : entries) {
-            if (pos.column() >= entry.from && pos.column() <= entry.to) {
-                found.add(entry.val);
-            }
-        }
-        
-        return found;
+        if (entries == null) return Stream.empty();
+        return entries.stream()
+                .filter(entry -> pos.column() >= entry.from && pos.column() <= entry.to)
+                .map(Entry::val);
     }
     
     private record Entry<T>(int from, int to, T val) {}

@@ -221,12 +221,12 @@ public class StatementParser {
         if (parser.hasNext(KeywordToken.AS)) {
             parser.next();
             var variableName = parser.expectWord().value();
-            namePos = parser.previous().pos();
+            var varPos = parser.previous().pos();
             parser.expect(SimpleToken.SEMICOLON);
-            return new ImportStatement(libraryName, variableName, new SourceSpan(from, parser.previous().getTo()), namePos);
+            return new ImportStatement(libraryName, variableName, new SourceSpan(from, parser.previous().getTo()), varPos, namePos);
         } else {
             parser.expect(SimpleToken.SEMICOLON);
-            return new ImportStatement(libraryName, libraryName, new SourceSpan(from, parser.previous().getTo()), namePos);
+            return new ImportStatement(libraryName, libraryName, new SourceSpan(from, parser.previous().getTo()), namePos, namePos);
         }
     }
 

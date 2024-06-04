@@ -9,6 +9,7 @@ import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
 import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.FunctionDeclarationStatement;
+import io.github.mattidragon.jsonpatcher.lang.runtime.statement.ImportStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.VariableCreationStatement;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
@@ -191,6 +192,7 @@ public class SemanticTokenizer {
                 builder.addToken(statement.namePos(), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 tokenize(statement.getChildren());
             }
+            case ImportStatement statement -> builder.addToken(statement.variablePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
             
             case ProgramNode other -> tokenize(other.getChildren());
         }

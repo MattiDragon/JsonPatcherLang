@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
+import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -10,13 +11,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class DocumentManager implements TextDocumentService, LanguageClientAware {
-    public static final ExecutorService EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
     private final Map<String, DocumentState> documents = new HashMap<>();
     private LanguageClient client;
+    private WorkspaceManager workspace;
+
+    public DocumentManager(WorkspaceManager workspace) {
+        this.workspace = workspace;
+    }
 
     @Override
     public void connect(LanguageClient client) {
@@ -28,7 +31,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         var document = params.getTextDocument();
         var name = document.getUri();
 
-        var state = new DocumentState(name, client);
+        var state = new DocumentState(name, client, workspace);
         state.updateContent(document.getText());
         documents.put(name, state);
     }

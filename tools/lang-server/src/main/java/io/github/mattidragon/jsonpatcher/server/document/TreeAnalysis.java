@@ -31,6 +31,7 @@ public class TreeAnalysis {
         ));
     }
 
+    private final PosLookup<String> imports = new PosLookup<>();
     private final PosLookup<Variable> variableReferences = new PosLookup<>();
     private final HashSet<Variable> unusedVariables = new HashSet<>();
     private final Map<VariableAccessExpression, Variable> variableMappings = new HashMap<>();
@@ -58,8 +59,10 @@ public class TreeAnalysis {
     
     private void analyse(ProgramNode node, Scope currentScope) {
         switch (node) {
-            case ImportStatement statement -> 
-                    addVariable(currentScope, Variable.ofImport(statement.variableName(), statement.namePos(), currentScope));
+            case ImportStatement statement -> {
+                addVariable(currentScope, Variable.ofImport(statement.variableName(), statement.variablePos(), currentScope));
+                imports.add(statement.namePos(), statement.libraryName());
+            }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), currentScope);
                 addVariable(currentScope, Variable.ofLocal(statement.name(), statement.mutable(), statement.namePos(), currentScope));
@@ -168,6 +171,10 @@ public class TreeAnalysis {
 
     public Program getTree() {
         return tree;
+    }
+
+    public PosLookup<String> getImportedModules() {
+        return imports;
     }
 
     public PosLookup<Variable> getVariableReferences() {

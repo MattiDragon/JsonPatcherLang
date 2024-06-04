@@ -7,6 +7,8 @@ import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.server.Util;
+import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -19,13 +21,15 @@ import java.util.concurrent.CompletableFuture;
 public class DocumentState {
     private final String name;
     private final LanguageClient client;
+    private final WorkspaceManager workspace;
     
     private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
     private CompletableFuture<List<DocEntry>> docs = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
-    public DocumentState(String name, LanguageClient client) {
+    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
         this.name = name;
         this.client = client;
+        this.workspace = workspace;
     }
 
     public void updateContent(String content) {
@@ -35,7 +39,7 @@ public class DocumentState {
             var docParser = new DocParser();
             var result = Lexer.lex(content, name, docParser);
             return new LexTuple(result, docParser);
-        }, DocumentManager.EXECUTOR);
+        }, Util.EXECUTOR);
         
         var tokens = lexResult.thenApply(LexTuple::result).thenApply(Lexer.Result::tokens);
         var lexErrors = lexResult.thenApply(LexTuple::result).thenApply(Lexer.Result::errors);
@@ -44,12 +48,12 @@ public class DocumentState {
         docs = docResult.thenApply(DocParser::getEntries);
         var docErrors = docResult.thenApply(DocParser::getErrors);
         
-        var parseResult = tokens.thenApplyAsync(Parser::parse, DocumentManager.EXECUTOR);
+        var parseResult = tokens.thenApplyAsync(Parser::parse, Util.EXECUTOR);
         var tree = parseResult.thenApply(Parser.Result::program);
         var metadata = parseResult.thenApply(Parser.Result::metadata);
         var parseErrors = parseResult.thenApply(Parser.Result::errors);
 
-        analysis = tree.thenApplyAsync(TreeAnalysis::new, DocumentManager.EXECUTOR);
+        analysis = tree.thenApplyAsync(TreeAnalysis::new, Util.EXECUTOR);
 
         setupDiagnostics(lexErrors, parseErrors, docErrors, analysis);
     }
@@ -58,7 +62,7 @@ public class DocumentState {
                                   CompletableFuture<List<Parser.ParseException>> parseErrors, 
                                   CompletableFuture<List<DocParseException>> docErrors, 
                                   CompletableFuture<TreeAnalysis> analysis) {
-        var combinedErrors = combineLists(lexErrors, parseErrors, docErrors);
+        var combinedErrors = Util.combineLists(lexErrors, parseErrors, docErrors);
         
         combinedErrors.thenAcceptBothAsync(analysis, (errors, treeAnalysis) -> {
             var diagnostics = new ArrayList<Diagnostic>();
@@ -87,36 +91,40 @@ public class DocumentState {
             }
             
             client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics));
-        }, DocumentManager.EXECUTOR);
+        }, Util.EXECUTOR);
     }
 
-    @SafeVarargs
-    private <T> CompletableFuture<List<T>> combineLists(CompletableFuture<? extends List<? extends T>>... futures) {
-        var marker = CompletableFuture.allOf(futures);
-        return marker.thenApply(unit -> {
-            var list = new ArrayList<T>();
-            for (var future : futures) {
-                list.addAll(future.join());
-            }
-            return list;
-        });
-    } 
-    
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return analysis.thenCombineAsync(docs, SemanticTokenizer::getTokens, DocumentManager.EXECUTOR);
+        return analysis.thenCombineAsync(docs, SemanticTokenizer::getTokens, Util.EXECUTOR);
     }
 
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {
         var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
-        return analysis.thenApplyAsync(analysis ->
-                Either.forLeft(analysis.getVariableReferences()
-                        .getAllAt(pos)
-                        .stream()
-                        .map(TreeAnalysis.Variable::definitionPos)
-                        .filter(Objects::nonNull)
-                        .map(DocumentState::spanToRange)
-                        .map(range -> new Location(name, range))
-                        .toList()), DocumentManager.EXECUTOR);
+        return analysis.thenApplyAsync(analysis -> {
+            var list = new ArrayList<Location>();
+            analysis.getVariableReferences()
+                    .getAllAt(pos)
+                    .map(TreeAnalysis.Variable::definitionPos)
+                    .filter(Objects::nonNull)
+                    .map(DocumentState::spanToRange)
+                    .map(range -> new Location(name, range))
+                    .forEach(list::add);
+            analysis.getImportedModules()
+                    .getAllAt(pos)
+                    .map(workspace.getDocManager().getDocTree()::getModuleData)
+                    .filter(Objects::nonNull)
+                    .map(moduleDoc -> {
+                        var module = moduleDoc.entry();
+                        var modulePos = module.locationPos();
+                        if (modulePos == null) modulePos = module.namePos();
+                        if (modulePos == null) return null;
+                        return new Location(moduleDoc.owner().uri(), spanToRange(modulePos));
+                    })
+                    .filter(Objects::nonNull)
+                    .forEach(list::add);
+            
+            return Either.forLeft(list);
+        }, Util.EXECUTOR);
     }
 
     public CompletableFuture<List<? extends Location>> getReferences(Position position) {
@@ -124,14 +132,14 @@ public class DocumentState {
         return analysis.thenApplyAsync(analysis -> {
             var variableReferences = analysis.getVariableReferences();
             return variableReferences
-                     .getAllAt(pos)
-                     .stream()
-                     .map(variableReferences::getPositions)
-                     .flatMap(List::stream)
-                     .map(DocumentState::spanToRange)
-                     .map(range -> new Location(name, range))
-                     .toList();
-        }, DocumentManager.EXECUTOR);
+                    .getAllAt(pos)
+                    .map(variableReferences::getPositions)
+                    .flatMap(List::stream)
+                    .filter(span -> span.from().row() > pos.row() || span.to().row() < pos.row() || span.from().column() > pos.column() || span.to().column() < pos.column())
+                    .map(DocumentState::spanToRange)
+                    .map(range -> new Location(name, range))
+                    .toList();
+        }, Util.EXECUTOR);
     }
 
     public static Range spanToRange(SourceSpan span) {
