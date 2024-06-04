@@ -3,12 +3,14 @@ package io.github.mattidragon.jsonpatcher.server.workspace;
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import org.jetbrains.annotations.Nullable;
 
+import java.net.http.HttpRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DocTree {
     private final Map<String, DocFile> files = new HashMap<>();
+    private Map<String, ModuleDoc> moduleLookupByDocName = new HashMap<>();
     private Map<String, ModuleDoc> moduleLookup = new HashMap<>();
     private Map<String, TypeDoc> typeLookup = new HashMap<>();
     
@@ -51,7 +53,7 @@ public class DocTree {
     
     @Nullable
     public synchronized OwnerDoc getOwner(String name) {
-        var module = moduleLookup.get(name);
+        var module = moduleLookupByDocName.get(name);
         if (module != null) return module;
         return typeLookup.get(name);
     }
@@ -71,6 +73,7 @@ public class DocTree {
         typeLookup = new HashMap<>();
         for (DocFile file : files.values()) {
             file.modules.values().forEach(module -> moduleLookup.put(module.entry.location(), module));
+            moduleLookupByDocName.putAll(file.modules);
             typeLookup.putAll(file.types);
         }
     }
@@ -81,6 +84,7 @@ public class DocTree {
     public sealed interface OwnerDoc {
         DocEntry entry();
         Map<String, DocEntry.Value> values();
+        DocFile owner();
     }
     
     public record ModuleDoc(DocFile owner, DocEntry.Module entry, Map<String, DocEntry.Value> values) implements OwnerDoc {

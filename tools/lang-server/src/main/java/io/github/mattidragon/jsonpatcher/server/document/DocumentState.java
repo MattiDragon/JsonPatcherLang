@@ -8,6 +8,7 @@ import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.server.Util;
+import io.github.mattidragon.jsonpatcher.server.workspace.DocTree;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -100,7 +101,7 @@ public class DocumentState {
 
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {
         var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
-        return analysis.thenApplyAsync(analysis -> {
+        return analysis.thenCombineAsync(docs, (analysis, docs) -> {
             var list = new ArrayList<Location>();
             analysis.getVariableReferences()
                     .getAllAt(pos)
@@ -122,6 +123,14 @@ public class DocumentState {
                     })
                     .filter(Objects::nonNull)
                     .forEach(list::add);
+            for (DocEntry doc : docs) {
+                if (!(doc instanceof DocEntry.Value value)) continue;
+                if (value.ownerPos() == null || !value.ownerPos().contains(pos)) continue;
+                
+                var owner = workspace.getDocManager().getDocTree().getOwner(value.owner());
+                if (owner == null) continue;
+                list.add(new Location(owner.owner().uri(), spanToRange(owner.entry().namePos())));
+            }
             
             return Either.forLeft(list);
         }, Util.EXECUTOR);

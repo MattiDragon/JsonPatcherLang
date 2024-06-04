@@ -39,6 +39,7 @@ public class WorkspaceDocManager {
     }
     
     public void resetAll(List<String> folders) {
+        tree.clear();
         for (var folder : folders) {
             var path = getPath(folder);
             if (path.isEmpty()) continue;
@@ -49,7 +50,7 @@ public class WorkspaceDocManager {
                     }
                 });
             } catch (IOException e) {
-                System.err.println("Érror while scanning files: " + e);
+                System.err.println("Error while scanning files: " + e);
             }
         }
     }

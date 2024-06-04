@@ -4,13 +4,8 @@ import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.WorkspaceService;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceManager implements WorkspaceService {
@@ -44,19 +39,6 @@ public class WorkspaceManager implements WorkspaceService {
     public void removeWorkspaceFolders(List<WorkspaceFolder> folders) {
         folders.stream().map(WorkspaceFolder::getUri).forEach(workspaceFolders::remove);
         docManager.resetAll(workspaceFolders);
-    }
-    
-    private Optional<Path> getPath(String path) {
-        try {
-            var uri = new URI(path);
-            return Optional.of(Path.of(uri));
-        } catch (URISyntaxException e) {
-            System.err.println("Failed to parse uri: " + e);
-            return Optional.empty();
-        } catch (FileSystemNotFoundException | IllegalArgumentException e) {
-            // ignore, we'll just not use files from unknown uris
-            return Optional.empty();
-        }
     }
 
     @Override
