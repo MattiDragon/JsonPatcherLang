@@ -191,6 +191,11 @@ public class TreeAnalysis {
         }
 
         @Override
+        public String toString() {
+            return "Scope[parent=%s, immediate=%s]".formatted(parent, immediate);
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return this == obj;
         }

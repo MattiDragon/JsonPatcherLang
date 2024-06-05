@@ -1,0 +1,52 @@
+#| module math
+#| The math library contains many functions for performing mathematical operations.
+
+#| value math.PI: number
+
+#| value math.E: number
+
+#| value math.NaN: number
+
+#| value math.POSITIVE_INFINITY: number
+
+#| value math.NEGATIVE_INFINITY: number
+
+#| value math.asin: (input: number) -> number
+
+#| value math.sin: (input: number) -> number
+
+#| value math.sinh: (input: number) -> number
+
+#| value math.acos: (input: number) -> number
+
+#| value math.cos: (input: number) -> number
+
+#| value math.cosh: (input: number) -> number
+
+#| value math.atan: (input: number) -> number
+
+#| value math.tan: (input: number) -> number
+
+#| value math.tanh: (input: number) -> number
+
+#| value math.exp: (input: number) -> number
+
+#| value math.log: (input: number) -> number
+
+#| value math.log10: (input: number) -> number
+
+#| value math.sqrt: (input: number) -> number
+
+#| value math.cbrt: (input: number) -> number
+
+#| value math.ceil: (input: number) -> number
+
+#| value math.floor: (input: number) -> number
+
+#| value math.abs: (input: number) -> number
+
+#| value math.signum: (input: number) -> number
+
+#| value math.max: (first: number, second: number) -> number
+
+#| value math.min: (first: number, second: number) -> number

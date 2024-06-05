@@ -1,0 +1,39 @@
+#| module arrays
+#| The arrays library contains functions for manipulating arrays.
+#| All of them can be used as methods on arrays.
+
+#| value arrays.insert: (array: array, index: number, value: any) -> array
+#| Inserts the specified value at the specified index. The inserted value will be found that the index after the insertion.
+
+#| value arrays.push: (array: array, value: any) -> array
+#| Appends the specified value to the end of the array. Returns the array.
+
+#| value arrays.pop: (array: array) -> any
+#| Removes the last element from the array and returns it.
+
+#| value arrays.remove: (array: array, value: any) -> array
+#| Removes the first occurrence of the specified value from the array. Returns the array.
+
+#| value arrays.removeAt: (array: array, index: number) -> array
+#| Removes the value at the specified index from the array. Returns the array.
+
+#| value arrays.map: (array: array, function: function) -> array
+#| Applies the specified function to each element in the array, creating a new array and returns the result.
+
+#| value arrays.mapped: (array: array, function: function) -> array
+#| Applies the specified function to each element in the array modifying them in p
+
+#| value arrays.filter: (array: array, function: function) -> array
+#| Applies the specified function to each element in the array, creating a new array with only the elements that returned true.
+
+#| value arrays.filtered: (array: array, function: function) -> array
+#| Applies the specified function to each element in the array, removing the elements that returned false.
+
+#| value arrays.reduce: (array: array, function: function, initial: any) -> any
+#| Iterates through the array applying the specified function to each element and the current state, beginning with the initial value and being replaced by the returned value from the function. Returns the last state.
+
+#| value arrays.slice: (array: array, from: number, to?: number) -> array
+#| Returns a slice of the array from the specified start index (inclusive) to the specified end index (exclusive)
+
+#| value arrays.indexOf: (array: array, value: any) -> number
+#| Returns the index of the index of the value in the array, or -1 if it isn't present

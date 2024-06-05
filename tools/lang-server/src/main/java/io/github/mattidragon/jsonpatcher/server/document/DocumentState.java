@@ -105,11 +105,21 @@ public class DocumentState {
             var list = new ArrayList<Location>();
             analysis.getVariableReferences()
                     .getAllAt(pos)
-                    .map(TreeAnalysis.Variable::definitionPos)
-                    .filter(Objects::nonNull)
-                    .map(DocumentState::spanToRange)
-                    .map(range -> new Location(name, range))
+                    .<Location>mapMulti((variable, consumer) -> {
+                        if (variable.stdlib()) {
+                            var moduleDoc = workspace.getDocManager().getDocTree().getStdlibModule(variable.name());
+                            if (moduleDoc == null) return;
+                            var span = moduleDoc.entry().namePos();
+                            if (span == null) return;
+                            consumer.accept(new Location(moduleDoc.owner().uri(), spanToRange(span)));
+                        } else {
+                            var span = variable.definitionPos();
+                            if (span == null) return;
+                            consumer.accept(new Location(name, spanToRange(span)));
+                        }
+                    })
                     .forEach(list::add);
+            
             analysis.getImportedModules()
                     .getAllAt(pos)
                     .map(workspace.getDocManager().getDocTree()::getModuleData)
@@ -123,6 +133,7 @@ public class DocumentState {
                     })
                     .filter(Objects::nonNull)
                     .forEach(list::add);
+            
             for (DocEntry doc : docs) {
                 if (!(doc instanceof DocEntry.Value value)) continue;
                 if (value.ownerPos() == null || !value.ownerPos().contains(pos)) continue;

@@ -1,20 +1,93 @@
 package io.github.mattidragon.jsonpatcher.server.workspace;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
+import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
+import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
+import io.github.mattidragon.jsonpatcher.server.Util;
 import org.jetbrains.annotations.Nullable;
 
-import java.net.http.HttpRequest;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class DocTree {
+    private static final List<String> STDLIB_FILES = List.of(
+            "arrays.jsonpatch", "debug.jsonpatch", "functions.jsonpatch",
+            "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch"
+    );
     private final Map<String, DocFile> files = new HashMap<>();
+    private final Map<String, DocFile> stdlibFiles = new HashMap<>();
+    private final CompletableFuture<Void> stdlibFuture;
     private Map<String, ModuleDoc> moduleLookupByDocName = new HashMap<>();
     private Map<String, ModuleDoc> moduleLookup = new HashMap<>();
     private Map<String, TypeDoc> typeLookup = new HashMap<>();
-    
+
+    public DocTree() {
+        stdlibFuture = loadStdlib();
+    }
+
+    private CompletableFuture<Void> loadStdlib() {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                var tempDir = Path.of(System.getProperty("java.io.tmpdir")).resolve("jsonpatcher-temp-stdlib");
+                Files.createDirectories(tempDir);
+
+                List<CompletableFuture<Void>> futures;
+
+                futures = STDLIB_FILES.stream()
+                        .map(fileName -> {
+                            var cleanedName = fileName.substring(0, fileName.length() - ".jsonpatch".length());
+                            return handleStdlibFile(fileName, tempDir).thenAccept(docFile -> {
+                                synchronized (this) {
+                                    stdlibFiles.put(cleanedName, docFile);
+                                }
+                            });
+                        })
+                        .toList();
+                
+                CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            } catch (CompletionException | IOException e) {
+                throw new IllegalStateException("Failed to prepare stdlib docs", e);
+            }
+        }, Util.EXECUTOR).exceptionally(e -> {
+            System.err.println("Error while preparing stdlib docs:");
+            e.printStackTrace(System.err);
+            return null;
+        });
+    }
+
+    private static CompletableFuture<DocFile> handleStdlibFile(String fileName, Path tempDirectory) {
+        return CompletableFuture.supplyAsync(() -> {
+            try (var fileStream = DocTree.class.getClassLoader().getResourceAsStream("stdlib_docs/" + fileName)) {
+                if (fileStream == null) throw new FileNotFoundException("Couldn't find stdlib doc file '%s' in resources".formatted(fileName));
+
+                var path = tempDirectory.resolve(fileName);
+                Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
+                
+                var docParser = new DocParser();
+                Lexer.lex(Files.readString(path), fileName, docParser);
+                
+                return buildFile(path.toUri().toASCIIString(), docParser.getEntries());
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to extract stdlib docs", e);
+            }
+        }, Util.EXECUTOR);
+    }
+
     public synchronized void updateFile(String uri, List<DocEntry> entries) {
+        var file = buildFile(uri, entries);
+
+        files.put(uri, file);
+        rebuildLookups();
+    }
+
+    private static DocFile buildFile(String uri, List<DocEntry> entries) {
         var file = new DocFile(uri, new HashMap<>(), new HashMap<>());
 
         for (var entry : entries) {
@@ -36,11 +109,9 @@ public class DocTree {
                 type.values.put(value.name(), value);
             }
         }
-        
-        files.put(uri, file);
-        rebuildLookups();
+        return file;
     }
-    
+
     public synchronized void deleteFile(String uri) {
         files.remove(uri);
         rebuildLookups();
@@ -49,6 +120,14 @@ public class DocTree {
     public synchronized void clear() {
         files.clear();
         rebuildLookups();
+    }
+    
+    @Nullable
+    public ModuleDoc getStdlibModule(String name) {
+        stdlibFuture.join();
+        var file = stdlibFiles.get(name);
+        if (file == null) return null;
+        return file.modules().get(name);
     }
     
     @Nullable
@@ -70,6 +149,7 @@ public class DocTree {
     
     private synchronized void rebuildLookups() {
         moduleLookup = new HashMap<>();
+        moduleLookupByDocName = new HashMap<>();
         typeLookup = new HashMap<>();
         for (DocFile file : files.values()) {
             file.modules.values().forEach(module -> moduleLookup.put(module.entry.location(), module));

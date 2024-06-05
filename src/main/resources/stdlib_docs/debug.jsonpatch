@@ -1,0 +1,8 @@
+#| module debug
+#| Provides various functions for debugging code.
+
+#| value debug.assert: (value: any, message?: string) -> null
+#| Checks if the value is truthy. If it is nothing happens. If it isn't, then an error is thrown.
+
+#| value debug.throw: (message: any) -> null
+#| Throws an error. Use this if your code gets in situations it shouldn't.
