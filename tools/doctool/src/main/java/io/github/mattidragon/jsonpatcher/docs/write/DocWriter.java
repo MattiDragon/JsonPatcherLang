@@ -21,6 +21,7 @@ public class DocWriter {
     private int headingLevel = 1;
     private Parser parser = DEFAULT_PARSER;
     private boolean inlineDefinitions = false;
+    private boolean valueSubHeaders = true;
 
     public DocWriter(List<DocEntry> entries) {
         var values = new ArrayList<DocEntry.Value>();
@@ -62,38 +63,56 @@ public class DocWriter {
         this.inlineDefinitions = inlineDefinitions;
     }
 
+    public void setValueSubHeaders(boolean valueSubHeaders) {
+        this.valueSubHeaders = valueSubHeaders;
+    }
+
     public void buildDocument(Node document) {
         for (var module : modules) {
-            writeHeader(document, "Module", module.entry().name(), "", headingLevel);
-            addLocationData(document, module);
-            document.appendChild(parser.parse(module.entry().description()));
+            writeEntry(document, module.entry());
             writeValues(document, module.values());
         }
         for (var type : types) {
-            writeHeader(document, "Type", type.entry().name(), type.entry().definition().format(), headingLevel);
-            writeTypeDefinition(document, type.entry().definition());
-            document.appendChild(parser.parse(type.entry().description()));
+            writeEntry(document, type.entry());
             writeValues(document, type.values());
         }
     }
+    
+    public void writeEntry(Node document, DocEntry entry) {
+        switch (entry) {
+            case DocEntry.Module module -> {
+                writeHeader(document, "Module", module.name(), "", headingLevel);
+                addLocationData(document, module);
+                document.appendChild(parser.parse(module.description()));
+            }
+            case DocEntry.Type type -> {
+                writeHeader(document, "Type", type.name(), type.definition().format(), headingLevel);
+                writeTypeDefinition(document, type.definition());
+                document.appendChild(parser.parse(type.description()));
+            }
+            case DocEntry.Value value -> {
+                var heading = value.definition().isFunction() ? "Function" : "Property";
+                writeHeader(document, heading, value.owner() + "." + value.name(), value.definition().format(), valueSubHeaders ? headingLevel + 1 : headingLevel);
+                writeTypeDefinition(document, value.definition());
+                document.appendChild(parser.parse(value.description()));
+            }
+        }
+    }
 
-    private static void addLocationData(Node document, OutputModule module) {
-        if (module.entry().location().equals(module.entry().name())) return;
+    private static void addLocationData(Node document, DocEntry.Module entry) {
+        if (entry.location() == null) return;
         
         var location = new Paragraph();
         var emp = new Emphasis();
         emp.appendChild(new Text("Available at "));
-        emp.appendChild(new Code("\"" + module.entry().location() + "\""));
+        emp.appendChild(new Code("\"" + entry.location() + "\""));
         location.appendChild(emp);
         document.appendChild(location);
     }
 
     private void writeValues(Node document, List<DocEntry.Value> values) {
         for (var value : values) {
-            var heading = value.definition().isFunction() ? "Function" : "Property";
-            writeHeader(document, heading, value.owner() + "." + value.name(), value.definition().format(), headingLevel + 1);
-            writeTypeDefinition(document, value.definition());
-            document.appendChild(parser.parse(value.description()));
+            writeEntry(document, value);
         }
     }
 

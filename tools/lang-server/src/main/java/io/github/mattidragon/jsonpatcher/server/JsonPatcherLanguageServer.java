@@ -40,6 +40,7 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         var capabilities = new ServerCapabilities();
         
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(SemanticTokenizer.LEGEND, true));
+        capabilities.setHoverProvider(true);
         
         var syncOptions = new TextDocumentSyncOptions();
         syncOptions.setChange(TextDocumentSyncKind.Full);

@@ -3,10 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation(rootProject)
-    implementation("org.commonmark:commonmark:0.22.0")
-    implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
-    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0")
+    api(rootProject)
+    api("org.commonmark:commonmark:0.22.0")
+    api("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
+    api("org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0")
 }
 
 tasks.jar {

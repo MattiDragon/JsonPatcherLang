@@ -82,4 +82,13 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         }
         return null; 
     }
+
+    @Override
+    public CompletableFuture<Hover> hover(HoverParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.getHover(params.getPosition());
+        }
+        return null;
+    }
 }

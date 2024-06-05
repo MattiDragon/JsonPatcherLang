@@ -4,6 +4,7 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Program;
 import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpression;
+import io.github.mattidragon.jsonpatcher.lang.runtime.expression.PropertyAccessExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.VariableAccessExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
 import io.github.mattidragon.jsonpatcher.lang.runtime.statement.*;
@@ -32,7 +33,9 @@ public class TreeAnalysis {
     }
 
     private final PosLookup<String> imports = new PosLookup<>();
+    private final Map<Variable, ImportStatement> importStatements = new HashMap<>();
     private final PosLookup<Variable> variableReferences = new PosLookup<>();
+    private final PosLookup<PropertyAccessExpression> propertyAccesses = new PosLookup<>();
     private final HashSet<Variable> unusedVariables = new HashSet<>();
     private final Map<VariableAccessExpression, Variable> variableMappings = new HashMap<>();
     private final Map<VariableAccessExpression, Scope> unboundVariables = new HashMap<>();
@@ -60,8 +63,10 @@ public class TreeAnalysis {
     private void analyse(ProgramNode node, Scope currentScope) {
         switch (node) {
             case ImportStatement statement -> {
-                addVariable(currentScope, Variable.ofImport(statement.variableName(), statement.variablePos(), currentScope));
+                var variable = Variable.ofImport(statement.variableName(), statement.variablePos(), currentScope);
+                addVariable(currentScope, variable);
                 imports.add(statement.namePos(), statement.libraryName());
+                importStatements.put(variable, statement);
             }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), currentScope);
@@ -107,6 +112,10 @@ public class TreeAnalysis {
                 } else {
                     unboundVariables.put(expression, currentScope);
                 }
+            }
+            case PropertyAccessExpression expression -> {
+                propertyAccesses.add(expression.namePos(), expression);
+                analyse(expression.parent(), currentScope);
             }
             
             default -> node.getChildren().forEach(child -> analyse(child, currentScope));
@@ -179,6 +188,15 @@ public class TreeAnalysis {
 
     public PosLookup<Variable> getVariableReferences() {
         return variableReferences;
+    }
+
+    public PosLookup<PropertyAccessExpression> getPropertyAccesses() {
+        return propertyAccesses;
+    }
+
+    @Nullable
+    public ImportStatement getImportStatement(Variable variable) {
+        return importStatements.get(variable);
     }
 
     public record Scope(@Nullable Scope parent, boolean immediate, List<Variable> definitions) {

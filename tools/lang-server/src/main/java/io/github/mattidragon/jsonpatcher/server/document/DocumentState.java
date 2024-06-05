@@ -5,10 +5,8 @@ import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.server.Util;
-import io.github.mattidragon.jsonpatcher.server.workspace.DocTree;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -16,13 +14,13 @@ import org.eclipse.lsp4j.services.LanguageClient;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class DocumentState {
     private final String name;
     private final LanguageClient client;
     private final WorkspaceManager workspace;
+    private final DefinitionFinder definitionFinder;
     
     private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
     private CompletableFuture<List<DocEntry>> docs = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
@@ -31,6 +29,7 @@ public class DocumentState {
         this.name = name;
         this.client = client;
         this.workspace = workspace;
+        this.definitionFinder = new DefinitionFinder(() -> analysis, () -> docs, workspace, name);
     }
 
     public void updateContent(String content) {
@@ -100,66 +99,15 @@ public class DocumentState {
     }
 
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {
-        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
-        return analysis.thenCombineAsync(docs, (analysis, docs) -> {
-            var list = new ArrayList<Location>();
-            analysis.getVariableReferences()
-                    .getAllAt(pos)
-                    .<Location>mapMulti((variable, consumer) -> {
-                        if (variable.stdlib()) {
-                            var moduleDoc = workspace.getDocManager().getDocTree().getStdlibModule(variable.name());
-                            if (moduleDoc == null) return;
-                            var span = moduleDoc.entry().namePos();
-                            if (span == null) return;
-                            consumer.accept(new Location(moduleDoc.owner().uri(), spanToRange(span)));
-                        } else {
-                            var span = variable.definitionPos();
-                            if (span == null) return;
-                            consumer.accept(new Location(name, spanToRange(span)));
-                        }
-                    })
-                    .forEach(list::add);
-            
-            analysis.getImportedModules()
-                    .getAllAt(pos)
-                    .map(workspace.getDocManager().getDocTree()::getModuleData)
-                    .filter(Objects::nonNull)
-                    .map(moduleDoc -> {
-                        var module = moduleDoc.entry();
-                        var modulePos = module.locationPos();
-                        if (modulePos == null) modulePos = module.namePos();
-                        if (modulePos == null) return null;
-                        return new Location(moduleDoc.owner().uri(), spanToRange(modulePos));
-                    })
-                    .filter(Objects::nonNull)
-                    .forEach(list::add);
-            
-            for (DocEntry doc : docs) {
-                if (!(doc instanceof DocEntry.Value value)) continue;
-                if (value.ownerPos() == null || !value.ownerPos().contains(pos)) continue;
-                
-                var owner = workspace.getDocManager().getDocTree().getOwner(value.owner());
-                if (owner == null) continue;
-                list.add(new Location(owner.owner().uri(), spanToRange(owner.entry().namePos())));
-            }
-            
-            return Either.forLeft(list);
-        }, Util.EXECUTOR);
+        return definitionFinder.getDefinitions(position).thenApply(Either::forLeft);
     }
 
     public CompletableFuture<List<? extends Location>> getReferences(Position position) {
-        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
-        return analysis.thenApplyAsync(analysis -> {
-            var variableReferences = analysis.getVariableReferences();
-            return variableReferences
-                    .getAllAt(pos)
-                    .map(variableReferences::getPositions)
-                    .flatMap(List::stream)
-                    .filter(span -> span.from().row() > pos.row() || span.to().row() < pos.row() || span.from().column() > pos.column() || span.to().column() < pos.column())
-                    .map(DocumentState::spanToRange)
-                    .map(range -> new Location(name, range))
-                    .toList();
-        }, Util.EXECUTOR);
+        return definitionFinder.getReferences(position);
+    }
+
+    public CompletableFuture<Hover> getHover(Position position) {
+        return definitionFinder.getHover(position);
     }
 
     public static Range spanToRange(SourceSpan span) {
