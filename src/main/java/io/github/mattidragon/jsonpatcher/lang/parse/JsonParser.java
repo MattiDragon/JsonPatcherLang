@@ -24,9 +24,7 @@ public class JsonParser {
 
     private Value.ObjectValue parseObject() {
         var obj = new Value.ObjectValue();
-        while (parser.hasNext()) {
-            PositionedToken positionedToken1 = parser.peek();
-            if (!(positionedToken1.token() != Token.SimpleToken.END_CURLY)) break;
+        while (parser.hasNext() && parser.peek().token() != Token.SimpleToken.END_CURLY) {
             var key = parser.expectString().value();
             parser.expect(Token.SimpleToken.COLON);
             var value = parse();
@@ -46,9 +44,7 @@ public class JsonParser {
 
     private Value.ArrayValue parseArray() {
         var array = new Value.ArrayValue();
-        while (parser.hasNext()) {
-            PositionedToken positionedToken1 = parser.peek();
-            if (!(positionedToken1.token() != Token.SimpleToken.END_SQUARE)) break;
+        while (parser.hasNext() && parser.peek().token() != Token.SimpleToken.END_SQUARE) {
             array.value().add(parse());
 
             PositionedToken positionedToken = parser.peek();

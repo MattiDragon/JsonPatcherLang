@@ -14,12 +14,12 @@ import org.eclipse.lsp4j.services.LanguageClient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class DocumentState {
     private final String name;
     private final LanguageClient client;
-    private final WorkspaceManager workspace;
     private final DefinitionFinder definitionFinder;
     
     private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
@@ -28,7 +28,6 @@ public class DocumentState {
     public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
         this.name = name;
         this.client = client;
-        this.workspace = workspace;
         this.definitionFinder = new DefinitionFinder(() -> analysis, () -> docs, workspace, name);
     }
 
@@ -75,7 +74,7 @@ public class DocumentState {
                 diagnostics.add(diagnostic);
             }
             
-            for (var variable : treeAnalysis.getUnboundVariables()) {
+            for (var variable : treeAnalysis.getUnresolvedVariables()) {
                 var diagnostic = new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name()));
                 diagnostic.setSeverity(DiagnosticSeverity.Error);
                 diagnostic.setSource("JsonPatcher");
@@ -83,8 +82,9 @@ public class DocumentState {
             }
             
             for (var variable : treeAnalysis.getUnusedVariables()) {
-                if (variable.definitionPos() == null) continue;
-                var diagnostic = new Diagnostic(spanToRange(variable.definitionPos()), "Unused declaration");
+                var pos = variable.definitionPos();
+                if (pos == null) continue;
+                var diagnostic = new Diagnostic(spanToRange(pos), "Unused declaration");
                 diagnostic.setSeverity(DiagnosticSeverity.Hint);
                 diagnostic.setTags(List.of(DiagnosticTag.Unnecessary));
                 diagnostics.add(diagnostic);
@@ -114,5 +114,12 @@ public class DocumentState {
         var pos1 = new Position(span.from().row() - 1, span.from().column() - 1);
         var pos2 = new Position(span.to().row() - 1, span.to().column());
         return new Range(pos1, pos2);
+    }
+    
+    public static Location spanToLocation(SourceSpan span) {
+        if (!Objects.equals(span.from().file().name(), span.to().file().name())) {
+            throw new IllegalArgumentException("Cross file span can't be converted to location");
+        }
+        return new Location(span.from().file().name(), spanToRange(span));
     }
 }

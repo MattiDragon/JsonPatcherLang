@@ -4,21 +4,19 @@ import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.data.DocType;
 import io.github.mattidragon.jsonpatcher.docs.write.DocWriter;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.runtime.expression.PropertyAccessExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.VariableAccessExpression;
 import io.github.mattidragon.jsonpatcher.server.Util;
-import io.github.mattidragon.jsonpatcher.server.workspace.DocTree;
+import io.github.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.commonmark.node.Document;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.markdown.MarkdownRenderer;
 import org.eclipse.lsp4j.*;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NavigableMap;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -28,7 +26,8 @@ import static io.github.mattidragon.jsonpatcher.server.document.DocumentState.sp
 
 public class DefinitionFinder {
     private final Renderer renderer = MarkdownRenderer.builder().extensions(DocWriter.DEFAULT_EXTENSIONS).build();
-    private final DocWriter emptyDocWriter = new DocWriter(List.of());
+    private final DocWriter docWriter = new DocWriter(List.of());
+    
     private final Supplier<CompletableFuture<TreeAnalysis>> analysis;
     private final Supplier<CompletableFuture<List<DocEntry>>> docs;
     private final WorkspaceManager workspace;
@@ -39,9 +38,9 @@ public class DefinitionFinder {
         this.docs = docs;
         this.workspace = workspace;
         this.documentUri = documentUri;
-        emptyDocWriter.setHeadingLevel(4);
-        emptyDocWriter.setInlineDefinitions(true);
-        emptyDocWriter.setValueSubHeaders(false);
+        docWriter.setHeadingLevel(4);
+        docWriter.setInlineDefinitions(true);
+        docWriter.setValueSubHeaders(false);
     }
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {
@@ -59,23 +58,20 @@ public class DefinitionFinder {
         forDocRefsAt(docs, pos, doc -> {
             var span = doc.entry().namePos();
             if (span == null) return;
-            list.add(new Location(doc.owner().uri(), spanToRange(span)));
+            list.add(new Location(doc.file().uri(), spanToRange(span)));
         });
     }
     
     private void addImportLocationDefinitions(TreeAnalysis analysis, SourcePos pos, ArrayList<Location> list) {
         analysis.getImportedModules()
                 .getAllAt(pos)
-                .map(workspace.getDocManager().getDocTree()::getModuleData)
-                .filter(Objects::nonNull)
-                .map(moduleDoc -> {
-                    var module = moduleDoc.entry();
-                    var modulePos = module.locationPos();
-                    if (modulePos == null) modulePos = module.namePos();
-                    if (modulePos == null) return null;
-                    return new Location(moduleDoc.owner().uri(), spanToRange(modulePos));
-                })
-                .filter(Objects::nonNull)
+                .map(workspace.getDocManager().getHolder()::getModuleData)
+                .flatMap(Optional::stream)
+                .map(DocHolder.ModuleData::entry)
+                .flatMap(module -> Optional.ofNullable(module.locationPos())
+                        .or(() -> Optional.ofNullable(module.namePos()))
+                        .stream())
+                .map(DocumentState::spanToLocation)
                 .forEach(list::add);
     }
 
@@ -84,15 +80,17 @@ public class DefinitionFinder {
                 .getAllAt(pos)
                 .<Location>mapMulti((variable, consumer) -> {
                     if (variable.stdlib()) {
-                        var moduleDoc = workspace.getDocManager().getDocTree().getStdlibModule(variable.name());
-                        if (moduleDoc == null) return;
-                        var span = moduleDoc.entry().namePos();
-                        if (span == null) return;
-                        consumer.accept(new Location(moduleDoc.owner().uri(), spanToRange(span)));
+                        workspace.getDocManager()
+                                .getHolder()
+                                .getStdlibModule(variable.name())
+                                .map(DocHolder.ModuleData::entry)
+                                .map(DocEntry.Module::namePos)
+                                .map(DocumentState::spanToLocation)
+                                .ifPresent(consumer);
                     } else {
-                        var span = variable.definitionPos();
-                        if (span == null) return;
-                        consumer.accept(new Location(documentUri, spanToRange(span)));
+                        Optional.ofNullable(variable.definitionPos())
+                                .map(DocumentState::spanToLocation)
+                                .ifPresent(consumer);
                     }
                 })
                 .forEach(list::add);
@@ -115,59 +113,59 @@ public class DefinitionFinder {
 
     public CompletableFuture<Hover> getHover(Position position) {
         var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
-        return analysis.get().thenCombineAsync(docs.get(), (analysis, localDocs) -> {
-            var docs = getVariableDocs(analysis, pos);
-            if (docs == null) docs = getPropertyDocs(analysis, pos);
-            if (docs == null) docs = getNestedDocs(localDocs, pos);
-            if (docs == null) return null;
-            var document = new Document();
-            emptyDocWriter.writeEntry(document, docs);
-            var markdown = renderer.render(document);
-            return new Hover(new MarkupContent(MarkupKind.MARKDOWN, markdown));
-        });
+        return analysis.get().thenCombineAsync(docs.get(), (analysis, localDocs) ->
+                getVariableDocs(analysis, pos)
+                        .or(() -> getPropertyDocs(analysis, pos))
+                        .or(() -> getNestedDocs(localDocs, pos))
+                        .map(entry -> {
+                            var document = new Document();
+                            docWriter.writeEntry(document, entry);
+                            return document;
+                        })
+                        .map(renderer::render)
+                        .map(markdown -> new MarkupContent(MarkupKind.MARKDOWN, markdown))
+                        .map(Hover::new)
+                        .orElse(null));
     }
 
-    private @Nullable DocEntry getNestedDocs(List<DocEntry> entries, SourcePos pos) {
+    private Optional<DocEntry> getNestedDocs(List<DocEntry> entries, SourcePos pos) {
         var out = new ArrayList<DocEntry>();
         forDocRefsAt(entries, pos, doc -> out.add(doc.entry()));
-        return out.isEmpty() ? null : out.getFirst();
+        return out.isEmpty() ? Optional.empty() : Optional.of(out.getFirst());
     }
 
-    private @Nullable DocEntry getVariableDocs(TreeAnalysis analysis, SourcePos pos) {
-        var ref = analysis.getVariableReferences().getFirstAt(pos);
-        if (ref == null) return null;
-        var docs = getDocs(ref, analysis);
-        if (docs == null) return null;
-        return docs.entry();
+    private Optional<DocEntry> getVariableDocs(TreeAnalysis analysis, SourcePos pos) {
+        return Optional.ofNullable(analysis.getVariableReferences().getFirstAt(pos))
+                .flatMap(this::getDocs)
+                .map(DocHolder.OwnerData::entry);
     }
 
-    private @Nullable DocEntry getPropertyDocs(TreeAnalysis analysis, SourcePos pos) {
+    private Optional<DocEntry> getPropertyDocs(TreeAnalysis analysis, SourcePos pos) {
         var access = analysis.getPropertyAccesses().getFirstAt(pos);
-        if (access == null) return null;
-        if (!(access.parent() instanceof VariableAccessExpression variableAccess)) return null;
-        var moduleVariable = analysis.getVariableDefinition(variableAccess);
-        if (moduleVariable == null) return null;
-        var moduleDoc = getDocs(moduleVariable, analysis);
-        if (moduleDoc == null) return null;
-        return moduleDoc.values().get(access.name());
+        if (!(access instanceof PropertyAccessExpression(VariableAccessExpression variableAccess, var name, var pos1, var pos2))) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(analysis.getVariableDefinition(variableAccess))
+                .flatMap(this::getDocs)
+                .map(DocHolder.OwnerData::values)
+                .map(valueMap -> valueMap.get(name));
     }
 
-    @Nullable
-    private DocTree.OwnerDoc getDocs(TreeAnalysis.Variable variable, TreeAnalysis analysis) {
-        var docTree = workspace.getDocManager().getDocTree();
+    private Optional<DocHolder.OwnerData> getDocs(TreeAnalysis.VariableDefinition variable) {
+        var docHolder = workspace.getDocManager().getHolder();
         if (variable.stdlib()) {
-            return docTree.getStdlibModule(variable.name());
+            return docHolder.getStdlibModule(variable.name()).map(Function.identity());
         }
-        if (variable.kind() == TreeAnalysis.Variable.Kind.IMPORT) {
-            var statement = analysis.getImportStatement(variable);
-            if (statement == null) return null;
-            return docTree.getModuleData(statement.libraryName());
+        if (variable instanceof TreeAnalysis.ImportDefinition importDefinition) {
+            return Optional.ofNullable(importDefinition.statement())
+                    .flatMap(statement -> docHolder.getModuleData(statement.libraryName()));
         }
-        return null;
+        return Optional.empty();
     }
 
-    private void forDocRefsAt(List<DocEntry> docs, SourcePos pos, Consumer<DocTree.OwnerDoc> consumer) {
-        var docTree = workspace.getDocManager().getDocTree();
+    private void forDocRefsAt(List<DocEntry> docs, SourcePos pos, Consumer<DocHolder.OwnerData> consumer) {
+        var docHolder = workspace.getDocManager().getHolder();
         for (var doc : docs) {
             DocType definition = null;
             if (doc instanceof DocEntry.Type type) {
@@ -176,10 +174,7 @@ public class DefinitionFinder {
                 definition = value.definition();
 
                 if (value.ownerPos() != null && value.ownerPos().contains(pos)) {
-                    var owner = docTree.getOwner(value.owner());
-                    if (owner != null) {
-                        consumer.accept(owner);
-                    }
+                    docHolder.getOwnerData(value.owner()).ifPresent(consumer);
                 }
             }
 
@@ -187,9 +182,8 @@ public class DefinitionFinder {
                 walkDocTypes(definition, docType -> {
                     if (!(docType instanceof DocType.Name nameType)) return;
                     if (nameType.pos() == null || !nameType.pos().contains(pos)) return;
-                    var data = docTree.getTypeData(nameType.name());
-                    if (data == null) return;
-                    consumer.accept(data);
+                    docHolder.getTypeData(nameType.name())
+                            .ifPresent(consumer);
                 });
             }
         }

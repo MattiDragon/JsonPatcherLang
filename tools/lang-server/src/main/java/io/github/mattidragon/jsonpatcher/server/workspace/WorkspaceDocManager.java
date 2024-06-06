@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceDocManager {
     private final Map<Path, Entry> entries = new HashMap<>();
-    private final DocTree tree = new DocTree();
+    private final DocHolder holder = new DocHolder();
 
     private static Optional<Path> getPath(String path) {
         try {
@@ -39,7 +39,7 @@ public class WorkspaceDocManager {
     }
     
     public void resetAll(List<String> folders) {
-        tree.clear();
+        holder.clear();
         for (var folder : folders) {
             var path = getPath(folder);
             if (path.isEmpty()) continue;
@@ -70,11 +70,11 @@ public class WorkspaceDocManager {
         if (path.isEmpty()) return;
         var removed = entries.remove(path.get());
         if (removed != null) removed.alive = false;
-        tree.deleteFile(uri);
+        holder.deleteFile(uri);
     }
 
-    public DocTree getDocTree() {
-        return tree;
+    public DocHolder getHolder() {
+        return holder;
     }
 
     private class Entry {
@@ -93,7 +93,7 @@ public class WorkspaceDocManager {
                 try {
                     var code = Files.readString(file);
                     var docParser = new DocParser();
-                    Lexer.lex(code, file.toString(), docParser);
+                    Lexer.lex(code, uri, docParser);
                     return docParser.getEntries();
                 } catch (IOException e) {
                     return List.of();
@@ -101,7 +101,7 @@ public class WorkspaceDocManager {
             }, Util.EXECUTOR);
             docs.thenAccept(entries -> {
                 if (alive) {
-                    tree.updateFile(uri, entries);
+                    holder.updateFile(uri, entries);
                 }
             });
         }

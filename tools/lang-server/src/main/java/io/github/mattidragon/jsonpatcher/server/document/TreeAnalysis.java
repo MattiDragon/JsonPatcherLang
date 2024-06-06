@@ -16,29 +16,27 @@ public class TreeAnalysis {
     public static final Scope GLOBAL_SCOPE;
 
     static {
-        var definitions = new ArrayList<Variable>();
+        var definitions = new ArrayList<VariableDefinition>();
         GLOBAL_SCOPE = new Scope(null, true, Collections.unmodifiableList(definitions));
         definitions.addAll(List.of(
-                new Variable("debug", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("math", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("objects", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("arrays", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("functions", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("strings", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("metapatch", Variable.Kind.IMPORT, false, true, null, GLOBAL_SCOPE),
-                new Variable("_isLibrary", Variable.Kind.LOCAL, false, true, null, GLOBAL_SCOPE),
-                new Variable("_target", Variable.Kind.LOCAL, false, true, null, GLOBAL_SCOPE),
-                new Variable("_isMetapatch", Variable.Kind.LOCAL, false, true, null, GLOBAL_SCOPE)
-        ));
+                new ImportDefinition("debug", true, null),
+                new ImportDefinition("math", true, null),
+                new ImportDefinition("objects", true, null),
+                new ImportDefinition("arrays", true, null),
+                new ImportDefinition("functions", true, null),
+                new ImportDefinition("strings", true, null),
+                new ImportDefinition("metapatch", true, null),
+                new LocalDefinition("_isLibrary", false, true, null),
+                new LocalDefinition("_target", false, true, null),
+                new LocalDefinition("_isMetapatch", false, true, null)));
     }
 
     private final PosLookup<String> imports = new PosLookup<>();
-    private final Map<Variable, ImportStatement> importStatements = new HashMap<>();
-    private final PosLookup<Variable> variableReferences = new PosLookup<>();
+    private final PosLookup<VariableDefinition> variableReferences = new PosLookup<>();
     private final PosLookup<PropertyAccessExpression> propertyAccesses = new PosLookup<>();
-    private final HashSet<Variable> unusedVariables = new HashSet<>();
-    private final Map<VariableAccessExpression, Variable> variableMappings = new HashMap<>();
-    private final Map<VariableAccessExpression, Scope> unboundVariables = new HashMap<>();
+    private final HashSet<VariableDefinition> unusedVariables = new HashSet<>();
+    private final Map<VariableAccessExpression, VariableDefinition> variableMappings = new HashMap<>();
+    private final Map<VariableAccessExpression, Scope> unresolvedVariables = new HashMap<>();
     private final Program tree;
 
     public TreeAnalysis(Program tree) {
@@ -46,43 +44,30 @@ public class TreeAnalysis {
         analyse(tree, GLOBAL_SCOPE.child());
         resolveLateVariables();
     }
-    
-    @Nullable
-    public Variable getVariableDefinition(VariableAccessExpression expression) {
-        return variableMappings.get(expression); 
-    }
-    
-    public Collection<VariableAccessExpression> getUnboundVariables() {
-        return unboundVariables.keySet();
-    }
-    
-    public Collection<Variable> getUnusedVariables() {
-        return unusedVariables;
-    }
-    
+
     private void analyse(ProgramNode node, Scope currentScope) {
         switch (node) {
             case ImportStatement statement -> {
-                var variable = Variable.ofImport(statement.variableName(), statement.variablePos(), currentScope);
+                var variable = VariableDefinition.ofImport(statement.variableName(), statement);
                 addVariable(currentScope, variable);
                 imports.add(statement.namePos(), statement.libraryName());
-                importStatements.put(variable, statement);
             }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), currentScope);
-                addVariable(currentScope, Variable.ofLocal(statement.name(), statement.mutable(), statement.namePos(), currentScope));
+                addVariable(currentScope,
+                        VariableDefinition.ofLocal(statement.name(), statement.mutable(), statement.namePos()));
             }
             case FunctionDeclarationStatement statement -> {
                 analyse(statement.getChildren(), currentScope);
-                addVariable(currentScope, Variable.ofFunction(statement.name(), statement.namePos(), currentScope));
+                addVariable(currentScope, VariableDefinition.ofFunction(statement.name(), statement));
             }
             case FunctionArgument argument -> {
                 argument.defaultValue().ifPresent(expression -> analyse(expression, currentScope));
                 if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
-                    addVariable(currentScope, Variable.ofParameter(variable.name(), argument.namePos(), currentScope));
+                    addVariable(currentScope, VariableDefinition.ofParameter(variable.name(), argument));
                 }
             }
-            
+
             case FunctionExpression expression -> {
                 var scope = currentScope.capturingChild();
                 analyse(expression.args(), scope);
@@ -94,7 +79,8 @@ public class TreeAnalysis {
             }
             case ForEachLoopStatement statement -> {
                 var scope = currentScope.child();
-                addVariable(scope, Variable.ofLocal(statement.variableName(), false, statement.variablePos(), currentScope));
+                addVariable(scope,
+                        VariableDefinition.ofLocal(statement.variableName(), false, statement.variablePos()));
                 analyse(statement.getChildren(), scope);
             }
             case ForLoopStatement statement -> {
@@ -104,40 +90,42 @@ public class TreeAnalysis {
                 analyse(statement.condition(), scope);
                 analyse(statement.incrementer(), scope);
             }
-            
+
             case VariableAccessExpression expression -> {
                 var variable = resolveVariable(expression.name(), currentScope, expression.pos());
                 if (variable != null) {
                     variableMappings.put(expression, variable);
                 } else {
-                    unboundVariables.put(expression, currentScope);
+                    unresolvedVariables.put(expression, currentScope);
                 }
             }
             case PropertyAccessExpression expression -> {
                 propertyAccesses.add(expression.namePos(), expression);
                 analyse(expression.parent(), currentScope);
             }
-            
+
             default -> node.getChildren().forEach(child -> analyse(child, currentScope));
         }
     }
 
-    private void addVariable(Scope currentScope, Variable variable) {
+    private void addVariable(Scope currentScope, VariableDefinition variable) {
         currentScope.definitions.add(variable);
-        if (variable.definitionPos() != null) {
-            variableReferences.add(variable.definitionPos(), variable);
+        var pos = variable.definitionPos();
+        if (pos != null) {
+            variableReferences.add(pos, variable);
         }
         unusedVariables.add(variable);
     }
 
-    // Resolves variables in cases where they are allowed to be declared after usage (lambda captures)
+    // Resolves variables in cases where they are allowed to be declared after usage
+    // (lambda captures)
     private void resolveLateVariables() {
-        for (var iterator = unboundVariables.entrySet().iterator(); iterator.hasNext(); ) {
+        for (var iterator = unresolvedVariables.entrySet().iterator(); iterator.hasNext();) {
             var entry = iterator.next();
             var key = entry.getKey();
             var scope = entry.getValue();
             var name = key.name();
-            
+
             while (scope != null) {
                 if (!scope.immediate) {
                     scope = scope.parent;
@@ -145,9 +133,10 @@ public class TreeAnalysis {
                 }
                 scope = scope.parent;
             }
-            
+
             while (scope != null) {
-                var variable = scope.definitions.stream().filter(candidate -> candidate.name.equals(name)).findFirst();
+                var variable = scope.definitions.stream().filter(candidate -> candidate.name().equals(name))
+                        .findFirst();
                 if (variable.isPresent()) {
                     variableMappings.put(key, variable.get());
                     variableReferences.add(key.pos(), variable.get());
@@ -159,10 +148,10 @@ public class TreeAnalysis {
             }
         }
     }
-    
+
     @Nullable
-    private Variable resolveVariable(String name, Scope scope, SourceSpan pos) {
-        var variable = scope.definitions.stream().filter(candidate -> candidate.name.equals(name)).findFirst()
+    private VariableDefinition resolveVariable(String name, Scope scope, SourceSpan pos) {
+        var variable = scope.definitions.stream().filter(candidate -> candidate.name().equals(name)).findFirst()
                 .or(() -> Optional.ofNullable(scope.parent).map(parent -> resolveVariable(name, parent, pos)))
                 .orElse(null);
         if (variable != null) {
@@ -171,39 +160,75 @@ public class TreeAnalysis {
         }
         return variable;
     }
-    
+
     private void analyse(Iterable<? extends ProgramNode> nodes, Scope scope) {
         for (var node : nodes) {
             analyse(node, scope);
         }
     }
 
-    public Program getTree() {
-        return tree;
+    /**
+     * Gets information about the definition of the variable that a specific access
+     * expression is using.
+     * 
+     * @return The variable definition, or {@code null} if it couldn't be resolved.
+     */
+    @Nullable
+    public VariableDefinition getVariableDefinition(VariableAccessExpression expression) {
+        return variableMappings.get(expression);
     }
 
+    /**
+     * Returns all the variables accesses whose definitions couldn't be resolved.
+     */
+    public Collection<VariableAccessExpression> getUnresolvedVariables() {
+        return unresolvedVariables.keySet();
+    }
+
+    /**
+     * Returns all the variables that were determined to not be used anywhere.
+     */
+    public Collection<VariableDefinition> getUnusedVariables() {
+        return unusedVariables;
+    }
+
+    /**
+     * Returns a {@link PosLookup} for the locations of import locations.
+     * {@snippet lang=jsonpatcher : 
+     * # @highlight regex=".library_name." :
+     * import "library_name" as variableName;
+     * }
+     */
     public PosLookup<String> getImportedModules() {
         return imports;
     }
 
-    public PosLookup<Variable> getVariableReferences() {
+    /**
+     * Returns a {@link PosLookup} for looking up variable definitions based on reference locations.
+     */
+    public PosLookup<VariableDefinition> getVariableReferences() {
         return variableReferences;
     }
 
+    /**
+     * Returns a {@link PosLookup} for looking up variable property expressions at their location.
+     */
     public PosLookup<PropertyAccessExpression> getPropertyAccesses() {
         return propertyAccesses;
     }
 
-    @Nullable
-    public ImportStatement getImportStatement(Variable variable) {
-        return importStatements.get(variable);
+    /**
+     * Returns the program tree originally passed to this analysis.
+     */
+    public Program getTree() {
+        return tree;
     }
 
-    public record Scope(@Nullable Scope parent, boolean immediate, List<Variable> definitions) {
+    public record Scope(@Nullable Scope parent, boolean immediate, List<VariableDefinition> definitions) {
         public Scope child() {
             return new Scope(this, true, new ArrayList<>());
         }
-        
+
         public Scope capturingChild() {
             return new Scope(this, false, new ArrayList<>());
         }
@@ -223,33 +248,71 @@ public class TreeAnalysis {
             return System.identityHashCode(this);
         }
     }
-    
-    public record Variable(
-            String name,
-            Kind kind,
-            boolean mutable,
-            boolean stdlib,
-            @Nullable SourceSpan definitionPos,
-            Scope owner
-    ) {
-        public static Variable ofImport(String name, @Nullable SourceSpan pos, Scope scope) {
-            return new Variable(name, Kind.IMPORT, false, false, pos, scope);
+
+    public sealed interface VariableDefinition {
+        static VariableDefinition ofImport(String name, @Nullable ImportStatement statement) {
+            return new ImportDefinition(name, false, statement);
         }
-        public static Variable ofFunction(String name, @Nullable SourceSpan pos, Scope scope) {
-            return new Variable(name, Kind.FUNCTION, false, false, pos, scope);
+
+        static VariableDefinition ofFunction(String name, @Nullable FunctionDeclarationStatement statement) {
+            return new FunctionDefinition(name, false, statement);
         }
-        public static Variable ofParameter(String name, @Nullable SourceSpan pos, Scope scope) {
-            return new Variable(name, Kind.PARAMETER, false, false, pos, scope);
+
+        static VariableDefinition ofParameter(String name, @Nullable FunctionArgument argument) {
+            return new ParameterDefinition(name, argument);
         }
-        public static Variable ofLocal(String name, boolean mutable, @Nullable SourceSpan pos, Scope scope) {
-            return new Variable(name, Kind.LOCAL, mutable, false, pos, scope);
+
+        static VariableDefinition ofLocal(String name, boolean mutable, @Nullable SourceSpan pos) {
+            return new LocalDefinition(name, mutable, false, pos);
         }
-        
-        public enum Kind {
-            IMPORT,
-            FUNCTION,
-            LOCAL,
-            PARAMETER
+
+        String name();
+
+        default boolean mutable() {
+            return false;
         }
+
+        boolean stdlib();
+
+        @Nullable
+        SourceSpan definitionPos();
+    }
+
+    public record ImportDefinition(String name, boolean stdlib, @Nullable ImportStatement statement)
+            implements VariableDefinition {
+        @Override
+        public @Nullable SourceSpan definitionPos() {
+            if (statement == null)
+                return null;
+            return statement.variablePos();
+        }
+    }
+
+    public record FunctionDefinition(String name, boolean stdlib, @Nullable FunctionDeclarationStatement statement)
+            implements VariableDefinition {
+        @Override
+        public @Nullable SourceSpan definitionPos() {
+            if (statement == null)
+                return null;
+            return statement.namePos();
+        }
+    }
+
+    public record ParameterDefinition(String name, @Nullable FunctionArgument argument) implements VariableDefinition {
+        @Override
+        public boolean stdlib() {
+            return false;
+        }
+
+        @Override
+        public @Nullable SourceSpan definitionPos() {
+            if (argument == null)
+                return null;
+            return argument.namePos();
+        }
+    }
+
+    public record LocalDefinition(String name, boolean mutable, boolean stdlib, @Nullable SourceSpan definitionPos)
+            implements VariableDefinition {
     }
 }

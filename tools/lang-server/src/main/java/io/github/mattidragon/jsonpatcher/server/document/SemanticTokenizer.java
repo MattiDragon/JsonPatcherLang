@@ -142,7 +142,7 @@ public class SemanticTokenizer {
                 builder.addToken(expression.namePos(), SemanticTokenTypes.Property);
             }
             case VariableAccessExpression expression -> {
-                var modifiers = new ArrayList<>();
+                var modifiers = new ArrayList<String>();
                 String type;
                 
                 var definition = analysis.getVariableDefinition(expression);
@@ -153,11 +153,11 @@ public class SemanticTokenizer {
                     if (definition.stdlib()) {
                         modifiers.add(SemanticTokenModifiers.DefaultLibrary);
                     }
-                    type = switch (definition.kind()) {
-                        case IMPORT -> SemanticTokenTypes.Namespace;
-                        case FUNCTION -> SemanticTokenTypes.Function;
-                        case LOCAL -> SemanticTokenTypes.Variable;
-                        case PARAMETER -> SemanticTokenTypes.Parameter;
+                    type = switch (definition) {
+                        case TreeAnalysis.ImportDefinition __ -> SemanticTokenTypes.Namespace;
+                        case TreeAnalysis.FunctionDefinition __ -> SemanticTokenTypes.Function;
+                        case TreeAnalysis.LocalDefinition __ -> SemanticTokenTypes.Variable;
+                        case TreeAnalysis.ParameterDefinition __ -> SemanticTokenTypes.Parameter;
                     };
                 } else {
                     // Assume unknown variables are locals as that's most likely

@@ -14,8 +14,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class DocumentManager implements TextDocumentService, LanguageClientAware {
     private final Map<String, DocumentState> documents = new HashMap<>();
+    private final WorkspaceManager workspace;
     private LanguageClient client;
-    private WorkspaceManager workspace;
 
     public DocumentManager(WorkspaceManager workspace) {
         this.workspace = workspace;
