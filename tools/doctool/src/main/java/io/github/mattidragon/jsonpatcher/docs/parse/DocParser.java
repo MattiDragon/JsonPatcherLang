@@ -90,10 +90,10 @@ public class DocParser implements CommentHandler {
                     groupPos(header, matcher, "valuename"));
             case "module" -> new DocEntry.Module(
                     matcher.group("modulename"),
-                    matcher.namedGroups().containsKey("modulelocation") ? matcher.group("modulelocation") : matcher.group("modulename"),
+                    matcher.group("modulelocation") != null ? matcher.group("modulelocation") : matcher.group("modulename"),
                     body,
                     groupPos(header, matcher, "modulename"),
-                    matcher.namedGroups().containsKey("modulelocation") ? groupPos(header, matcher, "modulelocation") : null
+                    matcher.group("modulelocation") != null ? groupPos(header, matcher, "modulelocation") : null
             );
             default -> throw new IllegalStateException("Regex produced impossible capture group");
         };

@@ -83,7 +83,7 @@ public class DocHolder {
                 Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
                 
                 var docParser = new DocParser();
-                Lexer.lex(Files.readString(path), fileName, docParser);
+                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), docParser);
                 
                 return buildFile(path.toUri().toASCIIString(), docParser.getEntries());
             } catch (IOException e) {
