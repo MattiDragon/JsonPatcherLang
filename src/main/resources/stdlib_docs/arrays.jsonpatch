@@ -20,13 +20,13 @@
 #| value arrays.map: (array: array, function: function) -> array
 #| Applies the specified function to each element in the array, creating a new array and returns the result.
 
-#| value arrays.mapped: (array: array, function: function) -> array
-#| Applies the specified function to each element in the array modifying them in p
+#| value arrays.replace: (array: array, function: function) -> array
+#| Applies the specified function to each element in the array modifying them in place
 
 #| value arrays.filter: (array: array, function: function) -> array
 #| Applies the specified function to each element in the array, creating a new array with only the elements that returned true.
 
-#| value arrays.filtered: (array: array, function: function) -> array
+#| value arrays.removeIf: (array: array, function: function) -> array
 #| Applies the specified function to each element in the array, removing the elements that returned false.
 
 #| value arrays.reduce: (array: array, function: function, initial: any) -> any

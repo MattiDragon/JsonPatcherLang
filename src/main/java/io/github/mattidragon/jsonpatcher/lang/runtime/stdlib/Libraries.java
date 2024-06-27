@@ -126,7 +126,7 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue mapped(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+        public Value.ArrayValue replace(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
             for (int i = 0; i < array.value().size(); i++) {
                 array.value().set(i, function.function().execute(context.context(), List.of(array.get(i, context.callPos())), context.callPos()));
             }
@@ -144,8 +144,8 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue filtered(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
-            array.value().removeIf(value -> !function.function().execute(context.context(), List.of(value), context.callPos()).asBoolean());
+        public Value.ArrayValue removeIf(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+            array.value().removeIf(value -> function.function().execute(context.context(), List.of(value), context.callPos()).asBoolean());
             return array;
         }
 
