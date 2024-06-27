@@ -70,14 +70,12 @@ public class DocumentState {
                 if (error.getPos() == null) continue;
                 var diagnostic = new Diagnostic(spanToRange(error.getPos()), error.getInternalMessage());
                 diagnostic.setSeverity(DiagnosticSeverity.Error);
-                diagnostic.setSource("JsonPatcher");
                 diagnostics.add(diagnostic);
             }
             
             for (var variable : treeAnalysis.getUnresolvedVariables()) {
                 var diagnostic = new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name()));
                 diagnostic.setSeverity(DiagnosticSeverity.Error);
-                diagnostic.setSource("JsonPatcher");
                 diagnostics.add(diagnostic);
             }
             
@@ -90,6 +88,27 @@ public class DocumentState {
                 diagnostics.add(diagnostic);
             }
             
+            for (var variable : treeAnalysis.getIllegalMutations()) {
+                var diagnostic = new Diagnostic(spanToRange(variable.pos()), "'%s' cannot be reassigned".formatted(variable.name()));
+                diagnostic.setSeverity(DiagnosticSeverity.Error);
+                diagnostics.add(diagnostic);
+            }
+            
+            for (var variable : treeAnalysis.getRedefinitions()) {
+                var pos = variable.definitionPos();
+                if (pos == null) continue;
+                Diagnostic diagnostic;
+                if (variable instanceof TreeAnalysis.ParameterDefinition) {
+                    diagnostic = new Diagnostic(spanToRange(pos), "Parameter '%s' shadows pre-exising variable".formatted(variable.name()));
+                    diagnostic.setSeverity(DiagnosticSeverity.Hint);
+                } else {
+                    diagnostic = new Diagnostic(spanToRange(pos), "A variable by the name '%s' is already defined in this scope".formatted(variable.name()));
+                    diagnostic.setSeverity(DiagnosticSeverity.Error);
+                }
+                diagnostics.add(diagnostic);
+            }
+            
+            diagnostics.forEach(diagnostic -> diagnostic.setSource("JsonPatcher"));
             client.publishDiagnostics(new PublishDiagnosticsParams(name, diagnostics));
         }, Util.EXECUTOR);
     }

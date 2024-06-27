@@ -163,7 +163,7 @@ public class DefinitionFinder {
                             builder.append(localDefinition.name());
                         }
                         case TreeAnalysis.ParameterDefinition parameterDefinition -> {
-                            builder.append("argument ");
+                            builder.append("param ");
                             builder.append(parameterDefinition.name());
                             var arg = parameterDefinition.argument();
                             if (arg != null && arg.defaultValue().isPresent()) {

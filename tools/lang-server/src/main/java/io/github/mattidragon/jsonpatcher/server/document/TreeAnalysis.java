@@ -3,6 +3,7 @@ package io.github.mattidragon.jsonpatcher.server.document;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Program;
 import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
+import io.github.mattidragon.jsonpatcher.lang.runtime.expression.AssignmentExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.PropertyAccessExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.VariableAccessExpression;
@@ -36,13 +37,26 @@ public class TreeAnalysis {
     private final PosLookup<PropertyAccessExpression> propertyAccesses = new PosLookup<>();
     private final HashSet<VariableDefinition> unusedVariables = new HashSet<>();
     private final Map<VariableAccessExpression, VariableDefinition> variableMappings = new HashMap<>();
+    private final List<VariableDefinition> redefinitions = new ArrayList<>();
     private final Map<VariableAccessExpression, Scope> unresolvedVariables = new HashMap<>();
+    private final List<VariableAccessExpression> mutations = new ArrayList<>();
+    private final List<VariableAccessExpression> illegalMutations = new ArrayList<>();
     private final Program tree;
 
     public TreeAnalysis(Program tree) {
         this.tree = tree;
         analyse(tree, GLOBAL_SCOPE.child());
         resolveLateVariables();
+        findIllegalMutations();
+    }
+
+    private void findIllegalMutations() {
+        for (var mutation : mutations) {
+            var definition = variableMappings.get(mutation);
+            if (definition != null && !definition.mutable()) {
+                illegalMutations.add(mutation);
+            }
+        }
     }
 
     private void analyse(ProgramNode node, Scope currentScope) {
@@ -66,6 +80,12 @@ public class TreeAnalysis {
                 if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
                     addVariable(currentScope, VariableDefinition.ofParameter(variable.name(), argument));
                 }
+            }
+            
+            case AssignmentExpression(VariableAccessExpression target, var value, var operator, var pos) -> {
+                mutations.add(target);
+                analyse(target, currentScope);
+                analyse(value, currentScope);
             }
 
             case FunctionExpression expression -> {
@@ -109,12 +129,23 @@ public class TreeAnalysis {
     }
 
     private void addVariable(Scope currentScope, VariableDefinition variable) {
+        checkRedefinition(currentScope, variable);
+        
         currentScope.definitions.add(variable);
         var pos = variable.definitionPos();
         if (pos != null) {
             variableReferences.add(pos, variable);
         }
         unusedVariables.add(variable);
+    }
+
+    private void checkRedefinition(Scope scope, VariableDefinition variable) {
+        do {
+            if (scope.definitions.stream().anyMatch(def -> def.name().equals(variable.name()))) {
+                redefinitions.add(variable);
+                break;
+            }
+        } while ((scope = scope.parent()) != null);
     }
 
     // Resolves variables in cases where they are allowed to be declared after usage
@@ -218,10 +249,21 @@ public class TreeAnalysis {
     }
 
     /**
+     * Returns a list of variable accesses that are involved in illegal mutation of immutable variables.
+     */
+    public List<VariableAccessExpression> getIllegalMutations() {
+        return illegalMutations;     
+    }
+
+    /**
      * Returns the program tree originally passed to this analysis.
      */
     public Program getTree() {
         return tree;
+    }
+
+    public List<VariableDefinition> getRedefinitions() {
+        return redefinitions;
     }
 
     public record Scope(@Nullable Scope parent, boolean immediate, List<VariableDefinition> definitions) {
