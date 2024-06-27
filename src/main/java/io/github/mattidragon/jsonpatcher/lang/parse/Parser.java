@@ -59,7 +59,7 @@ public class Parser {
                 expect(Token.SimpleToken.SEMICOLON);
             } catch (ParseException e) {
                 errors.add(e);
-            }
+            } catch (EndParsingException ignored) {}
         }
         
         var statements = new ArrayList<Statement>();
