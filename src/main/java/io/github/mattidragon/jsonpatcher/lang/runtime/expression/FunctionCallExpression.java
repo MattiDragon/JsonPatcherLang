@@ -14,7 +14,7 @@ public record FunctionCallExpression(Expression function, List<Expression> argum
     public Value evaluate(EvaluationContext context) {
         var function = this.function.evaluate(context);
         if (!(function instanceof Value.FunctionValue functionValue)) {
-            throw new EvaluationException("Tried to call %s, not a function".formatted(function), pos);
+            throw error(context, "Tried to call %s, not a function".formatted(function));
         }
 
         return functionValue.function().execute(

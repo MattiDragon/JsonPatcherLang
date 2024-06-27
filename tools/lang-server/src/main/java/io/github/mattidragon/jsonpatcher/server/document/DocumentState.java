@@ -3,6 +3,7 @@ package io.github.mattidragon.jsonpatcher.server.document;
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
@@ -21,22 +22,24 @@ public class DocumentState {
     private final String name;
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
-    
+    private final LangConfig config;
+
     private CompletableFuture<TreeAnalysis> analysis = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
     private CompletableFuture<List<DocEntry>> docs = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
-    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
+    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace, LangConfig config) {
         this.name = name;
         this.client = client;
         this.definitionFinder = new DefinitionFinder(() -> analysis, () -> docs, workspace, name);
+        this.config = config;
     }
 
     public void updateContent(String content) {
         record LexTuple(Lexer.Result result, DocParser docs) {}
         
         var lexResult = CompletableFuture.supplyAsync(() -> {
-            var docParser = new DocParser();
-            var result = Lexer.lex(content, name, docParser);
+            var docParser = new DocParser(config);
+            var result = Lexer.lex(config, content, name, docParser);
             return new LexTuple(result, docParser);
         }, Util.EXECUTOR);
         
@@ -47,7 +50,7 @@ public class DocumentState {
         docs = docResult.thenApply(DocParser::getEntries);
         var docErrors = docResult.thenApply(DocParser::getErrors);
         
-        var parseResult = tokens.thenApplyAsync(Parser::parse, Util.EXECUTOR);
+        var parseResult = tokens.thenApplyAsync(tokens1 -> Parser.parse(config, tokens1), Util.EXECUTOR);
         var tree = parseResult.thenApply(Parser.Result::program);
         var metadata = parseResult.thenApply(Parser.Result::metadata);
         var parseErrors = parseResult.thenApply(Parser.Result::errors);

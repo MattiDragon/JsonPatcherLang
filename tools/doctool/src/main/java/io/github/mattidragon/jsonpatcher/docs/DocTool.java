@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.docs;
 
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.docs.write.DocWriter;
+import io.github.mattidragon.jsonpatcher.lang.SimpleLangConfig;
 import org.commonmark.node.Document;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -54,7 +55,8 @@ public class DocTool {
             System.exit(1);
             return;
         }
-        var parser = new DocParser();
+        var config = new SimpleLangConfig(false, true);
+        var parser = new DocParser(config);
         List<String> inputFiles = parsedArgs.inputFiles;
         for (int i = 0; i < inputFiles.size(); i++) {
             var file = inputFiles.get(i);
@@ -69,7 +71,7 @@ public class DocTool {
             }
             if (!parsedArgs.join) {
                 outputParse(parser, parsedArgs, parsedArgs.outputFiles.get(i));
-                parser = new DocParser();
+                parser = new DocParser(config);
             }
         }
         if (parsedArgs.join) {

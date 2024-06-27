@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime.expression;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
@@ -12,7 +13,7 @@ import java.util.function.BiPredicate;
 public record BinaryExpression(Expression first, Expression second, Operator op, SourceSpan pos) implements Expression {
     @Override
     public Value evaluate(EvaluationContext context) {
-        return op.apply(first.evaluate(context), second.evaluate(context), pos);
+        return op.apply(first.evaluate(context), second.evaluate(context), pos, context.config());
     }
 
     @Override
@@ -21,9 +22,9 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
     }
 
     public interface Operator {
-        Value apply(Value first, Value second, SourceSpan pos);
+        Value apply(Value first, Value second, SourceSpan pos, LangConfig config);
 
-        Operator PLUS = (first, second, pos) -> {
+        Operator PLUS = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue(number1.value() + number2.value());
@@ -46,18 +47,18 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 object.value().putAll(object2.value());
                 return (object);
             }
-            throw new EvaluationException("Can't add %s and %s together".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't add %s and %s together".formatted(first, second), pos);
         };
-        Operator MINUS = (first, second, pos) -> {
+        Operator MINUS = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue(number1.value() - number2.value());
             }
-            throw new EvaluationException("Can't subtract %s from %s".formatted(second, first), pos);
+            throw new EvaluationException(config, "Can't subtract %s from %s".formatted(second, first), pos);
         };
-        Operator MULTIPLY = (first, second, pos) -> {
+        Operator MULTIPLY = (first, second, pos, config) -> {
             if (!(second instanceof Value.NumberValue number2)) {
-                throw new EvaluationException("Can't multiply by %s".formatted(second), pos);
+                throw new EvaluationException(config, "Can't multiply by %s".formatted(second), pos);
             }
             if (first instanceof Value.NumberValue number1) {
                 return new Value.NumberValue(number1.value() * number2.value());
@@ -72,31 +73,31 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 }
                 return array;
             }
-            throw new EvaluationException("Can't multiply %s with %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't multiply %s with %s".formatted(first, second), pos);
         };
-        Operator DIVIDE = (first, second, pos) -> {
+        Operator DIVIDE = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue(number1.value() / number2.value());
             }
-            throw new EvaluationException("Can't divide %s by %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't divide %s by %s".formatted(first, second), pos);
         };
-        Operator MODULO = (first, second, pos) -> {
+        Operator MODULO = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue(number1.value() % number2.value());
             }
-            throw new EvaluationException("Can't take %s modulo %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't take %s modulo %s".formatted(first, second), pos);
         };
-        Operator EXPONENT = (first, second, pos) -> {
+        Operator EXPONENT = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue(Math.pow(number1.value(), number2.value()));
             }
-            throw new EvaluationException("Can't take %s to the %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't take %s to the %s".formatted(first, second), pos);
         };
 
-        Operator AND = (first, second, pos) -> {
+        Operator AND = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue((int) number1.value() & (int) number2.value());
@@ -105,9 +106,9 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 && second instanceof Value.BooleanValue boolean2) {
                 return Value.BooleanValue.of(boolean1.value() && boolean2.value());
             }
-            throw new EvaluationException("Can't apply and to %s and %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't apply and to %s and %s".formatted(first, second), pos);
         };
-        Operator OR = (first, second, pos) -> {
+        Operator OR = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue((int) number1.value() | (int) number2.value());
@@ -116,9 +117,9 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 && second instanceof Value.BooleanValue boolean2) {
                 return Value.BooleanValue.of(boolean1.value() || boolean2.value());
             }
-            throw new EvaluationException("Can't apply or to %s and %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't apply or to %s and %s".formatted(first, second), pos);
         };
-        Operator XOR = (first, second, pos) -> {
+        Operator XOR = (first, second, pos, config) -> {
             if (first instanceof Value.NumberValue number1
                 && second instanceof Value.NumberValue number2) {
                 return new Value.NumberValue((int) number1.value() ^ (int) number2.value());
@@ -127,31 +128,31 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
                 && second instanceof Value.BooleanValue boolean2) {
                 return Value.BooleanValue.of(boolean1.value() ^ boolean2.value());
             }
-            throw new EvaluationException("Can't apply xor to %s and %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't apply xor to %s and %s".formatted(first, second), pos);
         };
 
-        Operator EQUALS = (first, second, pos) -> Value.BooleanValue.of(isEqual(first, second));
-        Operator NOT_EQUALS = (first, second, pos) -> Value.BooleanValue.of(!isEqual(first, second));
+        Operator EQUALS = (first, second, pos, config) -> Value.BooleanValue.of(isEqual(first, second));
+        Operator NOT_EQUALS = (first, second, pos, config) -> Value.BooleanValue.of(!isEqual(first, second));
         Operator LESS_THAN = numberComparison((first, second) -> first < second);
         Operator GREATER_THAN = numberComparison((first, second) -> first > second);
         Operator LESS_THAN_EQUAL = numberComparison((first, second) -> first <= second);
         Operator GREATER_THAN_EQUAL = numberComparison((first, second) -> first >= second);
 
-        Operator IN = (first, second, pos) -> {
+        Operator IN = (first, second, pos, config) -> {
             if (second instanceof Value.ArrayValue arrayValue) {
                 return Value.BooleanValue.of(arrayValue.value().contains(first));
             }
             if (first instanceof Value.StringValue string && second instanceof Value.ObjectValue objectValue) {
                 return Value.BooleanValue.of(objectValue.value().containsKey(string.value()));
             }
-            throw new EvaluationException("Can't check if %s is in %s".formatted(first, second), pos);
+            throw new EvaluationException(config, "Can't check if %s is in %s".formatted(first, second), pos);
         };
 
         /**
          * Special operator used for the normal assignment. Returns the second value.
          * @implNote This operator is checked for with an identity check. An equivalent operator will not work.
          */
-        Operator ASSIGN = (first, second, pos) -> second;
+        Operator ASSIGN = (first, second, pos, config) -> second;
 
         private static boolean isEqual(Value first, Value second) {
             if (first instanceof Value.NumberValue number1
@@ -182,12 +183,12 @@ public record BinaryExpression(Expression first, Expression second, Operator op,
         }
 
         private static Operator numberComparison(BiPredicate<Double, Double> predicate) {
-            return (first, second, pos) -> {
+            return (first, second, pos, config) -> {
                 if (first instanceof Value.NumberValue number1
                     && second instanceof Value.NumberValue number2) {
                     return Value.BooleanValue.of(predicate.test(number1.value(), number2.value()));
                 }
-                throw new EvaluationException("Can't compare %s and %s".formatted(second, first), pos);
+                throw new EvaluationException(config, "Can't compare %s and %s".formatted(second, first), pos);
             };
         }
     }

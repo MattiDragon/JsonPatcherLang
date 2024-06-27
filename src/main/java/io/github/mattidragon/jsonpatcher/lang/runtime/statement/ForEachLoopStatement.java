@@ -14,7 +14,7 @@ public record ForEachLoopStatement(Expression iterable, String variableName, Sta
     public void run(EvaluationContext context) {
         var values = iterable.evaluate(context);
         if (!(values instanceof Value.ArrayValue arrayValue)) {
-            throw new EvaluationException("Can only iterate arrays, tried to iterate %s".formatted(values), iterable.pos());
+            throw new EvaluationException(context.config(), "Can only iterate arrays, tried to iterate %s".formatted(values), iterable.pos());
         }
         for (var value : arrayValue.value()) {
             var loopContext = context.newScope();

@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.lang.test.lexer;
 
 import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
+import io.github.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ public class CommentTests {
                 
                 # comment at eof
                 """;
-        var result = Lexer.lex(code, "test file");
+        var result = Lexer.lex(TestUtils.CONFIG, code, "test file");
         Assertions.assertTrue(result.tokens().isEmpty(), "No tokens should be emitted");
     }
     
@@ -48,7 +49,7 @@ public class CommentTests {
                 List.of(" comment at eof")
         );
         var blocks = new ArrayList<List<String>>();
-        Lexer.lex(code, "test file", block -> blocks.add(block.stream().map(CommentHandler.Comment::text).toList()));
+        Lexer.lex(TestUtils.CONFIG, code, "test file", block -> blocks.add(block.stream().map(CommentHandler.Comment::text).toList()));
         
         Assertions.assertIterableEquals(
                 expected,

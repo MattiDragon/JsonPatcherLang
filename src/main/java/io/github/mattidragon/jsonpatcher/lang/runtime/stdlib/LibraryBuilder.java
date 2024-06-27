@@ -57,14 +57,14 @@ public class LibraryBuilder {
 
             functions.put(name, (context, args, callPos) -> {
                 var overload = byArgCount.get(args.size());
-                if (overload == null) throw new EvaluationException("No overload of %s with %s arguments".formatted(name, args.size()), callPos);
+                if (overload == null) throw new EvaluationException(context.config(), "No overload of %s with %s arguments".formatted(name, args.size()), callPos);
 
                 var hasContext = overload.getParameterTypes()[0] == FunctionContext.class;
 
                 for (int i = 0; i < args.size(); i++) {
                     var arg = args.get(i);
                     var param = overload.getParameterTypes()[hasContext ? i + 1 : i];
-                    if (!param.isInstance(arg)) throw new EvaluationException("Expected argument %s to be %s, was %s".formatted(i, param, arg), callPos);
+                    if (!param.isInstance(arg)) throw new EvaluationException(context.config(), "Expected argument %s to be %s, was %s".formatted(i, param, arg), callPos);
                 }
 
                 try {
@@ -87,7 +87,7 @@ public class LibraryBuilder {
                         if (overload.isAnnotationPresent(DisableErrorWrapping.class)) {
                             throw e1;
                         } else {
-                            throw new EvaluationException("Error while calling builtin function %s".formatted(name), callPos, e1);
+                            throw new EvaluationException(context.config(), "Error while calling builtin function %s".formatted(name), callPos, e1);
                         }
                     } else {
                         throw new RuntimeException("Unexpected error while calling builtin function %s".formatted(name), e);

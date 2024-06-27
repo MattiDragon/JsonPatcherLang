@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.docs.parse;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
@@ -9,13 +10,13 @@ public class DocParseException extends PositionedException {
     @Nullable
     private final SourceSpan pos;
 
-    protected DocParseException(String message, @Nullable SourceSpan pos) {
-        super(message);
+    protected DocParseException(LangConfig config, String message, @Nullable SourceSpan pos) {
+        super(config, message);
         this.pos = pos;
     }
 
-    public DocParseException(String message, SourcePos pos) {
-        this(message, new SourceSpan(pos, pos));
+    public DocParseException(LangConfig config, String message, SourcePos pos) {
+        this(config, message, new SourceSpan(pos, pos));
     }
 
     @Override

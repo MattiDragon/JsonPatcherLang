@@ -1,6 +1,7 @@
 package io.github.mattidragon.jsonpatcher.docs.parse;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
@@ -18,13 +19,18 @@ public class DocParser implements CommentHandler {
     //                                   |------------------------|   |----------------------------------------------------| |------------------------------------------------------------------------| |------------------------------------------------------------------|
     private static final String REGEX = "(?<kind>type|value|module)(?:(?<=type) *(?<typename>\\w+) *: *(?<typedefinition>.+)|(?<=value) *(?<owner>\\w+)\\.(?<valuename>\\w+) *: *(?<valuedefinition>.+)|(?<=module) *(?<modulename>\\w+)(?: +at +\"(?<modulelocation>.+)\")?)";
     private static final Pattern HEADER_PATTERN = Pattern.compile(REGEX);
+    private final LangConfig config;
     private final List<DocEntry> entries = new ArrayList<>();
     private final List<DocParseException> errors = new ArrayList<>();
 
+    public DocParser(LangConfig config) {
+        this.config = config;
+    }
+
     public void parse(String code, String file) {
-        var result = Lexer.lex(code, file, this);
+        var result = Lexer.lex(config, code, file, this);
         for (var error : result.errors()) {
-            errors.add(new DocParseException("Failed to lex %s: %s".formatted(file, error.getMessage()), error.getPos()));
+            errors.add(new DocParseException(config, "Failed to lex %s: %s".formatted(file, error.getMessage()), error.getPos()));
         }
     }
 
@@ -72,19 +78,19 @@ public class DocParser implements CommentHandler {
     private DocEntry parseEntry(CommentHandler.Comment header, String body) {
         var matcher = HEADER_PATTERN.matcher(header.text());
         if (!matcher.matches()) {
-            throw new DocParseException("Failed to parse comment header", header.start());
+            throw new DocParseException(config, "Failed to parse comment header", header.start());
         }
 
         return switch (matcher.group("kind")) {
             case "type" -> new DocEntry.Type(
                     matcher.group("typename"),
-                    TypeParser.parse(matcher.group("typedefinition"), groupPos(header, matcher, "typedefinition").from()),
+                    TypeParser.parse(matcher.group("typedefinition"), config, groupPos(header, matcher, "typedefinition").from()),
                     body,
                     groupPos(header, matcher, "typename"));
             case "value" -> new DocEntry.Value(
                     matcher.group("owner"),
                     matcher.group("valuename"),
-                    TypeParser.parse(matcher.group("valuedefinition"), groupPos(header, matcher, "valuedefinition").from()),
+                    TypeParser.parse(matcher.group("valuedefinition"), config, groupPos(header, matcher, "valuedefinition").from()),
                     body,
                     groupPos(header, matcher, "owner"),
                     groupPos(header, matcher, "valuename"));

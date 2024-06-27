@@ -19,7 +19,7 @@ public class JsonParser {
         if (token.token() == Token.KeywordToken.TRUE) return Value.BooleanValue.TRUE;
         if (token.token() == Token.KeywordToken.FALSE) return Value.BooleanValue.FALSE;
         if (token.token() == Token.KeywordToken.NULL) return Value.NullValue.NULL;
-        throw new Parser.ParseException("Unexpected token in json: " + token.token(), token.pos());
+        throw parser.new ParseException("Unexpected token in json: " + token.token(), token.pos());
     }
 
     private Value.ObjectValue parseObject() {

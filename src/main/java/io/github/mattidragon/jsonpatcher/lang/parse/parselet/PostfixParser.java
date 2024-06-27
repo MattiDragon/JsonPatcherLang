@@ -33,13 +33,13 @@ public class PostfixParser {
         return new BinaryExpression(left, right, operator, token.pos());
     }
 
-    private static Expression parseUnaryModification(Expression left, PositionedToken token, UnaryExpression.Operator operator) {
-        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't modify %s".formatted(left), token.pos());
+    private static Expression parseUnaryModification(Parser parser, Expression left, PositionedToken token, UnaryExpression.Operator operator) {
+        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't modify %s".formatted(left), token.pos());
         return new UnaryModificationExpression(true, ref, operator, token.pos());
     }
 
     private static Expression parseAssignment(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator) {
-        if (!(left instanceof Reference ref)) throw new Parser.ParseException("Can't assign to %s".formatted(left), token.pos());
+        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't assign to %s".formatted(left), token.pos());
         var right = parser.expression(Precedence.ROOT);
         return new AssignmentExpression(ref, right, operator, token.pos());
     }
@@ -87,7 +87,7 @@ public class PostfixParser {
                 }
             }
         }
-        throw new Parser.ParseException("Expected type name, got %s".formatted(type.explain()), token.pos());
+        throw parser.new ParseException("Expected type name, got %s".formatted(type.explain()), token.pos());
     }
 
     private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {
@@ -196,16 +196,16 @@ public class PostfixParser {
                     case DOT -> parsePropertyAccess(parser, left, parser.next());
                     case BEGIN_SQUARE -> parseIndexAccess(parser, left, parser.next());
                     case BEGIN_PAREN -> parseFunctionCall(parser, left, parser.next());
-                    case DOUBLE_MINUS -> parseUnaryModification(left, parser.next(), UnaryExpression.Operator.DECREMENT);
-                    case DOUBLE_PLUS -> parseUnaryModification(left, parser.next(), UnaryExpression.Operator.INCREMENT);
-                    case DOUBLE_BANG -> parseUnaryModification(left, parser.next(), UnaryExpression.Operator.NOT);
+                    case DOUBLE_MINUS -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.DECREMENT);
+                    case DOUBLE_PLUS -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.INCREMENT);
+                    case DOUBLE_BANG -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.NOT);
                     default -> null;
                 };
                 if (expression != null) return expression;
             }
             default:
                 if (simpleToken == Token.SimpleToken.ARROW) {
-                    throw new Parser.ParseException("Unexpected arrow, did you mean to put parentheses around your function arguments?", parser.next().pos());
+                    throw parser.new ParseException("Unexpected arrow, did you mean to put parentheses around your function arguments?", parser.next().pos());
                 }
                 return null;
         }

@@ -3,6 +3,7 @@ package io.github.mattidragon.jsonpatcher.lang.test.lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import io.github.mattidragon.jsonpatcher.lang.parse.Token;
+import io.github.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -13,7 +14,7 @@ public class StringTests {
         var program = """
                 "\\u0041"
                 """;
-        var tokens = Lexer.lex(program, "test file").tokens();
+        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
         PositionedToken positionedToken = tokens.getFirst();
         var token = positionedToken.token();
@@ -26,7 +27,7 @@ public class StringTests {
         var program = """
                 "\\u0gggg"
                 """;
-        var result = Lexer.lex(program, "test file");
+        var result = Lexer.lex(TestUtils.CONFIG, program, "test file");
         assertFalse(result.errors().isEmpty(), "Expected error from invalid escape");
     }
 
@@ -35,7 +36,7 @@ public class StringTests {
         var program = """
                 true
                 """;
-        var tokens = Lexer.lex(program, "test file").tokens();
+        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
         PositionedToken positionedToken = tokens.getFirst();
         var token = positionedToken.token();
@@ -48,7 +49,7 @@ public class StringTests {
         var program = """
                 'true'
                 """;
-        var tokens = Lexer.lex(program, "test file").tokens();
+        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
         assertEquals(1, tokens.size(), "Expected 1 token");
         PositionedToken positionedToken = tokens.getFirst();
         var token = positionedToken.token();

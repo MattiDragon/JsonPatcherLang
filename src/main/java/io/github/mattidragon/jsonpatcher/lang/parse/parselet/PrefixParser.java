@@ -52,7 +52,7 @@ public class PrefixParser {
 
     private static Expression unaryModification(Parser parser, PositionedToken token, UnaryExpression.Operator operator) {
         var expression = parser.expression(Precedence.PREFIX);
-        if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't modify to %s".formatted(expression), token.pos());
+        if (!(expression instanceof Reference ref)) throw parser.new ParseException("Can't modify to %s".formatted(expression), token.pos());
 
         return new UnaryModificationExpression(false, ref, operator, token.pos());
     }
@@ -99,7 +99,7 @@ public class PrefixParser {
         while (parser.peek().token() != Token.SimpleToken.END_PAREN) {
             // If we end up here with the varargs flag set we are trying to parse an argument after the varargs argument
             if (varargs) {
-                parser.addError(new Parser.ParseException("Varargs parameter must be last in list", varargsPos));
+                parser.addError(parser.new ParseException("Varargs parameter must be last in list", varargsPos));
                 varargs = false;
             }
             
@@ -116,10 +116,10 @@ public class PrefixParser {
             if (targets.contains(target)) {
                 if (target instanceof FunctionArgument.Target.Variable variable) {
                     PositionedToken positionedToken = parser.previous();
-                    parser.addError(new Parser.ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), positionedToken.pos()));
+                    parser.addError(parser.new ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), positionedToken.pos()));
                 } else {
                     PositionedToken positionedToken = parser.previous();
-                    parser.addError(new Parser.ParseException("Duplicate root parameter", positionedToken.pos()));
+                    parser.addError(parser.new ParseException("Duplicate root parameter", positionedToken.pos()));
                 }
             }
             targets.add(target);
@@ -132,7 +132,7 @@ public class PrefixParser {
                 defaultValue = Optional.of(new ArrayInitializerExpression(List.of(), varargsPos));
                 optionalArg = true;
                 if (parser.peek().token() == Token.SimpleToken.ASSIGN) {
-                    parser.addError(new Parser.ParseException("Varargs parameter cannot have default value", parser.peek().pos()));
+                    parser.addError(parser.new ParseException("Varargs parameter cannot have default value", parser.peek().pos()));
                 }
             }
             // We parse default values after varargs to avoid garbage errors. 
@@ -144,7 +144,7 @@ public class PrefixParser {
             } 
             if (defaultValue.isEmpty() && optionalArg) {
                 PositionedToken positionedToken = parser.previous();
-                parser.addError(new Parser.ParseException("All required arguments must appear before optional arguments", positionedToken.pos()));
+                parser.addError(parser.new ParseException("All required arguments must appear before optional arguments", positionedToken.pos()));
             }
             
             arguments.add(new FunctionArgument(target, defaultValue, namePos));
@@ -210,7 +210,7 @@ public class PrefixParser {
             case Token.SimpleToken.BEGIN_CURLY -> objectInit(parser, token);
             case Token.SimpleToken.BEGIN_PAREN -> parenthesis(parser);
             
-            case Token other -> throw new Parser.ParseException("Unexpected token at start of expression: %s".formatted(other.explain()), pos);
+            case Token other -> throw parser.new ParseException("Unexpected token at start of expression: %s".formatted(other.explain()), pos);
         };
     }
 }

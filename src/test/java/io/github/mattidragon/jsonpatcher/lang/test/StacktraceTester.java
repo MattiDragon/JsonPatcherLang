@@ -11,6 +11,18 @@ public class StacktraceTester {
         var file = new SourceFile("test file", "abcdefhijklmnop");
         var span = new SourceSpan(new SourcePos(file, 1, 2), new SourcePos(file, 1, 5));
         //noinspection CallToPrintStackTrace
-        new EvaluationException("error 1", span, new EvaluationException("error 2", null, new EvaluationException("error 3", span, new EvaluationException("error 4", null)))).printStackTrace();
+        new EvaluationException(TestUtils.CONFIG,
+                "error 1",
+                span,
+                new EvaluationException(TestUtils.CONFIG,
+                        "error 2",
+                        null,
+                        new EvaluationException(TestUtils.CONFIG,
+                                "error 3",
+                                span,
+                                new EvaluationException(TestUtils.CONFIG,
+                                        "error 4",
+                                        null))))
+                .printStackTrace();
     }
 }

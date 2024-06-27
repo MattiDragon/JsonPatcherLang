@@ -19,5 +19,4 @@ tasks.assemble {
 
 tasks.shadowJar {
     exclude("META-INF/maven/org.commonmark/**")
-    from(layout.projectDirectory.dir("src/main/dist_resources"))
 }

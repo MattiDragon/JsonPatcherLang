@@ -9,7 +9,7 @@ public interface Statement extends ProgramNode {
     void run(EvaluationContext context);
     SourceSpan getPos();
 
-    default EvaluationException error(String message) {
-        return new EvaluationException(message, getPos());
+    default EvaluationException error(EvaluationContext context, String message) {
+        return new EvaluationException(context.config(), message, getPos());
     }
 }

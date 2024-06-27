@@ -4,12 +4,16 @@ import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class PositionedException extends RuntimeException {
-    protected PositionedException(String message) {
-        super(message);
+    private final LangConfig config;
+
+    protected PositionedException(LangConfig config, String message) {
+        super(message, null, true, config.useJavaStacktrace());
+        this.config = config;
     }
 
-    protected PositionedException(String message, Throwable cause) {
-        super(message, cause);
+    protected PositionedException(LangConfig config, String message, Throwable cause) {
+        super(message, cause, true, config.useJavaStacktrace());
+        this.config = config;
     }
 
     protected abstract String getBaseMessage();
@@ -21,14 +25,8 @@ public abstract class PositionedException extends RuntimeException {
     }
 
     @Override
-    public synchronized Throwable fillInStackTrace() {
-        if (LangConfig.INSTANCE.useJavaStacktrace()) return super.fillInStackTrace();
-        return this;
-    }
-
-    @Override
     public synchronized Throwable getCause() {
-        if (LangConfig.INSTANCE.useJavaStacktrace()) return super.getCause();
+        if (config.useJavaStacktrace()) return super.getCause();
 
         var original = super.getCause();
         return original instanceof PositionedException ? null : original;
@@ -42,8 +40,8 @@ public abstract class PositionedException extends RuntimeException {
 
         fillInError(message);
 
-        if (!LangConfig.INSTANCE.useJavaStacktrace()) {
-            if (LangConfig.INSTANCE.useShortStacktrace()) {
+        if (!config.useJavaStacktrace()) {
+            if (config.useShortStacktrace()) {
                 message.append("\n|");
             }
             fillInCause(message);
@@ -54,7 +52,7 @@ public abstract class PositionedException extends RuntimeException {
 
     private void fillInCause(StringBuilder message) {
         if (super.getCause() instanceof PositionedException cause) {
-            if (LangConfig.INSTANCE.useShortStacktrace()) {
+            if (config.useShortStacktrace()) {
                 message.append("\n| Caused by: ");
                 cause.fillInShortError(message);
             } else {

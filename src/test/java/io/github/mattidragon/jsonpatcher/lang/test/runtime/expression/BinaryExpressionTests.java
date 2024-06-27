@@ -25,27 +25,27 @@ public class BinaryExpressionTests {
         assertEquals(new NumberValue(3),
                 op.apply(new NumberValue(1),
                         new NumberValue(2),
-                        TestUtils.POS));
+                        TestUtils.POS, TestUtils.CONFIG));
 
         assertEquals(new StringValue("12"),
                 op.apply(new StringValue("1"),
                         new StringValue("2"),
-                        TestUtils.POS));
+                        TestUtils.POS, TestUtils.CONFIG));
 
         TestUtils.assertEquals(
                 new ArrayValue(List.of(new NumberValue(1), new NumberValue(2))),
                 op.apply(new ArrayValue(List.of(new NumberValue(1))),
                         new ArrayValue(List.of(new NumberValue(2))),
-                        TestUtils.POS));
+                        TestUtils.POS, TestUtils.CONFIG));
 
         TestUtils.assertEquals(
                 new ObjectValue(Map.of("a", new NumberValue(1), "b", new NumberValue(2))),
                 op.apply(new ObjectValue(Map.of("a", new NumberValue(1))),
                         new ObjectValue(Map.of("b", new NumberValue(2))),
-                        TestUtils.POS));
+                        TestUtils.POS, TestUtils.CONFIG));
 
-        assertThrowsExactly(EvaluationException.class, () -> op.apply(new NumberValue(1), new StringValue("2"), TestUtils.POS));
-        assertThrowsExactly(EvaluationException.class, () -> op.apply(new StringValue("1"), new NumberValue(2), TestUtils.POS));
-        assertThrowsExactly(EvaluationException.class, () -> op.apply(new ArrayValue(List.of(new NumberValue(1))), new NumberValue(2), TestUtils.POS));
+        assertThrowsExactly(EvaluationException.class, () -> op.apply(new NumberValue(1), new StringValue("2"), TestUtils.POS, TestUtils.CONFIG));
+        assertThrowsExactly(EvaluationException.class, () -> op.apply(new StringValue("1"), new NumberValue(2), TestUtils.POS, TestUtils.CONFIG));
+        assertThrowsExactly(EvaluationException.class, () -> op.apply(new ArrayValue(List.of(new NumberValue(1))), new NumberValue(2), TestUtils.POS, TestUtils.CONFIG));
     }
 }

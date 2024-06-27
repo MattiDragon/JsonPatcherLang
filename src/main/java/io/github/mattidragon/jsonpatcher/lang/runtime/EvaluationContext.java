@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jetbrains.annotations.ApiStatus;
@@ -10,19 +11,19 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public record EvaluationContext(Value.ObjectValue root, VariableStack variables, LibraryLocator libraryLocator, Consumer<Value> debugConsumer) {
+public record EvaluationContext(Value.ObjectValue root, VariableStack variables, LibraryLocator libraryLocator, Consumer<Value> debugConsumer, LangConfig config) {
     private static final ThreadLocal<Set<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(HashSet::new);
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(LangConfig config) {
+        return new Builder(config);
     }
 
     public EvaluationContext withRoot(Value.ObjectValue root) {
-        return new EvaluationContext(root, variables, libraryLocator, debugConsumer);
+        return new EvaluationContext(root, variables, libraryLocator, debugConsumer, config);
     }
 
     public EvaluationContext newScope() {
-        return new EvaluationContext(root, new VariableStack(variables), libraryLocator, debugConsumer);
+        return new EvaluationContext(root, new VariableStack(config, variables), libraryLocator, debugConsumer, config);
     }
 
     public void log(Value value) {
@@ -34,12 +35,12 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
             return Libraries.LOOKUP.get(libraryName).get();
         }
         if (Libraries.BUILTIN.containsKey(libraryName)) {
-            throw new EvaluationException("Cannot load builtin library %s. You don't need to import it.".formatted(libraryName), pos);
+            throw new EvaluationException(config, "Cannot load builtin library %s. You don't need to import it.".formatted(libraryName), pos);
         }
 
         try {
             if (!LIBRARY_RECURSION_DETECTOR.get().add(libraryName)) {
-                throw new EvaluationException("Recursive library import detected for %s".formatted(libraryName), pos);
+                throw new EvaluationException(config, "Recursive library import detected for %s".formatted(libraryName), pos);
             }
             var json = new Value.ObjectValue();
             libraryLocator.loadLibrary(libraryName, json, pos);
@@ -63,13 +64,20 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
     }
 
     public static class Builder {
+        private final LangConfig config;
         private Value.ObjectValue root = new Value.ObjectValue();
-        private final VariableStack variables = new VariableStack();
-        private LibraryLocator libraryLocator = (name, obj, pos) -> {
-            throw new EvaluationException("No libraries available", pos);
-        };
+        private final VariableStack variables;
+        private LibraryLocator libraryLocator;
         private Consumer<Value> debugConsumer = x -> System.out.println("Debug from patch: " + x);
         private Map<String, Supplier<Value.ObjectValue>> stdlib = Libraries.BUILTIN;
+
+        public Builder(LangConfig config) {
+            this.config = config;
+            libraryLocator = (name, obj, pos) -> {
+                throw new EvaluationException(this.config, "No libraries available", pos);
+            };
+            variables = new VariableStack(config);
+        }
 
         public Builder root(Value.ObjectValue root) {
             this.root = root;
@@ -106,7 +114,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
 
         public EvaluationContext build() {
             stdlib.forEach((name, supplier) -> variables.createVariable(name, supplier.get(), false, null));
-            return new EvaluationContext(root, variables, libraryLocator, debugConsumer).newScope();
+            return new EvaluationContext(root, variables, libraryLocator, debugConsumer, config).newScope();
         }
     }
 }

@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.parse;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,6 +9,7 @@ import java.util.List;
 
 public class Lexer {
     public static final int TAB_WIDTH = 4;
+    private final LangConfig config;
     private final SourceFile file;
     private final String program;
     private final List<PositionedToken> tokens = new ArrayList<>();
@@ -17,7 +19,8 @@ public class Lexer {
     private int currentColumn = 1;
     private CommentHandler commentHandler = CommentHandler.EMPTY;
 
-    private Lexer(String program, String filename) {
+    private Lexer(LangConfig config, String program, String filename) {
+        this.config = config;
         this.program = program;
         this.file = new SourceFile(filename, program);
     }
@@ -50,12 +53,12 @@ public class Lexer {
         return new Result(tokens, errors);
     }
 
-    public static Result lex(String program, String filename) {
-        return new Lexer(program, filename).lex();
+    public static Result lex(LangConfig config, String program, String filename) {
+        return new Lexer(config, program, filename).lex();
     }
 
-    public static Result lex(String program, String filename, CommentHandler commentHandler) {
-        var lexer = new Lexer(program, filename);
+    public static Result lex(LangConfig config, String program, String filename, CommentHandler commentHandler) {
+        var lexer = new Lexer(config, program, filename);
         lexer.commentHandler = commentHandler;
         return lexer.lex();
     }
@@ -223,7 +226,7 @@ public class Lexer {
         var to = new SourcePos(file, currentLine, currentColumn - 1);
         SourceSpan pos = new SourceSpan(from, to);
         if (token instanceof Token.ErrorToken errorToken) {
-            errors.add(new LexException(errorToken.error(), pos.from()));
+            errors.add(new LexException(config, errorToken.error(), pos.from()));
         } else {
             tokens.add(new PositionedToken(pos, token));
         }
@@ -244,14 +247,14 @@ public class Lexer {
     }
 
     public LexException error(String message, int offset) {
-        return new LexException(message, new SourcePos(file, currentLine, currentColumn - offset));
+        return new LexException(config, message, new SourcePos(file, currentLine, currentColumn - offset));
     }
 
     public static class LexException extends PositionedException {
         private final SourcePos pos;
         
-        public LexException(String message, SourcePos pos) {
-            super(message);
+        public LexException(LangConfig config, String message, SourcePos pos) {
+            super(config, message);
             this.pos = pos;
         }
 

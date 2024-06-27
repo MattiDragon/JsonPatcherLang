@@ -10,7 +10,7 @@ public interface Expression extends ProgramNode {
     Value evaluate(EvaluationContext context);
     SourceSpan pos();
 
-    default EvaluationException error(String message) {
-        return new EvaluationException(message, pos());
+    default EvaluationException error(EvaluationContext context, String message) {
+        return new EvaluationException(context.config(), message, pos());
     }
 }

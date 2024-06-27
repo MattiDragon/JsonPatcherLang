@@ -1,5 +1,7 @@
 package io.github.mattidragon.jsonpatcher.server;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
+import io.github.mattidragon.jsonpatcher.lang.SimpleLangConfig;
 import io.github.mattidragon.jsonpatcher.server.document.DocumentManager;
 import io.github.mattidragon.jsonpatcher.server.document.SemanticTokenizer;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
@@ -13,7 +15,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class JsonPatcherLanguageServer implements LanguageServer, LanguageClientAware {
     private int statusCode = 1;
-    private final WorkspaceManager workspaceManager = new WorkspaceManager();
+    private final LangConfig config = new SimpleLangConfig(false, true);
+    private final WorkspaceManager workspaceManager = new WorkspaceManager(config);
     private final DocumentManager documentService = new DocumentManager(workspaceManager);
     private boolean watchedFilesDynReg;
     private LanguageClient client;

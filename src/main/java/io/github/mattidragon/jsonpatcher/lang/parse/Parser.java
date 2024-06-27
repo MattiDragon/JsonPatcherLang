@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.parse;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
 import io.github.mattidragon.jsonpatcher.lang.parse.parselet.PostfixParser;
 import io.github.mattidragon.jsonpatcher.lang.parse.parselet.Precedence;
@@ -17,23 +18,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
+    private final LangConfig config;
     private final List<PositionedToken> tokens;
     private final List<ParseException> errors = new ArrayList<>();
     private final PatchMetadata metadata;
     private int current = 0;
 
-    private Parser(List<PositionedToken> tokens) {
+    private Parser(LangConfig config, List<PositionedToken> tokens) {
+        this.config = config;
         this.tokens = tokens;
         this.metadata = new PatchMetadata();
     }
 
-    public static Result parse(List<PositionedToken> tokens) {
-        return new Parser(tokens).program();
+    public static Result parse(LangConfig config, List<PositionedToken> tokens) {
+        return new Parser(config, tokens).program();
     }
 
     @VisibleForTesting
-    public static Expression parseExpression(List<PositionedToken> tokens) throws ParseException {
-        var parser = new Parser(tokens);
+    public static Expression parseExpression(LangConfig config, List<PositionedToken> tokens) throws ParseException {
+        var parser = new Parser(config, tokens);
         var errors = parser.errors;
         Expression expression = null;
         try {
@@ -103,6 +106,10 @@ public class Parser {
         }
 
         return left;
+    }
+
+    public LangConfig getConfig() {
+        return config;
     }
 
     public void seek(Token token) {
@@ -215,11 +222,11 @@ public class Parser {
     private static class EndParsingException extends RuntimeException {
     }
 
-    public static class ParseException extends PositionedException {
+    public class ParseException extends PositionedException {
         public final SourceSpan pos;
 
         public ParseException(String message, SourceSpan pos) {
-            super(message);
+            super(Parser.this.config, message);
             this.pos = pos;
         }
 

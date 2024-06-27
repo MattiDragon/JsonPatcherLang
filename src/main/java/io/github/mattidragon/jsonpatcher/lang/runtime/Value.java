@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.runtime.function.PatchFunction;
 import org.jetbrains.annotations.NotNull;
@@ -26,17 +27,17 @@ public sealed interface Value {
             this(Map.of());
         }
 
-        public Value get(String key, @Nullable SourceSpan pos) {
-            if (!value.containsKey(key)) throw new EvaluationException("Object %s has no key %s".formatted(this, key), pos);
+        public Value get(String key, LangConfig config, @Nullable SourceSpan pos) {
+            if (!value.containsKey(key)) throw new EvaluationException(config, "Object %s has no key %s".formatted(this, key), pos);
             return value.get(key);
         }
 
-        public void set(String key, Value value, @Nullable SourceSpan pos) {
+        public void set(String key, Value value, LangConfig config, @Nullable SourceSpan pos) {
             this.value.put(key, value);
         }
 
-        public void remove(String key, SourceSpan pos) {
-            if (!value.containsKey(key)) throw new EvaluationException("Object %s has no key %s".formatted(this, key), pos);
+        public void remove(String key, LangConfig config, SourceSpan pos) {
+            if (!value.containsKey(key)) throw new EvaluationException(config, "Object %s has no key %s".formatted(this, key), pos);
             value.remove(key);
         }
 
@@ -76,21 +77,21 @@ public sealed interface Value {
             this(List.of());
         }
 
-        public Value get(int index, @Nullable SourceSpan pos) {
-            return this.value.get(fixIndex(index, pos));
+        public Value get(int index, LangConfig config, @Nullable SourceSpan pos) {
+            return this.value.get(fixIndex(index, config, pos));
         }
 
-        public void set(int index, Value value, @Nullable SourceSpan pos) {
-            this.value.set(fixIndex(index, pos), value);
+        public void set(int index, Value value, LangConfig config, @Nullable SourceSpan pos) {
+            this.value.set(fixIndex(index, config, pos), value);
         }
 
-        public void remove(int index, SourceSpan pos) {
-            value.remove(fixIndex(index, pos));
+        public void remove(int index, LangConfig config, SourceSpan pos) {
+            value.remove(fixIndex(index, config, pos));
         }
 
-        private int fixIndex(int index, @Nullable SourceSpan pos) {
+        private int fixIndex(int index, LangConfig config, @Nullable SourceSpan pos) {
             if (index >= value.size() || index < -value.size())
-                throw new EvaluationException("Array index out of bounds (index: %s, size: %s)".formatted(index, value.size()), pos);
+                throw new EvaluationException(config, "Array index out of bounds (index: %s, size: %s)".formatted(index, value.size()), pos);
             if (index < 0) return value.size() + index;
             return index;
         }

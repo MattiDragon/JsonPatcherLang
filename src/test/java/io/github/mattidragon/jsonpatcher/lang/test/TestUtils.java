@@ -1,5 +1,7 @@
 package io.github.mattidragon.jsonpatcher.lang.test;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
+import io.github.mattidragon.jsonpatcher.lang.SimpleLangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.*;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
@@ -23,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class TestUtils {
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
+    public static final LangConfig CONFIG = new SimpleLangConfig(false, true);
     public static final Consumer<Value> EMPTY_DEBUG_CONSUMER = (value) -> {};
 
     public static EvaluationContext createTestContext() {
-        return EvaluationContext.builder().debugConsumer(EMPTY_DEBUG_CONSUMER).build();
+        return EvaluationContext.builder(CONFIG).debugConsumer(EMPTY_DEBUG_CONSUMER).build();
     }
 
     public static LibraryBuilder.FunctionContext createTestFunctionContext() {
@@ -34,7 +37,7 @@ public class TestUtils {
     }
 
     public static void testCode(String code) {
-        var result = Parser.parse(Lexer.lex(code, "test file").tokens());
+        var result = Parser.parse(CONFIG, Lexer.lex(CONFIG, code, "test file").tokens());
         if (!result.errors().isEmpty()) {
             var error = new RuntimeException("Expected successful parse");
             result.errors().forEach(error::addSuppressed);
@@ -46,14 +49,14 @@ public class TestUtils {
         }
 
         var program = result.program();
-        var context = EvaluationContext.builder()
+        var context = EvaluationContext.builder(CONFIG)
                 .debugConsumer(EMPTY_DEBUG_CONSUMER)
                 .build();
         Assertions.assertDoesNotThrow(() -> program.execute(context));
     }
 
     public static void testCode(String code, Value expected) {
-        var result = Parser.parse(Lexer.lex(code, "test file").tokens());
+        var result = Parser.parse(CONFIG, Lexer.lex(CONFIG, code, "test file").tokens());
         if (!result.errors().isEmpty()) {
             var error = new RuntimeException("Expected successful parse");
             result.errors().forEach(error::addSuppressed);
@@ -67,7 +70,7 @@ public class TestUtils {
         var program = result.program();
 
         var output = new Value[1];
-        var context = EvaluationContext.builder()
+        var context = EvaluationContext.builder(CONFIG)
                 .debugConsumer(EMPTY_DEBUG_CONSUMER)
                 .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args, pos) -> {
                     output[0] = args.getFirst();
@@ -81,7 +84,7 @@ public class TestUtils {
 
     public static void testExpression(String code, Value expected) {
         var expression = new Expression[1];
-        assertDoesNotThrow(() -> expression[0] = parseExpression(Lexer.lex(code, "test file").tokens()));
+        assertDoesNotThrow(() -> expression[0] = parseExpression(CONFIG, Lexer.lex(CONFIG, code, "test file").tokens()));
         assertNotNull(expression[0]);
 
         var context = createTestContext();

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 public class ImportStatementTests {
     @Test
     public void testSimpleImport() {
-        var context = EvaluationContext.builder()
+        var context = EvaluationContext.builder(TestUtils.CONFIG)
                 .debugConsumer(TestUtils.EMPTY_DEBUG_CONSUMER)
                 .libraryLocator((libraryName, libraryObject, importPos) -> {
                     // test library locator always returns a library

@@ -73,7 +73,7 @@ public class Libraries {
         private static Value.FunctionValue numberUnary(DoubleUnaryOperator operator) {
             return new Value.FunctionValue(((PatchFunction.BuiltInPatchFunction) (context, args, callPos) -> {
                 if (!(args.getFirst() instanceof Value.NumberValue value)) {
-                    throw new EvaluationException("Expected argument to be number, was %s".formatted(args.getFirst()), callPos);
+                    throw new EvaluationException(context.config(), "Expected argument to be number, was %s".formatted(args.getFirst()), callPos);
                 }
                 return new Value.NumberValue(operator.applyAsDouble(value.value()));
             }).argCount(1));
@@ -86,7 +86,7 @@ public class Libraries {
 
         @Method
         public Value.ArrayValue insert(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.NumberValue index, Value value) {
-            array.value().add(fixIndexForInsert((int) index.value(), array.value().size(), context.callPos()), value);
+            array.value().add(fixIndexForInsert(context, (int) index.value(), array.value().size(), context.callPos()), value);
             return array;
         }
 
@@ -98,7 +98,7 @@ public class Libraries {
 
         @Method
         public Value pop(LibraryBuilder.FunctionContext context, Value.ArrayValue array) {
-            if (array.value().isEmpty()) throw new EvaluationException("Can't pop from empty array", context.callPos());
+            if (array.value().isEmpty()) throw new EvaluationException(context.context().config(), "Can't pop from empty array", context.callPos());
             return array.value().removeLast();
         }
 
@@ -111,8 +111,8 @@ public class Libraries {
         @Method
         public Value removeAt(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.NumberValue index) {
             var i = (int) index.value();
-            var found = array.get(i, context.callPos());
-            array.remove(i, context.callPos());
+            var found = array.get(i, context.context().config(), context.callPos());
+            array.remove(i, context.context().config(), context.callPos());
             return found;
         }
 
@@ -128,7 +128,7 @@ public class Libraries {
         @Method
         public Value.ArrayValue replace(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
             for (int i = 0; i < array.value().size(); i++) {
-                array.value().set(i, function.function().execute(context.context(), List.of(array.get(i, context.callPos())), context.callPos()));
+                array.value().set(i, function.function().execute(context.context(), List.of(array.get(i, context.context().config(), context.callPos())), context.callPos()));
             }
             return array;
         }
@@ -163,9 +163,9 @@ public class Libraries {
             var newArray = new Value.ArrayValue();
             var s = (int) start.value();
             var e = (int) end.value();
-            if (s < 0 || s > array.value().size()) throw new EvaluationException("Array index out of bounds (index: %s, size: %s)".formatted(s, array.value().size()), context.callPos());
-            if (e < 0 || e > array.value().size()) throw new EvaluationException("Array index out of bounds (index: %s, size: %s)".formatted(e, array.value().size()), context.callPos());
-            if (s > e) throw new EvaluationException("Start index must be less than end index (start: %s, end: %s)".formatted(s, e), context.callPos());
+            if (s < 0 || s > array.value().size()) throw new EvaluationException(context.context().config(), "Array index out of bounds (index: %s, size: %s)".formatted(s, array.value().size()), context.callPos());
+            if (e < 0 || e > array.value().size()) throw new EvaluationException(context.context().config(), "Array index out of bounds (index: %s, size: %s)".formatted(e, array.value().size()), context.callPos());
+            if (s > e) throw new EvaluationException(context.context().config(), "Start index must be less than end index (start: %s, end: %s)".formatted(s, e), context.callPos());
             for (int i = s; i < e; i++) {
                 newArray.value().add(array.value().get(i));
             }
@@ -176,7 +176,7 @@ public class Libraries {
         public Value.ArrayValue slice(LibraryBuilder.FunctionContext context, Value.ArrayValue array, Value.NumberValue start) {
             var newArray = new Value.ArrayValue();
             var s = (int) start.value();
-            if (s < 0 || s > array.value().size()) throw new EvaluationException("Array index out of bounds (index: %s, size: %s)".formatted(s, array.value().size()), context.callPos());
+            if (s < 0 || s > array.value().size()) throw new EvaluationException(context.context().config(), "Array index out of bounds (index: %s, size: %s)".formatted(s, array.value().size()), context.callPos());
             for (int i = s; i < array.value().size(); i++) {
                 newArray.value().add(array.value().get(i));
             }
@@ -190,9 +190,9 @@ public class Libraries {
 
         // Can't use same algorithm as normal access, because you can also add at the end.
         @DontBind
-        private static int fixIndexForInsert(int index, int size, SourceSpan pos) {
+        private static int fixIndexForInsert(LibraryBuilder.FunctionContext context, int index, int size, SourceSpan pos) {
             if (index > size || index < -size)
-                throw new EvaluationException("Array index out of bounds (index: %s, size: %s)".formatted(index, size), pos);
+                throw new EvaluationException(context.context().config(), "Array index out of bounds (index: %s, size: %s)".formatted(index, size), pos);
             if (index < 0) return size + index + 1; // Offset needed for -1 to mean last element
             return index;
         }
@@ -292,7 +292,7 @@ public class Libraries {
         @Method
         public Value.StringValue charAt(LibraryBuilder.FunctionContext context, Value.StringValue string, Value.NumberValue index) {
             var i = (int) index.value();
-            if (i < 0 || i >= string.value().length()) throw new EvaluationException("String index out of bounds (index: %s, size: %s)".formatted(i, string.value().length()), context.callPos());
+            if (i < 0 || i >= string.value().length()) throw new EvaluationException(context.context().config(), "String index out of bounds (index: %s, size: %s)".formatted(i, string.value().length()), context.callPos());
             return new Value.StringValue(string.value().substring(i, i + 1));
         }
 
@@ -309,16 +309,16 @@ public class Libraries {
         public Value.StringValue substring(LibraryBuilder.FunctionContext context, Value.StringValue string, Value.NumberValue start, Value.NumberValue end) {
             var s = (int) start.value();
             var e = (int) end.value();
-            if (s < 0 || s > string.value().length()) throw new EvaluationException("String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()), context.callPos());
-            if (e < 0 || e > string.value().length()) throw new EvaluationException("String index out of bounds (index: %s, size: %s)".formatted(e, string.value().length()), context.callPos());
-            if (s > e) throw new EvaluationException("Start index must be less than end index (start: %s, end: %s)".formatted(s, e), context.callPos());
+            if (s < 0 || s > string.value().length()) throw new EvaluationException(context.context().config(), "String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()), context.callPos());
+            if (e < 0 || e > string.value().length()) throw new EvaluationException(context.context().config(), "String index out of bounds (index: %s, size: %s)".formatted(e, string.value().length()), context.callPos());
+            if (s > e) throw new EvaluationException(context.context().config(), "Start index must be less than end index (start: %s, end: %s)".formatted(s, e), context.callPos());
             return new Value.StringValue(string.value().substring(s, e));
         }
 
         @Method
         public Value.StringValue substring(LibraryBuilder.FunctionContext context, Value.StringValue string, Value.NumberValue start) {
             var s = (int) start.value();
-            if (s < 0 || s > string.value().length()) throw new EvaluationException("String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()), context.callPos());
+            if (s < 0 || s > string.value().length()) throw new EvaluationException(context.context().config(), "String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()), context.callPos());
             return new Value.StringValue(string.value().substring(s));
         }
 
@@ -368,7 +368,7 @@ public class Libraries {
                 builder.append('}');
                 return new Value.StringValue(builder.toString());
             }
-            throw new EvaluationException("Can't convert %s to string".formatted(value), context.callPos());
+            throw new EvaluationException(context.context().config(), "Can't convert %s to string".formatted(value), context.callPos());
         }
     }
 
@@ -420,7 +420,7 @@ public class Libraries {
         @DisableErrorWrapping
         @FunctionName("throw")
         public void throw_(LibraryBuilder.FunctionContext context, Value value) {
-            throw new EvaluationException(value.toString(), context.callPos());
+            throw new EvaluationException(context.context().config(), value.toString(), context.callPos());
         }
 
         @DisableErrorWrapping
@@ -432,7 +432,7 @@ public class Libraries {
         @DisableErrorWrapping
         @FunctionName("assert")
         public void assert_(LibraryBuilder.FunctionContext context, Value value, Value message) {
-            if (!value.asBoolean()) throw new EvaluationException(message.toString(), context.callPos());
+            if (!value.asBoolean()) throw new EvaluationException(context.context().config(), message.toString(), context.callPos());
         }
     }
 }

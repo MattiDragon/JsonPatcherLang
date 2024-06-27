@@ -1,5 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime;
 
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -7,15 +8,18 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.HashMap;
 
 public final class VariableStack {
+    private final LangConfig config;
     private final @Nullable VariableStack parent;
     private final HashMap<String, Value> mutable = new HashMap<>();
     private final HashMap<String, Value> immutable = new HashMap<>();
 
-    public VariableStack() {
+    public VariableStack(LangConfig config) {
+        this.config = config;
         this.parent = null;
     }
 
-    public VariableStack(@Nullable VariableStack parent) {
+    public VariableStack(LangConfig config, @Nullable VariableStack parent) {
+        this.config = config;
         this.parent = parent;
     }
 
@@ -29,7 +33,7 @@ public final class VariableStack {
         if (parent != null) {
             return parent.getVariable(name, pos);
         }
-        throw new EvaluationException("Cannot find variable with name %s".formatted(name), pos);
+        throw new EvaluationException(config, "Cannot find variable with name %s".formatted(name), pos);
     }
 
     @VisibleForTesting
@@ -46,14 +50,14 @@ public final class VariableStack {
         } else if (mutable.containsKey(name)) {
             mutable.put(name, value);
         } else if (immutable.containsKey(name)) {
-            throw new EvaluationException("Attempt to assign to mutable variable %s".formatted(name), pos);
+            throw new EvaluationException(config, "Attempt to assign to mutable variable %s".formatted(name), pos);
         } else {
-            throw new EvaluationException("Cannot find variable with name %s".formatted(name), pos);
+            throw new EvaluationException(config, "Cannot find variable with name %s".formatted(name), pos);
         }
     }
 
     public void createVariable(String name, Value value, boolean mutable, SourceSpan pos) {
-        if (hasVariable(name)) throw new EvaluationException("Cannot create variable with duplicate name: %s".formatted(name), pos);
+        if (hasVariable(name)) throw new EvaluationException(config, "Cannot create variable with duplicate name: %s".formatted(name), pos);
         if (mutable) this.mutable.put(name, value);
         else this.immutable.put(name, value);
     }
@@ -75,7 +79,7 @@ public final class VariableStack {
             mutable.remove(name);
             return;
         }
-        if (hasVariable(name)) throw new EvaluationException("Cannot delete variable from outer scope: %s".formatted(name), pos);
-        throw new EvaluationException("Cannot find variable with name %s".formatted(name), pos);
+        if (hasVariable(name)) throw new EvaluationException(config, "Cannot delete variable from outer scope: %s".formatted(name), pos);
+        throw new EvaluationException(config, "Cannot find variable with name %s".formatted(name), pos);
     }
 }

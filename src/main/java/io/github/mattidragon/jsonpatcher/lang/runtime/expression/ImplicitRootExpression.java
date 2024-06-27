@@ -10,17 +10,17 @@ import java.util.List;
 public record ImplicitRootExpression(String name, SourceSpan pos) implements Reference {
     @Override
     public Value get(EvaluationContext context) {
-        return context.root().get(name, pos);
+        return context.root().get(name, context.config(), pos);
     }
 
     @Override
     public void set(EvaluationContext context, Value value) {
-        context.root().set(name, value, pos);
+        context.root().set(name, value, context.config(), pos);
     }
 
     @Override
     public void delete(EvaluationContext context) {
-        context.root().remove(name, pos);
+        context.root().remove(name, context.config(), pos);
     }
 
     @Override

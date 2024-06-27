@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.server.workspace;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.server.Util;
 
@@ -18,8 +19,14 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceDocManager {
+    private final LangConfig config;
     private final Map<Path, Entry> entries = new HashMap<>();
-    private final DocHolder holder = new DocHolder();
+    private final DocHolder holder;
+
+    public WorkspaceDocManager(LangConfig config) {
+        this.config = config;
+        holder = new DocHolder(config);
+    }
 
     private static Optional<Path> getPath(String path) {
         try {
@@ -92,8 +99,8 @@ public class WorkspaceDocManager {
             var docs = CompletableFuture.<List<DocEntry>>supplyAsync(() -> {
                 try {
                     var code = Files.readString(file);
-                    var docParser = new DocParser();
-                    Lexer.lex(code, uri, docParser);
+                    var docParser = new DocParser(config);
+                    Lexer.lex(config, code, uri, docParser);
                     return docParser.getEntries();
                 } catch (IOException e) {
                     return List.of();

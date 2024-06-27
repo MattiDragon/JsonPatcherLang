@@ -12,7 +12,7 @@ public record AssignmentExpression(Reference target, Expression value, BinaryExp
     public Value evaluate(EvaluationContext context) {
         var original = operator == BinaryExpression.Operator.ASSIGN ? null : target.get(context);
         var value = this.value.evaluate(context);
-        target.set(context, operator.apply(original, value, pos));
+        target.set(context, operator.apply(original, value, pos, context.config()));
         return value;
     }
 

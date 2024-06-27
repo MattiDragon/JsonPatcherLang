@@ -31,7 +31,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         var document = params.getTextDocument();
         var name = document.getUri();
 
-        var state = new DocumentState(name, client, workspace);
+        var state = new DocumentState(name, client, workspace, workspace.getConfig());
         state.updateContent(document.getText());
         documents.put(name, state);
     }

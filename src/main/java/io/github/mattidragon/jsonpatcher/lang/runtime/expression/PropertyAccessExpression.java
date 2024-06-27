@@ -15,7 +15,7 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
 
         switch (parent) {
             case Value.ObjectValue objectValue -> {
-                return objectValue.get(name, pos);
+                return objectValue.get(name, context.config(), pos);
             }
             case Value.ArrayValue arrayValue -> {
                 if (name.equals("length")) {
@@ -24,7 +24,7 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
                     var function = Libraries.ArraysLibrary.METHODS.get(name);
                     return new Value.FunctionValue(function.bind(arrayValue));
                 } else {
-                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                    throw error(context, "Tried to read invalid property %s of %s.".formatted(name, parent));
                 }
             }
             case Value.StringValue stringValue -> {
@@ -32,7 +32,7 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
                     var function = Libraries.StringsLibrary.METHODS.get(name);
                     return new Value.FunctionValue(function.bind(stringValue));
                 } else {
-                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                    throw error(context, "Tried to read invalid property %s of %s.".formatted(name, parent));
                 }
             }
             case Value.FunctionValue functionValue -> {
@@ -40,10 +40,10 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
                     var function = Libraries.FunctionsLibrary.METHODS.get(name);
                     return new Value.FunctionValue(function.bind(functionValue));
                 } else {
-                    throw error("Tried to read invalid property %s of %s.".formatted(name, parent));
+                    throw error(context, "Tried to read invalid property %s of %s.".formatted(name, parent));
                 }
             }
-            default -> throw error("Tried to read property %s of %s. Only objects and arrays have properties.".formatted(name, parent));
+            default -> throw error(context, "Tried to read property %s of %s. Only objects and arrays have properties.".formatted(name, parent));
         }
     }
 
@@ -51,9 +51,9 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
     public void set(EvaluationContext context, Value value) {
         var parent = this.parent.evaluate(context);
         if (parent instanceof Value.ObjectValue objectValue) {
-            objectValue.set(name, value, pos);
+            objectValue.set(name, value, context.config(), pos);
         } else {
-            throw error("Tried to write property %s of %s. Only objects have properties.".formatted(name, parent));
+            throw error(context, "Tried to write property %s of %s. Only objects have properties.".formatted(name, parent));
         }
     }
 
@@ -61,9 +61,9 @@ public record PropertyAccessExpression(Expression parent, String name, SourceSpa
     public void delete(EvaluationContext context) {
         var parent = this.parent.evaluate(context);
         if (parent instanceof Value.ObjectValue objectValue) {
-            objectValue.remove(name, pos);
+            objectValue.remove(name, context.config(), pos);
         } else {
-            throw error("Tried to delete property %s of %s. Only objects have properties.".formatted(name, parent));
+            throw error(context, "Tried to delete property %s of %s. Only objects have properties.".formatted(name, parent));
         }
     }
 

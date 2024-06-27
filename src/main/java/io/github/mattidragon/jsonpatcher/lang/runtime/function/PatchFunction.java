@@ -21,7 +21,7 @@ public sealed interface PatchFunction {
         default BuiltInPatchFunction argCount(int count) {
             return (context, args, callPos) -> {
                 if (args.size() != count) {
-                    throw new EvaluationException("Incorrect function argument count: expected %s but found %s".formatted(count, args.size()), callPos);
+                    throw new EvaluationException(context.config(), "Incorrect function argument count: expected %s but found %s".formatted(count, args.size()), callPos);
                 }
                 return execute(context, args, callPos);
             };
@@ -32,11 +32,11 @@ public sealed interface PatchFunction {
         @Override
         public Value execute(EvaluationContext context, List<Value> args, SourceSpan callPos) {
             if (args.size() < this.args.requiredArguments()) {
-                throw new EvaluationException("Incorrect function argument count: expected at least %s but found %s".formatted(this.args.requiredArguments(), args.size()), callPos);
+                throw new EvaluationException(context.config(), "Incorrect function argument count: expected at least %s but found %s".formatted(this.args.requiredArguments(), args.size()), callPos);
             }
             var argEntryCount = this.args.arguments().size();
             if (!this.args.varargs() && args.size() > argEntryCount) {
-                throw new EvaluationException("Incorrect function argument count: expected at most %s but found %s".formatted(argEntryCount, args.size()), callPos);
+                throw new EvaluationException(context.config(), "Incorrect function argument count: expected at most %s but found %s".formatted(argEntryCount, args.size()), callPos);
             }
 
             // We use the context the function was created in, not the one it was called in.
@@ -65,7 +65,7 @@ public sealed interface PatchFunction {
                     case FunctionArgument.Target.Root ignored when value instanceof Value.ObjectValue root 
                             -> functionContext = functionContext.withRoot(root);
                     case FunctionArgument.Target.Root.INSTANCE -> 
-                            throw new EvaluationException("Only objects can be used in root arguments, tried to use %s".formatted(value), callPos);
+                            throw new EvaluationException(context.config(), "Only objects can be used in root arguments, tried to use %s".formatted(value), callPos);
                 }
             }
 
@@ -74,7 +74,7 @@ public sealed interface PatchFunction {
             } catch (ReturnException r) {
                 return r.value;
             } catch (EvaluationException e) {
-                throw new EvaluationException("Error while executing function", callPos, e);
+                throw new EvaluationException(context.config(), "Error while executing function", callPos, e);
             }
 
             return Value.NullValue.NULL;

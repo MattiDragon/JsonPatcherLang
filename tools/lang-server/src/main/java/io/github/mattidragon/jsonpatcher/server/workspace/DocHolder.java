@@ -2,6 +2,7 @@ package io.github.mattidragon.jsonpatcher.server.workspace;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.server.Util;
 
@@ -27,6 +28,7 @@ public class DocHolder {
             "arrays.jsonpatch", "debug.jsonpatch", "functions.jsonpatch",
             "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch"
     );
+    private final LangConfig config;
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final CompletableFuture<Void> stdlibFuture;
@@ -34,7 +36,8 @@ public class DocHolder {
     private Map<String, ModuleData> moduleLookup = new HashMap<>();
     private Map<String, TypeData> typeLookup = new HashMap<>();
 
-    public DocHolder() {
+    public DocHolder(LangConfig config) {
+        this.config = config;
         stdlibFuture = loadStdlib();
     }
 
@@ -74,7 +77,7 @@ public class DocHolder {
         });
     }
 
-    private static CompletableFuture<FileData> handleStdlibFile(String fileName, Path tempDirectory) {
+    private CompletableFuture<FileData> handleStdlibFile(String fileName, Path tempDirectory) {
         return CompletableFuture.supplyAsync(() -> {
             try (var fileStream = DocHolder.class.getClassLoader().getResourceAsStream("stdlib_docs/" + fileName)) {
                 if (fileStream == null) throw new FileNotFoundException("Couldn't find stdlib doc file '%s' in resources".formatted(fileName));
@@ -82,8 +85,8 @@ public class DocHolder {
                 var path = tempDirectory.resolve(fileName);
                 Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
                 
-                var docParser = new DocParser();
-                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), docParser);
+                var docParser = new DocParser(config);
+                Lexer.lex(config, Files.readString(path), path.toUri().toASCIIString(), docParser);
                 
                 return buildFile(path.toUri().toASCIIString(), docParser.getEntries());
             } catch (IOException e) {
