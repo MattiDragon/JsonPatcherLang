@@ -62,12 +62,10 @@ public class PrefixParser {
         while (parser.peek().token() != Token.SimpleToken.END_SQUARE) {
             children.add(parser.expression());
 
-            if (parser.peek().token() == Token.SimpleToken.COMMA) {
-                parser.next();
-            } else {
-                // If there is no comma we have to be at the last element.
+            if (parser.peek().token() == Token.SimpleToken.END_SQUARE) {
                 break;
             }
+            parser.expectSoftly(Token.SimpleToken.COMMA);
         }
         parser.expect(Token.SimpleToken.END_SQUARE);
         return new ArrayInitializerExpression(children, new SourceSpan(token.getFrom(), parser.previous().getTo()));
@@ -80,14 +78,11 @@ public class PrefixParser {
             var keyPos = parser.previous().pos();
             parser.expect(Token.SimpleToken.COLON);
             children.add(new ObjectInitializerExpression.Entry(key, keyPos, parser.expression()));
-
-            PositionedToken positionedToken = parser.peek();
-            if (positionedToken.token() == Token.SimpleToken.COMMA) {
-                parser.next();
-            } else {
-                // If there is no comma we have to be at the last element.
+            
+            if (parser.peek().token() == Token.SimpleToken.END_CURLY) {
                 break;
             }
+            parser.expectSoftly(Token.SimpleToken.COMMA);
         }
         parser.expect(Token.SimpleToken.END_CURLY);
         return new ObjectInitializerExpression(children, new SourceSpan(token.getFrom(), parser.previous().getTo()));
@@ -153,12 +148,11 @@ public class PrefixParser {
             }
             
             arguments.add(new FunctionArgument(target, defaultValue, namePos));
-            PositionedToken positionedToken = parser.peek();
-            if (positionedToken.token() == Token.SimpleToken.COMMA) {
-                parser.next();
-            } else {
+
+            if (parser.peek().token() == Token.SimpleToken.END_PAREN) {
                 break;
             }
+            parser.expectSoftly(Token.SimpleToken.COMMA);
         }
         parser.expect(Token.SimpleToken.END_PAREN);
         return new FunctionArguments(arguments, varargs);

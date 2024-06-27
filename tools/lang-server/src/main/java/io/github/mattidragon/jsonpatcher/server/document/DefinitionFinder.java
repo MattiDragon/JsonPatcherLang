@@ -6,10 +6,12 @@ import io.github.mattidragon.jsonpatcher.docs.write.DocWriter;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.PropertyAccessExpression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.VariableAccessExpression;
+import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
 import io.github.mattidragon.jsonpatcher.server.Util;
 import io.github.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.commonmark.node.Document;
+import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.markdown.MarkdownRenderer;
 import org.eclipse.lsp4j.*;
@@ -122,6 +124,7 @@ public class DefinitionFinder {
                             docWriter.writeEntry(document, entry);
                             return document;
                         })
+                        .or(() -> getLocalInfo(analysis, pos))
                         .map(renderer::render)
                         .map(markdown -> new MarkupContent(MarkupKind.MARKDOWN, markdown))
                         .map(Hover::new)
@@ -132,6 +135,73 @@ public class DefinitionFinder {
         var out = new ArrayList<DocEntry>();
         forDocRefsAt(entries, pos, doc -> out.add(doc.entry()));
         return out.isEmpty() ? Optional.empty() : Optional.of(out.getFirst());
+    }
+
+    private Optional<Document> getLocalInfo(TreeAnalysis analysis, SourcePos pos) {
+        return Optional.ofNullable(analysis.getVariableReferences().getFirstAt(pos))
+                .map(variableDefinition -> {
+                    var document = new Document();
+                    var code = new FencedCodeBlock();
+                    code.setInfo("jsonpatcher");
+                    var builder = new StringBuilder();
+                    switch (variableDefinition) {
+                        case TreeAnalysis.FunctionDefinition function -> {
+                            builder.append("function ");
+                            builder.append(function.name());
+                            appendFunctionDesc(function, builder);
+                        }
+                        case TreeAnalysis.ImportDefinition importDefinition -> {
+                            var statement = importDefinition.statement();
+                            var libName = statement == null ? importDefinition.name() : statement.libraryName();
+                            builder.append("import \"");
+                            builder.append(libName);
+                            builder.append("\" as ");
+                            builder.append(importDefinition.name());
+                        }
+                        case TreeAnalysis.LocalDefinition localDefinition -> {
+                            builder.append(localDefinition.mutable() ? "var " : "val ");
+                            builder.append(localDefinition.name());
+                        }
+                        case TreeAnalysis.ParameterDefinition parameterDefinition -> {
+                            builder.append("argument ");
+                            builder.append(parameterDefinition.name());
+                            var arg = parameterDefinition.argument();
+                            if (arg != null && arg.defaultValue().isPresent()) {
+                                builder.append("?");
+                            }
+                        }
+                    }
+                    code.setLiteral(builder.toString());
+                    document.appendChild(code);
+                    return document;
+                });
+    }
+
+    private static void appendFunctionDesc(TreeAnalysis.FunctionDefinition function, StringBuilder builder) {
+        var statement = function.statement();
+        if (statement != null) {
+            builder.append("(");
+            var args = statement.value().args();
+            var first = true;
+            for (var arg : args.arguments()) {
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(", ");
+                }
+                builder.append(switch (arg.target()) {
+                    case FunctionArgument.Target.Root root -> "$";
+                    case FunctionArgument.Target.Variable variable -> variable.name();
+                });
+                if (arg.defaultValue().isPresent()) {
+                    builder.append("?");
+                }
+            }
+            if (args.varargs()) {
+                builder.append("*");
+            }
+            builder.append(")");
+        }
     }
 
     private Optional<DocEntry> getVariableDocs(TreeAnalysis analysis, SourcePos pos) {

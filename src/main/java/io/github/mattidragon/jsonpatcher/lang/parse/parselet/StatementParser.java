@@ -3,7 +3,6 @@ package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
 import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.parse.Token;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.Expression;
 import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpression;
@@ -72,7 +71,7 @@ public class StatementParser {
         var namePos = parser.previous().pos();
         parser.expect(SimpleToken.ASSIGN);
         var initializer = parser.expression();
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
         return new VariableCreationStatement(name.value(), initializer, mutable, new SourceSpan(begin, parser.previous().getTo()), namePos);
     }
 
@@ -80,7 +79,7 @@ public class StatementParser {
         var begin = parser.next().getFrom();
         var expression = parser.expression();
         if (!(expression instanceof Reference ref)) throw new Parser.ParseException("Can't delete to %s".formatted(expression), expression.pos());
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
         return new DeleteStatement(ref, new SourceSpan(begin, parser.previous().getTo()));
     }
 
@@ -93,7 +92,7 @@ public class StatementParser {
         } else {
             value = Optional.of(parser.expression());
         }
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
         return new ReturnStatement(value, new SourceSpan(begin, parser.previous().getTo()));
     }
 
@@ -121,12 +120,9 @@ public class StatementParser {
             parser.seek(SimpleToken.SEMICOLON);
             return new ErrorStatement(e);
         }
-        
-        var lastTokenPos = parser.previous().pos().to();
-        if (parser.next().token() != SimpleToken.SEMICOLON) {
-            throw new Parser.ParseException("Semicolon expected", new SourceSpan(lastTokenPos, lastTokenPos));
-        }
-        
+
+        parser.expectSoftly(SimpleToken.SEMICOLON);
+
         return new ExpressionStatement(expression);
     }
 
@@ -167,7 +163,7 @@ public class StatementParser {
         } else {
             condition = parser.expression();
         }
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
 
         Statement incrementer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
@@ -202,14 +198,14 @@ public class StatementParser {
     private static Statement breakStatement(Parser parser) {
         parser.expect(KeywordToken.BREAK);
         var from = parser.previous().getFrom();
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
         return new BreakStatement(new SourceSpan(from, parser.previous().getTo()));
     }
 
     private static Statement continueStatement(Parser parser) {
         parser.expect(KeywordToken.CONTINUE);
         var from = parser.previous().getFrom();
-        parser.expect(SimpleToken.SEMICOLON);
+        parser.expectSoftly(SimpleToken.SEMICOLON);
         return new ContinueStatement(new SourceSpan(from, parser.previous().getTo()));
     }
 
@@ -222,17 +218,17 @@ public class StatementParser {
             parser.next();
             var variableName = parser.expectWord().value();
             var varPos = parser.previous().pos();
-            parser.expect(SimpleToken.SEMICOLON);
+            parser.expectSoftly(SimpleToken.SEMICOLON);
             return new ImportStatement(libraryName, variableName, new SourceSpan(from, parser.previous().getTo()), varPos, namePos);
         } else {
-            parser.expect(SimpleToken.SEMICOLON);
+            parser.expectSoftly(SimpleToken.SEMICOLON);
             return new ImportStatement(libraryName, libraryName, new SourceSpan(from, parser.previous().getTo()), namePos, namePos);
         }
     }
 
     public static Statement parse(Parser parser) {
         var token = parser.peek();
-        return switch ((Token) token.token()) {
+        return switch (token.token()) {
             case SimpleToken.BEGIN_CURLY -> blockStatement(parser);
             case SimpleToken.SEMICOLON -> {
                 parser.next();

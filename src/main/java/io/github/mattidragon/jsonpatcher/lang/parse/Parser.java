@@ -137,6 +137,23 @@ public class Parser {
         return expectFail("number");
     }
 
+
+    /**
+     * Expects a semicolon token and consumes it if present.
+     * This method differs from {@link #expect(Token)} in that it doesn't throw the error,
+     * instead just adding it to the error list. 
+     * This allows for other code to be parsed more correctly afterward.
+     * This method also uses special logic for positioning the error where the token should appear instead of at the next token.
+     */
+    public void expectSoftly(Token token) {
+        var semicolonPos = previous().pos().to().offset(1);
+        if (hasNext() && peek().token() == token) {
+            next();
+        } else {
+            addError(new ParseException("Expected " + token.explain(), new SourceSpan(semicolonPos, semicolonPos)));
+        }
+    }
+
     public void expect(Token token) {
         var found = next().token();
         if (found != token) expectFail(token.explain());
