@@ -101,7 +101,16 @@ public class SemanticTokenizer {
             case DocType.Array array -> tokenizeDocType(array.entry());
             case DocType.Function function -> {
                 tokenizeDocType(function.returnType());
-                function.args().forEach(arg -> tokenizeDocType(arg.type()));
+                for (var arg : function.args()) {
+                    tokenizeDocType(arg.type());
+                    builder.addToken(arg.namePos(), SemanticTokenTypes.Parameter);
+                    for (var pos : arg.operatorPoses()) {
+                        builder.addToken(new SourceSpan(pos, pos), SemanticTokenTypes.Operator);
+                    }
+                }
+                for (var pos : function.operatorPoses()) {
+                    builder.addToken(pos, SemanticTokenTypes.Operator);
+                }
             }
             case DocType.Name name -> builder.addToken(name.pos(), SemanticTokenTypes.Type);
             case DocType.Object object -> tokenizeDocType(object.entry());

@@ -57,32 +57,41 @@ public class TypeParser {
     }
 
     private DocType function() {
+        var functionOperatorPoses = new ArrayList<SourceSpan>();
         expect('(');
+        functionOperatorPoses.add(pos().toSpan());
         skipWhitespace();
         
         var args = new ArrayList<DocType.Function.Argument>();
         argLoop:
         while (hasNext() && isNameChar(peek())) {
+            var nameStart = pos(0);
             var name = readString();
+            var nameEnd = pos();
+            var operatorPoses = new ArrayList<SourcePos>();
             var optional = false;
             var varargs = false;
             skipWhitespace();
             if (hasNext() && peek() == '?') {
                 optional = true;
                 next();
+                operatorPoses.add(pos());
             } else if (hasNext() && peek() == '*') {
                 varargs = true;
                 next();
+                operatorPoses.add(pos());
             }
             skipWhitespace();
             expect(':');
+            operatorPoses.add(pos());
             var type = type();
-            args.add(new DocType.Function.Argument(name, type, optional, varargs));
+            args.add(new DocType.Function.Argument(name, type, optional, varargs, new SourceSpan(nameStart, nameEnd), operatorPoses));
             skipWhitespace();
             if (!hasNext()) throw new DocParseException("EOL in function arguments", pos());
             switch (peek()) {
                 case ',' -> {
                     next();
+                    operatorPoses.add(pos());
                     skipWhitespace();
                 }
                 case ')' -> {
@@ -92,11 +101,13 @@ public class TypeParser {
             }
         }
         expect(')');
+        functionOperatorPoses.add(pos().toSpan());
         skipWhitespace();
         expect('-');
         expect('>');
+        functionOperatorPoses.add(new SourceSpan(pos(-2), pos(-1)));
         var returnType = type();
-        return new DocType.Function(returnType, args);
+        return new DocType.Function(returnType, args, functionOperatorPoses);
     }
     
     private DocType array() {

@@ -63,7 +63,7 @@ public sealed interface DocType {
     /**
      * A function with specific argument and return types. 
      */
-    record Function(DocType returnType, List<Argument> args) implements DocType {
+    record Function(DocType returnType, List<Argument> args, List<SourceSpan> operatorPoses) implements DocType {
         public Function {
             args = List.copyOf(args);
         }
@@ -78,7 +78,7 @@ public sealed interface DocType {
             return "Function[%s -> %s]".formatted(args, returnType);
         }
 
-        public record Argument(String name, DocType type, boolean optional, boolean varargs) {
+        public record Argument(String name, DocType type, boolean optional, boolean varargs, SourceSpan namePos, List<SourcePos> operatorPoses) {
             public String format() {
                 return name + (optional ? "?" : "") + (varargs ? "*" : "") + ": " + type.format();
             }
