@@ -43,7 +43,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
                 throw new EvaluationException(config, "Recursive library import detected for %s".formatted(libraryName), pos);
             }
             var json = new Value.ObjectValue();
-            libraryLocator.loadLibrary(libraryName, json, pos);
+            libraryLocator.loadLibrary(libraryName, json, pos, config());
             return json;
         } finally {
             LIBRARY_RECURSION_DETECTOR.get().remove(libraryName);
@@ -60,7 +60,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
          * @throws EvaluationException For any expected errors during loading, like a missing library or an error while calling it. This will give a nice stacktrace for the user.
          */
         @ApiStatus.OverrideOnly
-        void loadLibrary(String libraryName, Value.ObjectValue libraryObject, SourceSpan importPos);
+        void loadLibrary(String libraryName, Value.ObjectValue libraryObject, SourceSpan importPos, LangConfig config);
     }
 
     public static class Builder {
@@ -73,8 +73,8 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
 
         public Builder(LangConfig config) {
             this.config = config;
-            libraryLocator = (name, obj, pos) -> {
-                throw new EvaluationException(this.config, "No libraries available", pos);
+            libraryLocator = (name, obj, pos, config1) -> {
+                throw new EvaluationException(config1, "No libraries available", pos);
             };
             variables = new VariableStack(config);
         }

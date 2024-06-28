@@ -13,7 +13,7 @@ public class ImportStatementTests {
     public void testSimpleImport() {
         var context = EvaluationContext.builder(TestUtils.CONFIG)
                 .debugConsumer(TestUtils.EMPTY_DEBUG_CONSUMER)
-                .libraryLocator((libraryName, libraryObject, importPos) -> {
+                .libraryLocator((libraryName, libraryObject, importPos, config) -> {
                     // test library locator always returns a library
                     libraryObject.value().put("a", new Value.NumberValue(1));
                 })

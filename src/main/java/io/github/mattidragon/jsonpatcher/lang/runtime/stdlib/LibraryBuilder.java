@@ -64,7 +64,9 @@ public class LibraryBuilder {
                 for (int i = 0; i < args.size(); i++) {
                     var arg = args.get(i);
                     var param = overload.getParameterTypes()[hasContext ? i + 1 : i];
-                    if (!param.isInstance(arg)) throw new EvaluationException(context.config(), "Expected argument %s to be %s, was %s".formatted(i, param, arg), callPos);
+                    if (!param.isInstance(arg)) {
+                        throw new EvaluationException(context.config(), "Expected argument %s to be %s, was %s".formatted(i, getTypeName(param), arg), callPos);
+                    }
                 }
 
                 try {
@@ -99,6 +101,26 @@ public class LibraryBuilder {
                 }
             });
         });
+    }
+
+    private static String getTypeName(Class<?> param) {
+        var typeName = param.getSimpleName();
+        if (param == Value.ObjectValue.class) {
+            typeName = "object";
+        } else if (param == Value.ArrayValue.class) {
+            typeName = "array";
+        } else if (param == Value.StringValue.class) {
+            typeName = "string";
+        } else if (param == Value.BooleanValue.class) {
+            typeName = "boolean";
+        } else if (param == Value.NumberValue.class) {
+            typeName = "number";
+        } else if (param == Value.FunctionValue.class) {
+            typeName = "function";
+        } else if (param == Value.NullValue.class) {
+            typeName = "null";
+        }
+        return typeName;
     }
 
     private static HashMap<Integer, Method> groupOverloadsByArgCount(String name, List<Method> overloads) {
