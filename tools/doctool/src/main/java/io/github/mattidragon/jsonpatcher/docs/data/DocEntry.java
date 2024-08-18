@@ -1,6 +1,6 @@
 package io.github.mattidragon.jsonpatcher.docs.data;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
 public sealed interface DocEntry {

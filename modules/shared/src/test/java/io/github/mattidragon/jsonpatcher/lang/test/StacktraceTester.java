@@ -1,0 +1,29 @@
+package io.github.mattidragon.jsonpatcher.lang.test;
+
+import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceFile;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
+
+// Quick tool to test stack trace logic that's difficult to automate. Edit values in TestLangConfig to change mode.
+public class StacktraceTester {
+    public static void main(String[] args) {
+        var file = new SourceFile("test file", "abcdefhijklmnop");
+        var span = new SourceSpan(new SourcePos(file, 1, 2), new SourcePos(file, 1, 5));
+        //noinspection CallToPrintStackTrace
+        new EvaluationException(TestUtils.CONFIG,
+                "error 1",
+                span,
+                new EvaluationException(TestUtils.CONFIG,
+                        "error 2",
+                        null,
+                        new EvaluationException(TestUtils.CONFIG,
+                                "error 3",
+                                span,
+                                new EvaluationException(TestUtils.CONFIG,
+                                        "error 4",
+                                        null))))
+                .printStackTrace();
+    }
+}

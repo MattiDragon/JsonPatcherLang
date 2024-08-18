@@ -2,8 +2,8 @@ package io.github.mattidragon.jsonpatcher.docs.parse;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocType;
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 
 import java.util.ArrayList;
 

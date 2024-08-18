@@ -1,7 +1,8 @@
 package io.github.mattidragon.jsonpatcher.docs.data;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 
 import java.util.List;
 import java.util.Locale;

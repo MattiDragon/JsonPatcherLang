@@ -4,9 +4,10 @@ import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import io.github.mattidragon.jsonpatcher.docs.parse.DocParser;
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 import io.github.mattidragon.jsonpatcher.server.Util;
 import io.github.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
@@ -16,6 +17,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class DocumentState {
@@ -53,9 +55,10 @@ public class DocumentState {
         var parseResult = tokens.thenApplyAsync(tokens1 -> Parser.parse(config, tokens1), Util.EXECUTOR);
         var tree = parseResult.thenApply(Parser.Result::program);
         var metadata = parseResult.thenApply(Parser.Result::metadata);
+        var treeMetadata = parseResult.thenApply(Parser.Result::treeMetadata);
         var parseErrors = parseResult.thenApply(Parser.Result::errors);
 
-        analysis = tree.thenApplyAsync(TreeAnalysis::new, Util.EXECUTOR);
+        analysis = tree.thenCombineAsync(treeMetadata, TreeAnalysis::new, Util.EXECUTOR);
 
         setupDiagnostics(lexErrors, parseErrors, docErrors, analysis);
     }
@@ -77,7 +80,10 @@ public class DocumentState {
             }
             
             for (var variable : treeAnalysis.getUnresolvedVariables()) {
-                var diagnostic = new Diagnostic(spanToRange(variable.pos()), "Cannot find variable '%s'".formatted(variable.name()));
+                var pos = treeAnalysis.getMetadata().get(variable, MetadataKey.MAIN_POS).orElse(null);
+                if (pos == null) continue;
+                
+                var diagnostic = new Diagnostic(spanToRange(pos), "Cannot find variable '%s'".formatted(variable.name()));
                 diagnostic.setSeverity(DiagnosticSeverity.Error);
                 diagnostics.add(diagnostic);
             }
@@ -92,7 +98,10 @@ public class DocumentState {
             }
             
             for (var variable : treeAnalysis.getIllegalMutations()) {
-                var diagnostic = new Diagnostic(spanToRange(variable.pos()), "'%s' cannot be reassigned".formatted(variable.name()));
+                var pos = treeAnalysis.getMetadata().get(variable, MetadataKey.MAIN_POS).orElse(null);
+                if (pos == null) continue;
+
+                var diagnostic = new Diagnostic(spanToRange(pos), "'%s' cannot be reassigned".formatted(variable.name()));
                 diagnostic.setSeverity(DiagnosticSeverity.Error);
                 diagnostics.add(diagnostic);
             }

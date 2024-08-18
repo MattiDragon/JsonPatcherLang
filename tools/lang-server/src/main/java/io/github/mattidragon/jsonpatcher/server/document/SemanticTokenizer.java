@@ -2,19 +2,23 @@ package io.github.mattidragon.jsonpatcher.server.document;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.docs.data.DocType;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
+
+import io.github.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.*;
+import io.github.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import io.github.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
+import io.github.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
+import io.github.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
-import io.github.mattidragon.jsonpatcher.lang.runtime.expression.*;
-import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
-import io.github.mattidragon.jsonpatcher.lang.runtime.statement.FunctionDeclarationStatement;
-import io.github.mattidragon.jsonpatcher.lang.runtime.statement.ImportStatement;
-import io.github.mattidragon.jsonpatcher.lang.runtime.statement.VariableCreationStatement;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensLegend;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -60,9 +64,11 @@ public class SemanticTokenizer {
 
     private final TreeAnalysis analysis;
     private final DataBuilder builder = new DataBuilder();
+    private final TreeMetadata metadata;
 
     private SemanticTokenizer(TreeAnalysis analysis) {
         this.analysis = analysis;
+        metadata = analysis.getMetadata();
     }
 
     public static SemanticTokens getTokens(TreeAnalysis analysis, List<DocEntry> docs) {
@@ -132,23 +138,23 @@ public class SemanticTokenizer {
     
     private void tokenize(ProgramNode node) {
         switch (node) {
-            case RootExpression expression -> builder.addToken(expression.pos(), SemanticTokenTypes.Keyword);
-            case ValueExpression(Value.StringValue value, var pos) 
-                    -> builder.addToken(pos, SemanticTokenTypes.String);
-            case ValueExpression(Value.NumberValue value, var pos) 
-                    -> builder.addToken(pos, SemanticTokenTypes.Number);
-            case FunctionCallExpression(PropertyAccessExpression function, var args, var funcPos) -> {
+            case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Keyword);
+            case ValueExpression expression when expression.value() instanceof Value.StringValue 
+                    -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.String);
+            case ValueExpression expression when expression.value() instanceof Value.NumberValue 
+                    -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Number);
+            case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());
-                builder.addToken(function.namePos(), SemanticTokenTypes.Function);
+                builder.addToken(metadata.get(function, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Function);
                 tokenize(args);
             }
-            case FunctionCallExpression(VariableAccessExpression function, var args, var funcPos) -> {
-                builder.addToken(function.pos(), SemanticTokenTypes.Function);
+            case FunctionCallExpression(VariableAccessExpression function, var args) -> {
+                builder.addToken(metadata.get(function, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Function);
                 tokenize(args);
             }
             case PropertyAccessExpression expression -> {
                 tokenize(expression.parent());
-                builder.addToken(expression.namePos(), SemanticTokenTypes.Property);
+                builder.addToken(metadata.get(expression, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Property);
             }
             case VariableAccessExpression expression -> {
                 var modifiers = new ArrayList<String>();
@@ -173,7 +179,7 @@ public class SemanticTokenizer {
                     type = SemanticTokenTypes.Variable;
                 }
 
-                builder.addToken(expression.pos(), type, modifiers.toArray(new String[0]));
+                builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), type, modifiers.toArray(new String[0]));
             }
             case ObjectInitializerExpression expression -> {
                 for (var entry : expression.contents()) {
@@ -183,25 +189,25 @@ public class SemanticTokenizer {
             }
             case IsInstanceExpression expression -> {
                 tokenize(expression.input());
-                builder.addToken(expression.typePos(), SemanticTokenTypes.Type);
+                builder.addToken(metadata.get(expression, MetadataKey.IS_TYPE_POS).orElse(null), SemanticTokenTypes.Type);
             }
             
             case VariableCreationStatement statement -> {
                 var modifiers = statement.mutable() 
                         ? new String[] { SemanticTokenModifiers.Declaration } 
                         : new String[] { SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration };
-                builder.addToken(statement.namePos(), SemanticTokenTypes.Variable, modifiers);
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Variable, modifiers);
                 tokenize(statement.initializer());
             }
             case FunctionArgument argument -> {
-                builder.addToken(argument.namePos(), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                builder.addToken(metadata.get(argument, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 argument.defaultValue().ifPresent(this::tokenize);
             }
             case FunctionDeclarationStatement statement -> {
-                builder.addToken(statement.namePos(), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 tokenize(statement.getChildren());
             }
-            case ImportStatement statement -> builder.addToken(statement.variablePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+            case ImportStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
             
             case ProgramNode other -> tokenize(other.getChildren());
         }
@@ -210,7 +216,8 @@ public class SemanticTokenizer {
     private static class DataBuilder {
         private final List<Entry> entries = new ArrayList<>();
         
-        public void addToken(SourceSpan span, String type, String... modifiers) {
+        public void addToken(@Nullable SourceSpan span, String type, String... modifiers) {
+            if (span == null) return; // it's more convenient to simply pass in null for missing positions than to check it
             entries.add(new Entry(span, type, modifiers));
         }
 

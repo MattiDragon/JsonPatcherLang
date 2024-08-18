@@ -1,9 +1,10 @@
 plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("shared")
 }
 
 dependencies {
-    implementation(rootProject)
+    implementation(project(":parser"))
     implementation(project(":doctool"))
     implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.23.1")
 }

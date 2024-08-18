@@ -1,9 +1,10 @@
 plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("shared")
 }
 
 dependencies {
-    api(rootProject)
+    api(project(":parser"))
     api("org.commonmark:commonmark:0.22.0")
     api("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
     api("org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0")

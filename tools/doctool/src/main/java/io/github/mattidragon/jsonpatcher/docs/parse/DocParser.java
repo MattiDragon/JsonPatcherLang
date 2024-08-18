@@ -2,9 +2,9 @@ package io.github.mattidragon.jsonpatcher.docs.parse;
 
 import io.github.mattidragon.jsonpatcher.docs.data.DocEntry;
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import io.github.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;

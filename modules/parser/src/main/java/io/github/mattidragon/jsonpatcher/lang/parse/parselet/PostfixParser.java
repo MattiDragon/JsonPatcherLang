@@ -1,0 +1,262 @@
+package io.github.mattidragon.jsonpatcher.lang.parse.parselet;
+
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.*;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
+import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
+import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.parse.Token;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+
+// Consider reworking this to use a registration or lookup system instead of a switch
+public class PostfixParser {
+    private PostfixParser() {}
+
+    private static Expression parsePropertyAccess(Parser parser, Expression left, PositionedToken token) {
+        var leftPos = getLeftStartPos(parser, left);
+        var name = parser.expectWord();
+        var namePos = parser.previous().pos();
+        var expression = new PropertyAccessExpression(left, name.value());
+        parser.setMetadata(expression, MetadataKey.NAME_POS, namePos);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.MAIN_POS, namePos);
+        return expression;
+    }
+
+    private static Expression parseIndexAccess(Parser parser, Expression left, PositionedToken token) {
+        var leftPos = getLeftStartPos(parser, left);
+        var index = parser.expression();
+        parser.expect(Token.SimpleToken.END_SQUARE);
+        var endPos = parser.previous().to();
+        var expression = new IndexExpression(left, index);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, endPos));
+        parser.setMetadata(expression, MetadataKey.MAIN_POS, new SourceSpan(token.from(), endPos));
+        return expression;
+    }
+
+    private static Expression parseShortedBinaryOperation(Parser parser, Expression left, PositionedToken token, ShortedBinaryExpression.Operator operator, Precedence precedence) {
+        var leftPos = getLeftStartPos(parser, left);
+        var right = parser.expression(precedence);
+        var expression = new ShortedBinaryExpression(left, right, operator);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        return expression;
+    }
+
+    private static Expression parseBinaryOperation(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator, Precedence precedence) {
+        var leftPos = getLeftStartPos(parser, left);
+        var right = parser.expression(precedence);
+        var expression = new BinaryExpression(left, right, operator);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        return expression;
+    }
+
+    private static Expression parseUnaryModification(Parser parser, Expression left, PositionedToken token, UnaryExpression.Operator operator) {
+        var leftPos = getLeftStartPos(parser, left);
+        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't modify %s".formatted(left), token.pos());
+        var expression = new UnaryModificationExpression(true, ref, operator);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        return expression;
+    }
+
+    private static Expression parseAssignment(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator) {
+        var leftPos = getLeftStartPos(parser, left);
+        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't assign to %s".formatted(left), token.pos());
+        var right = parser.expression(Precedence.ROOT);
+        var expression = new AssignmentExpression(ref, right, operator);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        return expression;
+    }
+
+    private static Expression parseFunctionCall(Parser parser, Expression left, PositionedToken token) {
+        var leftPos = getLeftStartPos(parser, left);
+        var arguments = new ArrayList<Expression>();
+        while (parser.peek().token() != Token.SimpleToken.END_PAREN) {
+            arguments.add(parser.expression());
+            if (parser.peek().token() == Token.SimpleToken.COMMA) {
+                parser.next();
+            } else {
+                break;
+            }
+        }
+        parser.expect(Token.SimpleToken.END_PAREN);
+
+        var expression = new FunctionCallExpression(left, arguments);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.MAIN_POS, new SourceSpan(token.from(), parser.previous().to()));
+        return expression;
+    }
+
+    private static Expression parseIsInstance(Parser parser, Expression left, PositionedToken token) {
+        var leftPos = getLeftStartPos(parser, left);
+        var typeToken = parser.next().token();
+        var typePos = parser.previous().pos();
+        var type = getIsInstanceType(typeToken);
+        if (type != null) {
+            var expression = new IsInstanceExpression(left, type);
+            parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+            parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+            parser.setMetadata(expression, MetadataKey.IS_TYPE_POS, typePos);
+            return expression;
+        } else {
+            throw parser.new ParseException("Expected type name, got %s".formatted(typeToken.explain()), token.pos());
+        }
+    }
+
+    private static IsInstanceExpression.@Nullable Type getIsInstanceType(Token typeToken) {
+        if (typeToken == Token.KeywordToken.NULL) {
+            return IsInstanceExpression.Type.NULL;
+        } else if (typeToken instanceof Token.WordToken word) {
+            return switch (word.value()) {
+                case "number" -> IsInstanceExpression.Type.NUMBER;
+                case "string" -> IsInstanceExpression.Type.STRING;
+                case "boolean" -> IsInstanceExpression.Type.BOOLEAN;
+                case "array" -> IsInstanceExpression.Type.ARRAY;
+                case "object" -> IsInstanceExpression.Type.OBJECT;
+                case "function" -> IsInstanceExpression.Type.FUNCTION;
+                default -> null;
+            };
+        } else {
+            return null;
+        }
+    }
+
+    private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {
+        var leftPos = getLeftStartPos(parser, left);
+        var middle = parser.expression();
+        parser.expect(Token.SimpleToken.COLON);
+        var right = parser.expression();
+        var expression = new TernaryExpression(left, middle, right);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        return expression;
+    }
+    
+    private static SourcePos getLeftStartPos(Parser parser, Expression left) {
+        return parser.getMetadata(left, MetadataKey.FULL_POS)
+                .or(() -> parser.getMetadata(left, MetadataKey.MAIN_POS))
+                .map(SourceSpan::from)
+                .orElseGet(() -> parser.previous().from());
+    }
+
+    public static Expression get(Parser parser, Precedence precedence, Expression left) {
+        var token = parser.peek();
+        if (token instanceof PositionedToken(var pos, Token.KeywordToken keywordToken) && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
+            if (keywordToken == Token.KeywordToken.IS) {
+                return parseIsInstance(parser, left, parser.next());
+            }
+            if (keywordToken == Token.KeywordToken.IN) {
+                return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.IN, Precedence.COMPARISON);
+            }
+        }
+
+        if (!(token.token() instanceof Token.SimpleToken simpleToken)) return null;
+
+        // abuse fallthrough to check precedence levels in order
+        switch (precedence) {
+            case ROOT:
+            case ASSIGNMENT: {
+                var expression = switch (simpleToken) {
+                    case ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.ASSIGN);
+                    case PLUS_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.PLUS);
+                    case MINUS_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.MINUS);
+                    case STAR_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.MULTIPLY);
+                    case SLASH_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.DIVIDE);
+                    case PERCENT_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.MODULO);
+                    case OR_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.OR);
+                    case XOR_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.XOR);
+                    case AND_ASSIGN -> parseAssignment(parser, left, parser.next(), BinaryExpression.Operator.AND);
+                    case QUESTION_MARK -> parseTernary(parser, left, parser.next());
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            case OR:
+                if (token.token() == Token.SimpleToken.DOUBLE_OR) {
+                    return parseShortedBinaryOperation(parser, left, parser.next(), ShortedBinaryExpression.Operator.OR, Precedence.OR);
+                }
+            case AND:
+                if (token.token() == Token.SimpleToken.DOUBLE_AND) {
+                    return parseShortedBinaryOperation(parser, left, parser.next(), ShortedBinaryExpression.Operator.AND, Precedence.AND);
+                }
+            case BITWISE_OR:
+                if (token.token() == Token.SimpleToken.OR) {
+                    return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.OR, Precedence.BITWISE_OR);
+                }
+            case BITWISE_XOR:
+                if (token.token() == Token.SimpleToken.XOR) {
+                    return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.XOR, Precedence.BITWISE_XOR);
+                }
+            case BITWISE_AND:
+                if (token.token() == Token.SimpleToken.AND) {
+                    return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.AND, Precedence.BITWISE_AND);
+                }
+            case EQUALITY: {
+                var expression = switch (simpleToken) {
+                    case EQUALS -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.EQUALS, Precedence.EQUALITY);
+                    case NOT_EQUALS -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.NOT_EQUALS, Precedence.EQUALITY);
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            case COMPARISON: {
+                var expression = switch (simpleToken) {
+                    case LESS_THAN -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.LESS_THAN, Precedence.COMPARISON);
+                    case LESS_THAN_EQUAL -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.LESS_THAN_EQUAL, Precedence.COMPARISON);
+                    case GREATER_THAN -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.GREATER_THAN, Precedence.COMPARISON);
+                    case GREATER_THAN_EQUAL -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.GREATER_THAN_EQUAL, Precedence.COMPARISON);
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            case BIT_SHIFT:
+            case SUM: {
+                var expression = switch (simpleToken) {
+                    case PLUS -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.PLUS, Precedence.SUM);
+                    case MINUS -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.MINUS, Precedence.SUM);
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            case PRODUCT: {
+                var expression = switch (simpleToken) {
+                    case STAR -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.MULTIPLY, Precedence.PRODUCT);
+                    case SLASH -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.DIVIDE, Precedence.PRODUCT);
+                    case PERCENT -> parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.MODULO, Precedence.PRODUCT);
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            case EXPONENT: {
+                if (simpleToken == Token.SimpleToken.DOUBLE_STAR) {
+                    return parseBinaryOperation(parser, left, parser.next(), BinaryExpression.Operator.EXPONENT, Precedence.EXPONENT);
+                }
+            }
+            case PREFIX:
+            case POSTFIX: {
+                var expression = switch (simpleToken) {
+                    case DOT -> parsePropertyAccess(parser, left, parser.next());
+                    case BEGIN_SQUARE -> parseIndexAccess(parser, left, parser.next());
+                    case BEGIN_PAREN -> parseFunctionCall(parser, left, parser.next());
+                    case DOUBLE_MINUS -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.DECREMENT);
+                    case DOUBLE_PLUS -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.INCREMENT);
+                    case DOUBLE_BANG -> parseUnaryModification(parser, left, parser.next(), UnaryExpression.Operator.NOT);
+                    default -> null;
+                };
+                if (expression != null) return expression;
+            }
+            default:
+                if (simpleToken == Token.SimpleToken.ARROW) {
+                    throw parser.new ParseException("Unexpected arrow, did you mean to put parentheses around your function arguments?", parser.next().pos());
+                }
+                return null;
+        }
+    }
+}

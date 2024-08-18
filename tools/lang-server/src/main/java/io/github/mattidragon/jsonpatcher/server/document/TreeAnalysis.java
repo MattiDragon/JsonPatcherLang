@@ -1,14 +1,16 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Program;
-import io.github.mattidragon.jsonpatcher.lang.runtime.ProgramNode;
-import io.github.mattidragon.jsonpatcher.lang.runtime.expression.AssignmentExpression;
-import io.github.mattidragon.jsonpatcher.lang.runtime.expression.FunctionExpression;
-import io.github.mattidragon.jsonpatcher.lang.runtime.expression.PropertyAccessExpression;
-import io.github.mattidragon.jsonpatcher.lang.runtime.expression.VariableAccessExpression;
-import io.github.mattidragon.jsonpatcher.lang.runtime.function.FunctionArgument;
-import io.github.mattidragon.jsonpatcher.lang.runtime.statement.*;
+import io.github.mattidragon.jsonpatcher.lang.ast.Program;
+import io.github.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.AssignmentExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.PropertyAccessExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
+import io.github.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import io.github.mattidragon.jsonpatcher.lang.ast.statement.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -42,9 +44,11 @@ public class TreeAnalysis {
     private final List<VariableAccessExpression> mutations = new ArrayList<>();
     private final List<VariableAccessExpression> illegalMutations = new ArrayList<>();
     private final Program tree;
+    private final TreeMetadata metadata;
 
-    public TreeAnalysis(Program tree) {
+    public TreeAnalysis(Program tree, TreeMetadata metadata) {
         this.tree = tree;
+        this.metadata = metadata;
         analyse(tree, GLOBAL_SCOPE.child());
         resolveLateVariables();
         findIllegalMutations();
@@ -112,7 +116,7 @@ public class TreeAnalysis {
             }
 
             case VariableAccessExpression expression -> {
-                var variable = resolveVariable(expression.name(), currentScope, expression.pos());
+                var variable = resolveVariable(expression.name(), currentScope, metadata.get(expression, MetadataKey.MAIN_POS).orElse(null));
                 if (variable != null) {
                     variableMappings.put(expression, variable);
                 } else {
@@ -120,7 +124,9 @@ public class TreeAnalysis {
                 }
             }
             case PropertyAccessExpression expression -> {
-                propertyAccesses.add(expression.namePos(), expression);
+                metadata.get(expression, MetadataKey.NAME_POS).ifPresent(pos -> {
+                    propertyAccesses.add(pos, expression);
+                });
                 analyse(expression.parent(), currentScope);
             }
 
@@ -170,7 +176,9 @@ public class TreeAnalysis {
                         .findFirst();
                 if (variable.isPresent()) {
                     variableMappings.put(key, variable.get());
-                    variableReferences.add(key.pos(), variable.get());
+                    metadata.get(key, MetadataKey.MAIN_POS).ifPresent(pos -> {
+                        variableReferences.add(pos, variable.get());
+                    });
                     unusedVariables.remove(variable.get());
                     iterator.remove();
                     break;
@@ -181,13 +189,15 @@ public class TreeAnalysis {
     }
 
     @Nullable
-    private VariableDefinition resolveVariable(String name, Scope scope, SourceSpan pos) {
+    private VariableDefinition resolveVariable(String name, Scope scope, @Nullable SourceSpan pos) {
         var variable = scope.definitions.stream().filter(candidate -> candidate.name().equals(name)).findFirst()
                 .or(() -> Optional.ofNullable(scope.parent).map(parent -> resolveVariable(name, parent, pos)))
                 .orElse(null);
         if (variable != null) {
             unusedVariables.remove(variable);
-            variableReferences.add(pos, variable);
+            if (pos != null) {
+                variableReferences.add(pos, variable);
+            }
         }
         return variable;
     }
@@ -260,6 +270,10 @@ public class TreeAnalysis {
      */
     public Program getTree() {
         return tree;
+    }
+
+    public TreeMetadata getMetadata() {
+        return metadata;
     }
 
     public List<VariableDefinition> getRedefinitions() {

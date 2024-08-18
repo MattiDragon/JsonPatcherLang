@@ -1,7 +1,7 @@
 package io.github.mattidragon.jsonpatcher.server.document;
 
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

@@ -2,8 +2,8 @@ package io.github.mattidragon.jsonpatcher.docs.parse;
 
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourcePos;
-import io.github.mattidragon.jsonpatcher.lang.parse.SourceSpan;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
+import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
 public class DocParseException extends PositionedException {
