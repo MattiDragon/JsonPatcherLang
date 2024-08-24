@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy.test;
 
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Value.NumberValue;
-import io.github.mattidragon.jsonpatcher.lang.runtime.legacy.VariableStack;
+import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value.NumberValue;
+import dev.mattidragon.jsonpatcher.lang.runtime.legacy.VariableStack;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;

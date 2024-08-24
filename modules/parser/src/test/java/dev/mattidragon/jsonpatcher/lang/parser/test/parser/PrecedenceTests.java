@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.parser;
 
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import io.github.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
-import io.github.mattidragon.jsonpatcher.lang.ast.expression.ShortedBinaryExpression;
-import io.github.mattidragon.jsonpatcher.lang.ast.expression.UnaryExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.ShortedBinaryExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.UnaryExpression;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

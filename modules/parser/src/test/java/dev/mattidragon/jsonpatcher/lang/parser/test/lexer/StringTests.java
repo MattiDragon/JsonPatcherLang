@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.lexer;
 
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import io.github.mattidragon.jsonpatcher.lang.parse.Lexer;
-import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
-import io.github.mattidragon.jsonpatcher.lang.parse.Token;
+import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
+import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
