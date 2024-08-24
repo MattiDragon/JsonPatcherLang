@@ -1,6 +1,5 @@
 package io.github.mattidragon.jsonpatcher.lang.ast;
 
-import io.github.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import io.github.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 
 import java.util.List;

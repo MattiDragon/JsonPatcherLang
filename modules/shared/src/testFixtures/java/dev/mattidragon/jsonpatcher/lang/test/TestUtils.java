@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.test;
 
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.SimpleLangConfig;
+import io.github.mattidragon.jsonpatcher.lang.ast.Program;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -15,13 +16,18 @@ import io.github.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import io.github.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import io.github.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
 import io.github.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import io.github.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class TestUtils {
+    @SuppressWarnings("unused")
+    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy"));
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new SimpleLangConfig(false, true);
@@ -29,40 +35,18 @@ public class TestUtils {
     public static final Consumer<ContextBuilder> CONTEXT_BUILDER_CONSUMER = builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER);
 
     public static void testCode(Runtime runtime, String code) {
-        var result = Parser.parse(CONFIG, Lexer.lex(CONFIG, code, "test file").tokens());
-        if (!result.errors().isEmpty()) {
-            var error = new RuntimeException("Expected successful parse");
-            result.errors().forEach(error::addSuppressed);
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Expected successful parse")
-                    .cause(error)
-                    .buildAndThrow();
-            return;
-        }
-
+        var result = parseFull(code);
         var program = result.program();
         
-        Assertions.assertDoesNotThrow(() -> runtime.prepare(program, ).run(CONTEXT_BUILDER_CONSUMER, CONFIG));
+        Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata()).run(CONTEXT_BUILDER_CONSUMER, CONFIG));
     }
 
     public static void testCode(Runtime runtime, String code, Value expected) {
-        var result = Parser.parse(CONFIG, Lexer.lex(CONFIG, code, "test file").tokens());
-        if (!result.errors().isEmpty()) {
-            var error = new RuntimeException("Expected successful parse");
-            result.errors().forEach(error::addSuppressed);
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Expected successful parse")
-                    .cause(error)
-                    .buildAndThrow();
-            return;
-        }
-
-        var program = result.program();
-
+        var result = parseFull(code);
         var output = new Value[1];
 
         Assertions.assertDoesNotThrow(() -> {
-            runtime.prepare(program, ).run(
+            runtime.prepare(result.program(), result.treeMetadata()).run(
                     builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER)
                             .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args, pos) -> {
                                 output[0] = args.getFirst();
@@ -136,6 +120,47 @@ public class TestUtils {
     }
 
     public static Statement blockStatement(Statement... statements) {
-        return new BlockStatement(List.of(statements), POS);
+        return new BlockStatement(List.of(statements));
+    }
+
+    public static Expression parseExpression(String code) {
+        var lex = Lexer.lex(CONFIG, code, "test program");
+        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
+        return Parser.parseExpression(CONFIG, lex.tokens());
+    }
+
+    public static Program parseProgram(String code) {
+        var lex = Lexer.lex(CONFIG, code, "test program");
+        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
+        var parse = Parser.parse(CONFIG, lex.tokens());
+        Assertions.assertIterableEquals(Collections.EMPTY_LIST, parse.errors(), "Failed to parse");
+        return parse.program();
+    }
+
+    public static Parser.Result parseFull(String code) {
+        var lex = Lexer.lex(CONFIG, code, "test program");
+        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
+        var parse = Parser.parse(CONFIG, lex.tokens());
+        Assertions.assertIterableEquals(Collections.EMPTY_LIST, parse.errors(), "Failed to parse");
+        return parse;
+    }
+
+    public static LibraryBuilder.FunctionContext createTestFunctionContext() {
+        return new LibraryBuilder.FunctionContext(new PatchFunction.BuiltInPatchFunction.Context() {
+            @Override
+            public LangConfig config() {
+                return CONFIG;
+            }
+
+            @Override
+            public Value execute(PatchFunction function, List<Value> args, SourceSpan callPos) {
+                throw new UnsupportedOperationException("execute");
+            }
+
+            @Override
+            public void log(Value value) {
+                throw new UnsupportedOperationException("log");
+            }
+        }, POS);
     }
 }

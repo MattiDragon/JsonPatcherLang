@@ -1,11 +1,12 @@
 package io.github.mattidragon.jsonpatcher.lang.test.runtime;
 
+import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import org.junit.jupiter.api.Test;
+import io.github.mattidragon.jsonpatcher.lang.runtime.Runtime;
 
 public class FunctionTests {
-    @Test
-    public void complexArgPassing() {
+    @RuntimeTest
+    public void complexArgPassing(Runtime runtime) {
         var code = """
                 function test(a, $ = {a: 3}, b = 1, c*) {
                     debug.assert(a == 3, "first");
@@ -15,11 +16,11 @@ public class FunctionTests {
                 }
                 test(3, {a: 4}, 10, 1, 2, 3);
                 """;
-        TestUtils.testCode(code);
+        TestUtils.testCode(runtime, code);
     }
     
-    @Test
-    public void defaultValues() {
+    @RuntimeTest
+    public void defaultValues(Runtime runtime) {
         var code = """
                 function test($ = {a: 3}, b = 1, c*) {
                     debug.assert($a == 3, "first");
@@ -28,11 +29,11 @@ public class FunctionTests {
                 }
                 test();
                 """;
-        TestUtils.testCode(code);
+        TestUtils.testCode(runtime, code);
     }
     
-    @Test
-    public void simpleFunction() {
+    @RuntimeTest
+    public void simpleFunction(Runtime runtime) {
         var code = """
                 function test(a, b, c) {
                     debug.assert(a == 1, "first");
@@ -41,6 +42,6 @@ public class FunctionTests {
                 }
                 test(1, 2, 3);
                 """;
-        TestUtils.testCode(code);
+        TestUtils.testCode(runtime, code);
     }
 }

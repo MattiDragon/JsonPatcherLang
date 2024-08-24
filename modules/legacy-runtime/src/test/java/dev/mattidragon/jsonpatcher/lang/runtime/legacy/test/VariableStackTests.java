@@ -1,14 +1,13 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy.test;
 
+import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value.NumberValue;
-import io.github.mattidragon.jsonpatcher.lang.runtime.VariableStack;
+import io.github.mattidragon.jsonpatcher.lang.runtime.legacy.VariableStack;
 import org.junit.jupiter.api.Test;
 
-import static io.github.mattidragon.jsonpatcher.lang.test.TestUtils.POS;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
-
 
 public class VariableStackTests {
     @Test

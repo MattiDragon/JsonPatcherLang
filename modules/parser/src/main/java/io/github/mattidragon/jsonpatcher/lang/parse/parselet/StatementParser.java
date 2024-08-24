@@ -8,7 +8,6 @@ import io.github.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
 import io.github.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import io.github.mattidragon.jsonpatcher.lang.ast.statement.*;
 import io.github.mattidragon.jsonpatcher.lang.parse.Parser;
-import io.github.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.ArrayList;
@@ -185,11 +184,9 @@ public class StatementParser {
         Statement initializer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            PositionedToken positionedToken = parser.previous();
-            initializer = new EmptyStatement();
+            initializer = parser.setMetadata(new EmptyStatement(), MetadataKey.FULL_POS, parser.previous().pos());
         } else if (parser.hasNext(KeywordToken.VAR) || parser.hasNext(KeywordToken.VAL)) {
-            PositionedToken positionedToken = parser.peek();
-            initializer = variableStatement(parser, positionedToken.token() == KeywordToken.VAR);
+            initializer = variableStatement(parser, parser.peek().token() == KeywordToken.VAR);
         } else {
             initializer = expressionStatement(parser);
         }
@@ -197,8 +194,7 @@ public class StatementParser {
 
         Expression condition;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
-            PositionedToken positionedToken = parser.peek();
-            condition = new ValueExpression(Value.BooleanValue.TRUE);
+            condition = parser.setMetadata(new ValueExpression(Value.BooleanValue.TRUE), MetadataKey.FULL_POS, parser.peek().pos());
         } else {
             condition = parser.expression();
         }
@@ -207,8 +203,7 @@ public class StatementParser {
         Statement incrementer;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
             parser.next();
-            PositionedToken positionedToken = parser.previous();
-            incrementer = new EmptyStatement();
+            incrementer = parser.setMetadata(new EmptyStatement(), MetadataKey.FULL_POS, parser.previous().pos());
         } else {
             incrementer = new ExpressionStatement(parser.expression());
         }

@@ -1,7 +1,6 @@
 package io.github.mattidragon.jsonpatcher.lang.ast.meta;
 
 import io.github.mattidragon.jsonpatcher.lang.ast.ProgramNode;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.*;
 

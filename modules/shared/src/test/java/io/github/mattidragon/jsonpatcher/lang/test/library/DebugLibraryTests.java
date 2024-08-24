@@ -1,4 +1,4 @@
-package io.github.mattidragon.jsonpatcher.lang.test.runtime.libraries;
+package io.github.mattidragon.jsonpatcher.lang.test.library;
 
 import io.github.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import io.github.mattidragon.jsonpatcher.lang.runtime.Value;

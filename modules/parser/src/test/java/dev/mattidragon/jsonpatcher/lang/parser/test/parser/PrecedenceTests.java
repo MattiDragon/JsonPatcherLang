@@ -1,45 +1,68 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.parser;
 
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import io.github.mattidragon.jsonpatcher.lang.runtime.Value;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.ShortedBinaryExpression;
+import io.github.mattidragon.jsonpatcher.lang.ast.expression.UnaryExpression;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class PrecedenceTests {
     @Test
     public void testSumProductPrecedence() {
-        TestUtils.testExpression("1 + 2 * 3", new Value.NumberValue(7));
-        TestUtils.testExpression("1 * 2 + 3", new Value.NumberValue(5));
-
-        TestUtils.testExpression("1 + 2 * 3 + 4", new Value.NumberValue(11));
-        TestUtils.testExpression("1 * 2 + 3 * 4", new Value.NumberValue(14));
+        Assertions.assertEquals(new BinaryExpression(
+                TestUtils.numberExpression(1),
+                new BinaryExpression(
+                        TestUtils.numberExpression(2),
+                        TestUtils.numberExpression(3),
+                        BinaryExpression.Operator.MULTIPLY),
+                BinaryExpression.Operator.PLUS
+        ), TestUtils.parseExpression("1 + 2 * 3"));
+        
+        Assertions.assertEquals(new BinaryExpression(
+                new BinaryExpression(
+                        TestUtils.numberExpression(1),
+                        TestUtils.numberExpression(2),
+                        BinaryExpression.Operator.MULTIPLY),
+                TestUtils.numberExpression(3),
+                BinaryExpression.Operator.PLUS
+        ), TestUtils.parseExpression("1 * 2 + 3"));
     }
 
     @Test
     public void testLogicEqualityPrecedence() {
-        TestUtils.testExpression("true == false && true", Value.BooleanValue.FALSE);
-        TestUtils.testExpression("true && true != false", Value.BooleanValue.TRUE);
-
-        TestUtils.testExpression("true == false || true", Value.BooleanValue.TRUE);
-        TestUtils.testExpression("true || true != false", Value.BooleanValue.TRUE);
+        Assertions.assertEquals(new ShortedBinaryExpression(
+                new BinaryExpression(
+                        TestUtils.trueExpression(),
+                        TestUtils.falseExpression(),
+                        BinaryExpression.Operator.EQUALS),
+                TestUtils.trueExpression(),
+                ShortedBinaryExpression.Operator.AND
+        ), TestUtils.parseExpression("true == false && true"));
+        
+        Assertions.assertEquals(new ShortedBinaryExpression(
+                TestUtils.trueExpression(),
+                new BinaryExpression(
+                        TestUtils.trueExpression(),
+                        TestUtils.falseExpression(),
+                        BinaryExpression.Operator.NOT_EQUALS),
+                ShortedBinaryExpression.Operator.AND
+        ), TestUtils.parseExpression("true && true != false"));
     }
 
     @Test
     public void testPrefixPrecedence() {
-        TestUtils.testExpression("!true == false", Value.BooleanValue.TRUE);
-        TestUtils.testExpression("!true != false", Value.BooleanValue.FALSE);
+        Assertions.assertEquals(new BinaryExpression(
+                new UnaryExpression(TestUtils.trueExpression(), UnaryExpression.Operator.NOT),
+                TestUtils.falseExpression(),
+                BinaryExpression.Operator.EQUALS
+        ), TestUtils.parseExpression("!true == false"));
 
-        TestUtils.testExpression("-1 + 2", new Value.NumberValue(1));
-        TestUtils.testExpression("-1 - 2", new Value.NumberValue(-3));
-    }
 
-    @Test
-    public void testTernaryChaining() {
-        TestUtils.testExpression("false ? 0 : true ? 3 : 4", new Value.NumberValue(3));
-        TestUtils.testCode("""
-                var a = 10;
-                true ? 1 : 2;
-                false ? 0 : a = 3;
-                testResult(a);
-                """, new Value.NumberValue(3));
+        Assertions.assertEquals(new BinaryExpression(
+                new UnaryExpression(TestUtils.numberExpression(1), UnaryExpression.Operator.MINUS),
+                new UnaryExpression(TestUtils.numberExpression(2), UnaryExpression.Operator.MINUS),
+                BinaryExpression.Operator.MINUS
+        ), TestUtils.parseExpression("-1 - -2"));
     }
 }

@@ -22,13 +22,13 @@ public class TreeAnalysis {
         var definitions = new ArrayList<VariableDefinition>();
         GLOBAL_SCOPE = new Scope(null, true, Collections.unmodifiableList(definitions));
         definitions.addAll(List.of(
-                new ImportDefinition("debug", true, null),
-                new ImportDefinition("math", true, null),
-                new ImportDefinition("objects", true, null),
-                new ImportDefinition("arrays", true, null),
-                new ImportDefinition("functions", true, null),
-                new ImportDefinition("strings", true, null),
-                new ImportDefinition("metapatch", true, null),
+                new ImportDefinition("debug", true, null, null),
+                new ImportDefinition("math", true, null, null),
+                new ImportDefinition("objects", true, null, null),
+                new ImportDefinition("arrays", true, null, null),
+                new ImportDefinition("functions", true, null, null),
+                new ImportDefinition("strings", true, null, null),
+                new ImportDefinition("metapatch", true, null, null),
                 new LocalDefinition("_isLibrary", false, true, null),
                 new LocalDefinition("_target", false, true, null),
                 new LocalDefinition("_isMetapatch", false, true, null)));
@@ -66,27 +66,30 @@ public class TreeAnalysis {
     private void analyse(ProgramNode node, Scope currentScope) {
         switch (node) {
             case ImportStatement statement -> {
-                var variable = VariableDefinition.ofImport(statement.variableName(), statement);
+                var variable = VariableDefinition.ofImport(statement.variableName(), statement, metadata);
                 addVariable(currentScope, variable);
-                imports.add(statement.namePos(), statement.libraryName());
+                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
+                    imports.add(pos, statement.libraryName());
+                });
             }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), currentScope);
-                addVariable(currentScope,
-                        VariableDefinition.ofLocal(statement.name(), statement.mutable(), statement.namePos()));
+                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
+                    addVariable(currentScope, VariableDefinition.ofLocal(statement.name(), statement.mutable(), pos));
+                });
             }
             case FunctionDeclarationStatement statement -> {
                 analyse(statement.getChildren(), currentScope);
-                addVariable(currentScope, VariableDefinition.ofFunction(statement.name(), statement));
+                addVariable(currentScope, VariableDefinition.ofFunction(statement.name(), statement, metadata));
             }
             case FunctionArgument argument -> {
                 argument.defaultValue().ifPresent(expression -> analyse(expression, currentScope));
                 if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
-                    addVariable(currentScope, VariableDefinition.ofParameter(variable.name(), argument));
+                    addVariable(currentScope, VariableDefinition.ofParameter(variable.name(), argument, metadata));
                 }
             }
             
-            case AssignmentExpression(VariableAccessExpression target, var value, var operator, var pos) -> {
+            case AssignmentExpression(VariableAccessExpression target, var value, var operator) -> {
                 mutations.add(target);
                 analyse(target, currentScope);
                 analyse(value, currentScope);
@@ -103,8 +106,10 @@ public class TreeAnalysis {
             }
             case ForEachLoopStatement statement -> {
                 var scope = currentScope.child();
-                addVariable(scope,
-                        VariableDefinition.ofLocal(statement.variableName(), false, statement.variablePos()));
+
+                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
+                    addVariable(scope, VariableDefinition.ofLocal(statement.variableName(), false, pos));
+                });
                 analyse(statement.getChildren(), scope);
             }
             case ForLoopStatement statement -> {
@@ -306,16 +311,19 @@ public class TreeAnalysis {
     }
 
     public sealed interface VariableDefinition {
-        static VariableDefinition ofImport(String name, @Nullable ImportStatement statement) {
-            return new ImportDefinition(name, false, statement);
+        static VariableDefinition ofImport(String name, @Nullable ImportStatement statement, TreeMetadata metadata) {
+            var pos = statement == null ? null : metadata.get(statement, MetadataKey.NAME_POS).orElse(null);
+            return new ImportDefinition(name, false, statement, pos);
         }
 
-        static VariableDefinition ofFunction(String name, @Nullable FunctionDeclarationStatement statement) {
-            return new FunctionDefinition(name, false, statement);
+        static VariableDefinition ofFunction(String name, @Nullable FunctionDeclarationStatement statement, TreeMetadata metadata) {
+            var pos = statement == null ? null : metadata.get(statement, MetadataKey.NAME_POS).orElse(null);
+            return new FunctionDefinition(name, false, statement, pos);
         }
 
-        static VariableDefinition ofParameter(String name, @Nullable FunctionArgument argument) {
-            return new ParameterDefinition(name, argument);
+        static VariableDefinition ofParameter(String name, @Nullable FunctionArgument argument, TreeMetadata metadata) {
+            var pos = argument == null ? null : metadata.get(argument, MetadataKey.NAME_POS).orElse(null);
+            return new ParameterDefinition(name, argument, pos);
         }
 
         static VariableDefinition ofLocal(String name, boolean mutable, @Nullable SourceSpan pos) {
@@ -334,37 +342,18 @@ public class TreeAnalysis {
         SourceSpan definitionPos();
     }
 
-    public record ImportDefinition(String name, boolean stdlib, @Nullable ImportStatement statement)
+    public record ImportDefinition(String name, boolean stdlib, @Nullable ImportStatement statement, @Nullable SourceSpan definitionPos) 
             implements VariableDefinition {
-        @Override
-        public @Nullable SourceSpan definitionPos() {
-            if (statement == null)
-                return null;
-            return statement.variablePos();
-        }
     }
 
-    public record FunctionDefinition(String name, boolean stdlib, @Nullable FunctionDeclarationStatement statement)
+    public record FunctionDefinition(String name, boolean stdlib, @Nullable FunctionDeclarationStatement statement, @Nullable SourceSpan definitionPos)
             implements VariableDefinition {
-        @Override
-        public @Nullable SourceSpan definitionPos() {
-            if (statement == null)
-                return null;
-            return statement.namePos();
-        }
     }
 
-    public record ParameterDefinition(String name, @Nullable FunctionArgument argument) implements VariableDefinition {
+    public record ParameterDefinition(String name, @Nullable FunctionArgument argument, @Nullable SourceSpan definitionPos) implements VariableDefinition {
         @Override
         public boolean stdlib() {
             return false;
-        }
-
-        @Override
-        public @Nullable SourceSpan definitionPos() {
-            if (argument == null)
-                return null;
-            return argument.namePos();
         }
     }
 

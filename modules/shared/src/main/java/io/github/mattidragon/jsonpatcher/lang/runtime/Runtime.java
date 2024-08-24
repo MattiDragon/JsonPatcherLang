@@ -10,8 +10,6 @@ import java.util.stream.Collectors;
 
 /**
  * An abstract runtime for the jsonpatcher language.
- * This class is <em>not</em> type-safe to allow easier usage of arbitrary implementations.
- * Implementations should check that any objects they receive are of the correct types.
  */
 public interface Runtime {
     Map<String, Runtime> RUNTIMES = ServiceLoader.load(Runtime.class).stream()
@@ -23,8 +21,8 @@ public interface Runtime {
     /**
      * Prepares a program. A single prepared program can be executed multiple times.
      *
-     * @param program  The program to prepare
-     * @param metadata
+     * @param program The program to prepare
+     * @param metadata Metadata about program nodes, like source code positions 
      * @return The prepared program
      */
     PreparedProgram prepare(Program program, TreeMetadata metadata);

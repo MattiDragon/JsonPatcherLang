@@ -212,7 +212,7 @@ public class DefinitionFinder {
 
     private Optional<DocEntry> getPropertyDocs(TreeAnalysis analysis, SourcePos pos) {
         var access = analysis.getPropertyAccesses().getFirstAt(pos);
-        if (!(access instanceof PropertyAccessExpression(VariableAccessExpression variableAccess, var name, var pos1, var pos2))) {
+        if (!(access instanceof PropertyAccessExpression(VariableAccessExpression variableAccess, var name))) {
             return Optional.empty();
         }
 
