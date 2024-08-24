@@ -1,7 +1,7 @@
 package io.github.mattidragon.jsonpatcher.lang.parse;
 
-import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;

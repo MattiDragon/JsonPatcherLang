@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.test;
 
 import io.github.mattidragon.jsonpatcher.lang.LangConfig;
-import io.github.mattidragon.jsonpatcher.lang.SimpleLangConfig;
 import io.github.mattidragon.jsonpatcher.lang.ast.Program;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourcePos;
@@ -30,7 +29,7 @@ public class TestUtils {
     public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy"));
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
-    public static final LangConfig CONFIG = new SimpleLangConfig(false, true);
+    public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
     public static final Consumer<Value> EMPTY_DEBUG_CONSUMER = (value) -> {};
     public static final Consumer<ContextBuilder> CONTEXT_BUILDER_CONSUMER = builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER);
 

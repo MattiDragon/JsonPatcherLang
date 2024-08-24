@@ -7,12 +7,12 @@ public abstract class PositionedException extends RuntimeException {
     private final LangConfig config;
 
     protected PositionedException(LangConfig config, String message) {
-        super(message, null, true, config.useJavaStacktrace());
+        super(message, null, true, config.stackTraceMode() == LangConfig.StackTraceMode.JAVA);
         this.config = config;
     }
 
     protected PositionedException(LangConfig config, String message, Throwable cause) {
-        super(message, cause, true, config.useJavaStacktrace());
+        super(message, cause, true, config.stackTraceMode() == LangConfig.StackTraceMode.JAVA);
         this.config = config;
     }
 
@@ -26,7 +26,7 @@ public abstract class PositionedException extends RuntimeException {
 
     @Override
     public synchronized Throwable getCause() {
-        if (config.useJavaStacktrace()) return super.getCause();
+        if (config.stackTraceMode() == LangConfig.StackTraceMode.JAVA) return super.getCause();
 
         var original = super.getCause();
         return original instanceof PositionedException ? null : original;
@@ -40,8 +40,8 @@ public abstract class PositionedException extends RuntimeException {
 
         fillInError(message);
 
-        if (!config.useJavaStacktrace()) {
-            if (config.useShortStacktrace()) {
+        if (config.stackTraceMode() != LangConfig.StackTraceMode.JAVA) {
+            if (config.stackTraceMode() == LangConfig.StackTraceMode.SHORT) {
                 message.append("\n|");
             }
             fillInCause(message);
@@ -52,7 +52,7 @@ public abstract class PositionedException extends RuntimeException {
 
     private void fillInCause(StringBuilder message) {
         if (super.getCause() instanceof PositionedException cause) {
-            if (config.useShortStacktrace()) {
+            if (config.stackTraceMode() == LangConfig.StackTraceMode.SHORT) {
                 message.append("\n| Caused by: ");
                 cause.fillInShortError(message);
             } else {

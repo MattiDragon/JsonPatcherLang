@@ -1,7 +1,7 @@
 package io.github.mattidragon.jsonpatcher.lang.runtime;
 
-import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.PositionedException;
+import io.github.mattidragon.jsonpatcher.lang.LangConfig;
 import io.github.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
