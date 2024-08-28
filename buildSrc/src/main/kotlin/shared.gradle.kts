@@ -12,11 +12,13 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.jetbrains:annotations:24.0.1")
+    val libs = versionCatalogs.named("libs")
+    
+    compileOnly(libs.findLibrary("annotations").orElseThrow())
 
     // Use junit
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.findLibrary("junit-jupiter").orElseThrow())
+    testRuntimeOnly(libs.findLibrary("junit-platform").orElseThrow())
 }
 
 tasks.test {

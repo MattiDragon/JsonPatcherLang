@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies { 
-    testFixturesImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testFixturesImplementation(libs.junit.jupiter)
     testFixturesApi(project(":parser"))
     testFixturesApi(project(":legacy-runtime"))
 }

@@ -18,6 +18,7 @@ public sealed interface Value {
             case Pair(NumberValue(var first), NumberValue(var second)) -> first == second;
             case Pair(StringValue(var first), StringValue(var second)) -> first.equals(second);
             case Pair(BooleanValue first, BooleanValue second) -> first == second;
+            // TODO: fix nested array and object checks
             case Pair(ArrayValue(var first), ArrayValue(var second)) -> first.equals(second);
             case Pair(ObjectValue(var first), ObjectValue(var second)) -> first.equals(second);
             case Pair(FunctionValue(var first), FunctionValue(var second)) -> first.equals(second);

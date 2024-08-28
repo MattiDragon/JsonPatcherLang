@@ -5,9 +5,7 @@ plugins {
 
 dependencies {
     api(project(":parser"))
-    api("org.commonmark:commonmark:0.22.0")
-    api("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
-    api("org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0")
+    api(libs.bundles.commonmark)
 }
 
 tasks.jar {

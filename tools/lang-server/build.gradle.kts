@@ -6,7 +6,7 @@ plugins {
 dependencies {
     implementation(project(":parser"))
     implementation(project(":doctool"))
-    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.23.1")
+    implementation(libs.lsp4j)
 }
 
 tasks.jar {

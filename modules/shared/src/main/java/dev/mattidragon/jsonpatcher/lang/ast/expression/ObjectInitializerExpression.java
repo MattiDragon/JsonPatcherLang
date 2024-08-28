@@ -15,6 +15,7 @@ public record ObjectInitializerExpression(List<Entry> contents) implements Expre
         return contents.stream().toList();
     }
 
+    // TODO: Move name pos to metadata
     public record Entry(String name, SourceSpan namePos, Expression value) implements ProgramNode {
         @Override
         public Iterable<? extends ProgramNode> getChildren() {
