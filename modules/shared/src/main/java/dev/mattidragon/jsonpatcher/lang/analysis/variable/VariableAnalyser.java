@@ -1,0 +1,186 @@
+package dev.mattidragon.jsonpatcher.lang.analysis.variable;
+
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
+
+/**
+ * Generic variable analyser for jsonpatcher meant to serve both the language server and the bytecode compiler.
+ */
+public class VariableAnalyser {
+    public static final MetadataKey<Variable> VARIABLE_DEFINITION = new MetadataKey<>();
+    public static final MetadataKey<Variable> VARIABLE_REFERENCE = new MetadataKey<>();
+    
+    private final TreeMetadata metadata;
+    private final Map<VariableAccessExpression, LazyRef> lazyRefs = new HashMap<>();
+    private final List<Scope> scopes = new ArrayList<>();
+    private final List<AnalysisError> errors = new ArrayList<>();
+
+    private VariableAnalyser(TreeMetadata metadata) {
+        this.metadata = metadata;
+    }
+
+    /**
+     * Analyses a given program for variables,
+     * attaching metadata to variable references and returning results.
+     * @param program The program to analyse
+     * @param metadata The metadata object that variable metadata is added to
+     * @param globals A list of global variable names to consider
+     * @return A record containing errors and miscellaneous information
+     */
+    public static VariableAnalysis analyse(Program program, TreeMetadata metadata, List<String> globals) {
+        var analyser = new VariableAnalyser(metadata);
+        analyser.analyse(program, globals);
+        return new VariableAnalysis(Collections.unmodifiableList(analyser.errors), Collections.unmodifiableList(analyser.scopes));
+    }
+
+    private void analyse(Program program, List<String> globals) {
+        var globalScope = new ProgramScope(program);
+        for (var global : globals) {
+            globalScope.define(new Variable(global, false, program));
+        }
+        analyseAll(program.getChildren(), globalScope);
+        lazyRefs.forEach((access, lazyRef) -> {
+            lazyRef.resolve();
+            var variable = lazyRef.getValue();
+            if (variable == null) {
+                errors.add(new AnalysisError.MissingVariable(lazyRef.getName(), access, metadata.get(access, MetadataKey.MAIN_POS).orElse(null)));
+                return;
+            }
+            variable.addUsage(access);
+            metadata.put(access, VARIABLE_REFERENCE, variable);
+        });
+    }
+    
+    private void analyseAll(Iterable<? extends ProgramNode> nodes, MutableScope current) {
+        for (var node : nodes) {
+            analyse(node, current);
+        }
+    }
+    
+    private void analyse(ProgramNode node, MutableScope current) {
+        switch (node) {
+            case BlockStatement block -> {
+                var scope = new BlockScope(block, current);
+                scopes.add(scope);
+                analyseAll(block.getChildren(), scope);
+            }
+            case ApplyStatement statement -> {
+                analyse(statement.root(), current);
+                var scope = new ApplyScope(statement, current);
+                scopes.add(scope);
+                analyse(statement.action(), scope);
+            }
+            case FunctionExpression function -> {
+                var scope = new FunctionScope(function, current);
+                scopes.add(scope);
+                analyse(function.args(), scope);
+                analyse(function.body(), scope);
+            }
+            case FunctionArgument argument -> {
+                var functionScope = (FunctionScope) current;
+                switch (argument.target()) {
+                    case FunctionArgument.Target.Root.INSTANCE -> functionScope.setRoot(new RootVariable());
+                    case FunctionArgument.Target.Variable variable -> functionScope.variables().add(new Variable(variable.name(), true, argument));
+                }
+            }
+            case VariableCreationStatement statement -> {
+                analyse(statement.initializer(), current);
+                var variable = new Variable(statement.name(), statement.mutable(), statement);
+                define(variable, current, statement);
+                metadata.put(statement, VARIABLE_DEFINITION, variable);
+            }
+            case ImportStatement statement -> {
+                var variable = new Variable(statement.variableName(), false, statement);
+                define(variable, current, statement);
+                metadata.put(statement, VARIABLE_DEFINITION, variable);
+            }
+            case FunctionDeclarationStatement statement -> {
+                analyse(statement.value(), current);
+                var variable = new Variable(statement.name(), false, statement);
+                define(variable, current, statement);
+                metadata.put(statement, VARIABLE_DEFINITION, variable);
+            }
+            case ForEachLoopStatement statement -> {
+                analyse(statement.iterable(), current);
+                var scope = new BlockScope(statement, current);
+                scopes.add(scope);
+                var variable = new Variable(statement.variableName(), false, statement);
+                define(variable, current, statement);
+                metadata.put(statement, VARIABLE_DEFINITION, variable);
+                analyse(statement.body(), scope);
+            }
+            case ForLoopStatement statement -> {
+                var scope = new BlockScope(statement, current);
+                scopes.add(scope);
+                analyse(statement.initializer(), scope);
+                analyse(statement.condition(), scope);
+                analyse(statement.body(), scope);
+                analyse(statement.incrementer(), scope);
+            }
+            case VariableAccessExpression access -> {
+                switch (current.find(access.name())) {
+                    case LazyRef lazyRef -> lazyRefs.put(access, lazyRef);
+                    case Variable variable -> {
+                        metadata.put(access, VARIABLE_REFERENCE, variable);
+                        variable.addUsage(access);
+                    }
+                    case null -> errors.add(new AnalysisError.MissingVariable(access.name(), access, metadata.get(access, MetadataKey.MAIN_POS).orElse(null)));
+                }
+            }
+            default -> analyseAll(node.getChildren(), current);
+        }
+    }
+    
+    private void define(Variable variable, MutableScope scope, ProgramNode node) {
+        if (scope.find(variable.name()) != null) {
+            errors.add(new AnalysisError.DuplicateVariable(variable.name(), node, metadata.get(node, MetadataKey.MAIN_POS).orElse(null)));
+        }
+        scope.define(variable);
+    }
+
+    public static class AnalysisError {
+        private final String variableName;
+        private final ProgramNode node;
+        private final @Nullable SourceSpan pos;
+        
+        private AnalysisError(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
+            this.variableName = variableName;
+            this.node = node;
+            this.pos = pos;
+        }
+
+        public String getVariableName() {
+            return variableName;
+        }
+
+        public ProgramNode getNode() {
+            return node;
+        }
+
+        public @Nullable SourceSpan getPos() {
+            return pos;
+        }
+
+        public static class MissingVariable extends AnalysisError {
+            private MissingVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
+                super(variableName, node, pos);
+            }
+        }
+        
+        public static class DuplicateVariable extends AnalysisError {
+            private DuplicateVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
+                super(variableName, node, pos);
+            }
+        }
+    }
+}
