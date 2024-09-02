@@ -33,6 +33,7 @@ public class StatementCompiler implements Opcodes {
             case ReturnStatement s -> compileReturn(s);
             case EmptyStatement s -> {}
             case BlockStatement s -> compileBlock(s);
+            case ForLoopStatement s -> compileFor(s);
             case WhileLoopStatement s -> compileWhile(s);
             case ContinueStatement s -> compileContinue();
             case BreakStatement s -> compileBreak();
@@ -60,6 +61,28 @@ public class StatementCompiler implements Opcodes {
         for (var child : statement.statements()){
             compile(child);
         }
+    }
+
+    private void compileFor(ForLoopStatement statement) {
+        compile(statement.initializer());
+        var startLabel = new Label();
+        var incrementLabel = new Label();
+        var endLabel = new Label();
+        continueLabel = incrementLabel;
+        breakLabel = endLabel;
+        
+        visitor.visitLabel(startLabel);
+        insertExpression(statement.condition());
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
+        visitor.visitJumpInsn(IFEQ, endLabel);
+        compile(statement.body());
+        visitor.visitLabel(incrementLabel);
+        compile(statement.incrementer());
+        visitor.visitJumpInsn(GOTO, startLabel);
+        visitor.visitLabel(endLabel);
+        
+        continueLabel = null;
+        breakLabel = null;
     }
 
     private void compileWhile(WhileLoopStatement statement) {

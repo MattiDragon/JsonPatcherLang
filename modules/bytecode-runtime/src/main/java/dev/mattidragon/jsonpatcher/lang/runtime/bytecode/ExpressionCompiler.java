@@ -10,6 +10,11 @@ import org.objectweb.asm.*;
 import java.util.Locale;
 
 public class ExpressionCompiler implements Opcodes {
+    // toggle use of dynamic constant for constants
+    // condy is probably better for perf (although testing is needed),
+    // but it has horrible readability in the decompiled code
+    private static final boolean USE_CONDY = false;
+    
     private final TreeMetadata metadata;
     private final MethodVisitor visitor;
     private final String className;
@@ -48,16 +53,38 @@ public class ExpressionCompiler implements Opcodes {
                     "NULL",
                     "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NullValue;");
             case Value.NumberValue(var value) -> {
-                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
-                visitor.visitInsn(DUP);
-                visitor.visitLdcInsn(value);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", "(D)V", false);
+                if (USE_CONDY) {
+                    visitor.visitLdcInsn(new ConstantDynamic("number", 
+                            Type.getDescriptor(Value.NumberValue.class),
+                            new Handle(H_INVOKESTATIC,
+                                    Types.CONSTANT_HOOKS,
+                                    "number",
+                                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;D)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NumberValue;",
+                                    false),
+                            value));
+                } else {
+                    visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+                    visitor.visitInsn(DUP);
+                    visitor.visitLdcInsn(value);
+                    visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", "(D)V", false);
+                }
             }
             case Value.StringValue(var value) -> {
-                visitor.visitTypeInsn(NEW, Types.STRING_VALUE);
-                visitor.visitInsn(DUP);
-                visitor.visitLdcInsn(value);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.STRING_VALUE, "<init>", "(Ljava/lang/String;)V", false);
+                if (USE_CONDY) {
+                    visitor.visitLdcInsn(new ConstantDynamic("string",
+                            Type.getDescriptor(Value.NumberValue.class),
+                            new Handle(H_INVOKESTATIC,
+                                    Types.CONSTANT_HOOKS,
+                                    "string",
+                                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/String)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$StringValue;",
+                                    false),
+                            value));
+                } else {
+                    visitor.visitTypeInsn(NEW, Types.STRING_VALUE);
+                    visitor.visitInsn(DUP);
+                    visitor.visitLdcInsn(value);
+                    visitor.visitMethodInsn(INVOKESPECIAL, Types.STRING_VALUE, "<init>", "(Ljava/lang/String;)V", false);
+                }
             }
         }
     }

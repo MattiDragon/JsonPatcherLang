@@ -46,18 +46,14 @@ public class Compiler {
         mainMethod.visitCode();
         
         var code = """
-                if (1 == 2) {
-                    5+5;
-                } else {
-                    1+1;
-                }
-                
-                while (false) {
-                    1+1;
-                    if (1 == 2) {
+                for (1; 2; 3) {
+                    if (5) {
+                        continue;
+                    }
+                    if (4) {
                         break;
-                    } else 3;
-                    1+1;
+                    }
+                    6;
                 }
                 """;
         var result = TestUtils.parseFull(code);

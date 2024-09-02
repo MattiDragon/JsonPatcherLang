@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.BinaryExpressionHooks;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.ConstantHooks;
 import org.objectweb.asm.Type;
 
 public class Types {
@@ -14,6 +15,7 @@ public class Types {
     public static final String ARRAY_VALUE = Type.getInternalName(Value.ArrayValue.class);
     public static final String FUNCTION_VALUE = Type.getInternalName(Value.FunctionValue.class);
     public static final String BINARY_EXPRESSION_HOOKS = Type.getInternalName(BinaryExpressionHooks.class);
+    public static final String CONSTANT_HOOKS = Type.getInternalName(ConstantHooks.class);
     
     private Types() {}
 }
