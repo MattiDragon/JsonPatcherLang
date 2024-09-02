@@ -81,7 +81,7 @@ public class ExpressionCompiler implements Opcodes {
         var endLabel = new Label();
         var falseLabel = new Label();
         compile(expression.condition());
-        visitor.visitMethodInsn(INVOKEINTERFACE, "dev/mattidragon/jsonpatcher/lang/runtime/Value", "asBoolean", "()Z", true);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
         visitor.visitJumpInsn(IFEQ, falseLabel);
         compile(expression.ifTrue());
         visitor.visitJumpInsn(GOTO, endLabel);

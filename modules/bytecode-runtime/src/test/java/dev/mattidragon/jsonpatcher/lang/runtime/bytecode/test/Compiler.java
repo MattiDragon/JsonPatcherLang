@@ -1,11 +1,14 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.StatementCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
+import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -17,6 +20,7 @@ import java.io.PrintWriter;
 import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class Compiler {
     private static int classCounter = 0;
@@ -38,27 +42,31 @@ public class Compiler {
         init.visitMaxs(0, 0);
         init.visitEnd();
         
-        var mainMethod = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "run", "()V", null, null);
+        var mainMethod = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "run", Type.getMethodDescriptor(Type.getType(Value.class)), null, null);
         mainMethod.visitCode();
         
-        /*ExpressionCompiler.compile(new ArrayInitializerExpression(List.of(
-                new TernaryExpression(new ValueExpression(Value.BooleanValue.TRUE), new ValueExpression(new Value.NumberValue(1)), new ValueExpression(new Value.NumberValue(2))),
-                new ValueExpression(new Value.NumberValue(1)),
-                new ValueExpression(Value.NullValue.NULL)
-        )), new TreeMetadata(), mainMethod);*/
-        /*ExpressionCompiler.compile(new ObjectInitializerExpression(List.of(
-                new ObjectInitializerExpression.Entry("a", null, new ValueExpression(new Value.NumberValue(1))),
-                new ObjectInitializerExpression.Entry("b", null, new ValueExpression(new Value.NumberValue(2))),
-                new ObjectInitializerExpression.Entry("c", null, new ValueExpression(new Value.NumberValue(3)))
-        )), new TreeMetadata(), mainMethod, className);*/
-        ExpressionCompiler.compile(new BinaryExpression(
-                new ValueExpression(new Value.NumberValue(1)),
-                new ValueExpression(new Value.NumberValue(2)),
-                BinaryExpression.Operator.PLUS
-        ), new TreeMetadata(), mainMethod, className);
-        
-        mainMethod.visitInsn(Opcodes.POP);
-        mainMethod.visitInsn(Opcodes.RETURN);
+        var code = """
+                if (1 == 2) {
+                    5+5;
+                } else {
+                    1+1;
+                }
+                
+                while (false) {
+                    1+1;
+                    if (1 == 2) {
+                        break;
+                    } else 3;
+                    1+1;
+                }
+                """;
+        var result = TestUtils.parseFull(code);
+
+        for (var statement : result.program().statements()) {
+            StatementCompiler.compile(statement, result.treeMetadata(), mainMethod, className);
+        }
+        StatementCompiler.compile(new ReturnStatement(Optional.empty()), result.treeMetadata(), mainMethod, className);
+
         mainMethod.visitMaxs(0, 0);
         mainMethod.visitEnd();
         
@@ -70,14 +78,14 @@ public class Compiler {
         
         Files.write(Path.of("run", className.substring(className.lastIndexOf('/') + 1) + ".class"), bytes);
 
-        try {
-            var definedLookup = GeneratedProgram.PACKAGE_ACCESS.defineHiddenClass(bytes, false);
-            var constructor = definedLookup.findConstructor(definedLookup.lookupClass(), MethodType.methodType(void.class, EvaluationContext.class));
-            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA)));
-            instance.run();
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to run", e);
-        }
+//        try {
+//            var definedLookup = GeneratedProgram.PACKAGE_ACCESS.defineHiddenClass(bytes, false);
+//            var constructor = definedLookup.findConstructor(definedLookup.lookupClass(), MethodType.methodType(void.class, EvaluationContext.class));
+//            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA)));
+//            instance.run();
+//        } catch (Throwable e) {
+//            throw new RuntimeException("Failed to run", e);
+//        }
     }
     
     private static String getClassName() {
