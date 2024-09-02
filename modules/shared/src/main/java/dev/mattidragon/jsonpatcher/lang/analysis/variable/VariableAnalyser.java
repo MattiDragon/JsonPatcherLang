@@ -19,6 +19,7 @@ import java.util.*;
 public class VariableAnalyser {
     public static final MetadataKey<Variable> VARIABLE_DEFINITION = new MetadataKey<>();
     public static final MetadataKey<Variable> VARIABLE_REFERENCE = new MetadataKey<>();
+    public static final MetadataKey<Scope> SCOPE = new MetadataKey<>();
     
     private final TreeMetadata metadata;
     private final Map<VariableAccessExpression, LazyRef> lazyRefs = new HashMap<>();
@@ -45,6 +46,7 @@ public class VariableAnalyser {
 
     private void analyse(Program program, List<String> globals) {
         var globalScope = new ProgramScope(program);
+        metadata.put(program, SCOPE, globalScope);
         for (var global : globals) {
             globalScope.define(new Variable(global, false, program));
         }
@@ -72,17 +74,20 @@ public class VariableAnalyser {
             case BlockStatement block -> {
                 var scope = new BlockScope(block, current);
                 scopes.add(scope);
+                metadata.put(block, SCOPE, scope);
                 analyseAll(block.getChildren(), scope);
             }
             case ApplyStatement statement -> {
                 analyse(statement.root(), current);
                 var scope = new ApplyScope(statement, current);
                 scopes.add(scope);
+                metadata.put(statement, SCOPE, scope);
                 analyse(statement.action(), scope);
             }
             case FunctionExpression function -> {
                 var scope = new FunctionScope(function, current);
                 scopes.add(scope);
+                metadata.put(function, SCOPE, scope);
                 analyse(function.args(), scope);
                 analyse(function.body(), scope);
             }
@@ -113,6 +118,7 @@ public class VariableAnalyser {
             case ForEachLoopStatement statement -> {
                 analyse(statement.iterable(), current);
                 var scope = new BlockScope(statement, current);
+                metadata.put(statement, SCOPE, scope);
                 scopes.add(scope);
                 var variable = new Variable(statement.variableName(), false, statement);
                 define(variable, current, statement);

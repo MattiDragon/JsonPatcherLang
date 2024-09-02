@@ -1,7 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
@@ -18,18 +20,17 @@ public class ExpressionCompiler implements Opcodes {
     private final TreeMetadata metadata;
     private final MethodVisitor visitor;
     private final String className;
+    private final FunctionCompiler functionCompiler;
 
-    private ExpressionCompiler(TreeMetadata metadata, MethodVisitor visitor, String className) {
+    public ExpressionCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, FunctionCompiler functionCompiler) {
         this.metadata = metadata;
         this.visitor = visitor;
         this.className = className;
+        this.functionCompiler = functionCompiler;
     }
 
-    public static void compile(Expression expression, TreeMetadata metadata, MethodVisitor visitor, String className) {
-        new ExpressionCompiler(metadata, visitor, className).compile(expression);
-    }
-    
-    private void compile(Expression expression) {
+    public void compile(Expression expression) {
+        metadata.get(expression, MetadataKey.MAIN_POS).ifPresent(sourceSpan -> functionCompiler.emitLineNumber(sourceSpan.from().row()));
         switch (expression) {
             case ValueExpression e -> compileValue(e);
             case IsInstanceExpression e -> compileIsInstance(e);
@@ -38,6 +39,8 @@ public class ExpressionCompiler implements Opcodes {
             case ObjectInitializerExpression e -> compileObjectInit(e);
             case BinaryExpression e -> compileBinary(e);
             case UnaryExpression e -> compileUnary(e);
+            case VariableAccessExpression e -> compileVariableAccess(e);
+            case AssignmentExpression e -> compileAssignment(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
     }
@@ -154,17 +157,36 @@ public class ExpressionCompiler implements Opcodes {
     private void compileBinary(BinaryExpression e) {
         compile(e.first());
         compile(e.second());
-        visitor.visitInsn(ACONST_NULL);
-        visitor.visitVarInsn(ALOAD, 0);
-        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
-        visitor.visitInvokeDynamicInsn(e.op().name().toLowerCase(Locale.ROOT), 
-                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(Value.class), Type.getType(SourceSpan.class), Type.getType(EvaluationContext.class)),
-                new Handle(H_INVOKESTATIC, Types.BINARY_EXPRESSION_HOOKS, "hook", "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;", false));
+        compileBinaryOp(e.op());
     }
 
     private void compileUnary(UnaryExpression e) {
         compile(e.input());
         compileUnaryOp(e.op());
+    }
+
+    private void compileVariableAccess(VariableAccessExpression expression) {
+        var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+        visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+    }
+
+    private void compileAssignment(AssignmentExpression expression) {
+        var op = expression.operator();
+        switch (expression.target()) {
+            case VariableAccessExpression e -> {
+                var variable = metadata.get(e, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+                if (op == BinaryExpression.Operator.ASSIGN) {
+                    compile(expression.value());
+                } else {
+                    visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+                    compile(expression.value());
+                    compileBinaryOp(op);
+                }
+                visitor.visitInsn(DUP);
+                visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
+            }
+            default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
+        }
     }
 
     private void compileUnaryOp(UnaryExpression.Operator op) {
@@ -175,12 +197,12 @@ public class ExpressionCompiler implements Opcodes {
                 var midLabel = new Label();
                 var endLabel = new Label();
                 visitor.visitJumpInsn(IFNE, midLabel);
-                visitor.visitLdcInsn(1);
+                visitor.visitInsn(ICONST_1);
                 visitor.visitJumpInsn(GOTO, endLabel);
                 visitor.visitLabel(midLabel);
-                visitor.visitLdcInsn(0);
+                visitor.visitInsn(ICONST_0);
                 visitor.visitLabel(endLabel);
-                visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.getType(Value.BooleanValue.class)), false);
+                visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
             }
             case MINUS -> {
                 visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
@@ -188,7 +210,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
                 visitor.visitInsn(DNEG);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.DOUBLE_TYPE, Type.getType(Value.NumberValue.class)), false);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
             }
             case BITWISE_NOT -> {
                 visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
@@ -199,7 +221,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(ICONST_M1);
                 visitor.visitInsn(IXOR);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.DOUBLE_TYPE, Type.getType(Value.NumberValue.class)), false);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
             }
             case INCREMENT -> {
                 visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
@@ -210,7 +232,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(ICONST_1);
                 visitor.visitInsn(IADD);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.DOUBLE_TYPE, Type.getType(Value.NumberValue.class)), false);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
             }
             case DECREMENT -> {
                 visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
@@ -221,8 +243,17 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(ICONST_1);
                 visitor.visitInsn(ISUB);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.DOUBLE_TYPE, Type.getType(Value.NumberValue.class)), false);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
             }
         }
+    }
+
+    private void compileBinaryOp(BinaryExpression.Operator op) {
+        visitor.visitInsn(ACONST_NULL);
+        visitor.visitVarInsn(ALOAD, 0);
+        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
+        visitor.visitInvokeDynamicInsn(op.name().toLowerCase(Locale.ROOT),
+                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(Value.class), Type.getType(SourceSpan.class), Type.getType(EvaluationContext.class)),
+                new Handle(H_INVOKESTATIC, Types.BINARY_EXPRESSION_HOOKS, "hook", "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;", false));
     }
 }

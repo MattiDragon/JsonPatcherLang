@@ -1,65 +1,88 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
-import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import java.util.List;
+import java.util.Optional;
+
 public class StatementCompiler implements Opcodes {
     private final TreeMetadata metadata;
     private final MethodVisitor visitor;
     private final String className;
+    private final FunctionCompiler functionCompiler;
     private Label continueLabel = null;
     private Label breakLabel = null;
 
-    private StatementCompiler(TreeMetadata metadata, MethodVisitor visitor, String className) {
+    public StatementCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, FunctionCompiler functionCompiler) {
         this.metadata = metadata;
         this.visitor = visitor;
         this.className = className;
+        this.functionCompiler = functionCompiler;
+    }
+    
+    public void compile(Program program) {
+        compileBlock(program, program.statements());
+        compile(new ReturnStatement(Optional.empty()));
     }
 
-    public static void compile(Statement statement, TreeMetadata metadata, MethodVisitor visitor, String className) {
-        new StatementCompiler(metadata, visitor, className).compile(statement);
-    }
-
-    private void compile(Statement statement) {
+    public void compile(Statement statement) {
+        metadata.get(statement, MetadataKey.MAIN_POS).ifPresent(sourceSpan -> functionCompiler.emitLineNumber(sourceSpan.from().row()));
         switch (statement) {
             case ExpressionStatement s -> compileExpression(s);
             case ReturnStatement s -> compileReturn(s);
             case EmptyStatement s -> {}
-            case BlockStatement s -> compileBlock(s);
+            case BlockStatement s -> compileBlock(s, s.statements());
             case ForLoopStatement s -> compileFor(s);
             case WhileLoopStatement s -> compileWhile(s);
             case ContinueStatement s -> compileContinue();
             case BreakStatement s -> compileBreak();
             case IfStatement s -> compileIf(s);
+            case VariableCreationStatement s -> compileVariableCreation(s);
             default -> throw new UnsupportedOperationException("Unsupported statement: %s".formatted(statement));
         }
     }
 
     private void compileExpression(ExpressionStatement statement) {
-        insertExpression(statement.expression());
+        functionCompiler.compileExpression(statement.expression());
         visitor.visitInsn(POP);
     }
 
     private void compileReturn(ReturnStatement statement) {
         var expression = statement.value();
         if (expression.isPresent()) {
-            insertExpression(expression.get());
+            functionCompiler.compileExpression(expression.get());
         } else {
             visitor.visitFieldInsn(GETSTATIC, Types.NULL_VALUE, "NULL", Type.getDescriptor(Value.NullValue.class));
         }
         visitor.visitInsn(ARETURN);
     }
 
-    private void compileBlock(BlockStatement statement) {
-        for (var child : statement.statements()){
+    private void compileBlock(ProgramNode node, List<Statement> statements) {
+        var scope = metadata.get(node, VariableAnalyser.SCOPE).orElseThrow();
+        
+        var startLabel = new Label();
+        visitor.visitLabel(startLabel);
+        for (var child : statements){
             compile(child);
+        }
+        var endLabel = new Label();
+        visitor.visitLabel(endLabel);
+
+        for (var variable : scope.variables()) {
+            var type = variable.isCaptured() ? Type.getDescriptor(Box.class) : Type.getDescriptor(Value.class);
+            visitor.visitLocalVariable(variable.name(), type, null, startLabel, endLabel, functionCompiler.getOrAllocateVariable(variable));
         }
     }
 
@@ -72,7 +95,7 @@ public class StatementCompiler implements Opcodes {
         breakLabel = endLabel;
         
         visitor.visitLabel(startLabel);
-        insertExpression(statement.condition());
+        functionCompiler.compileExpression(statement.condition());
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
         visitor.visitJumpInsn(IFEQ, endLabel);
         compile(statement.body());
@@ -92,7 +115,7 @@ public class StatementCompiler implements Opcodes {
         breakLabel = endLabel;
         
         visitor.visitLabel(startLabel);
-        insertExpression(statement.condition());
+        functionCompiler.compileExpression(statement.condition());
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
         visitor.visitJumpInsn(IFEQ, endLabel);
         compile(statement.body());
@@ -120,7 +143,7 @@ public class StatementCompiler implements Opcodes {
     private void compileIf(IfStatement statement) {
         var endLabel = new Label();
         var elseLabel = new Label();
-        insertExpression(statement.condition());
+        functionCompiler.compileExpression(statement.condition());
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
         visitor.visitJumpInsn(IFEQ, elseLabel);
         compile(statement.action());
@@ -132,7 +155,8 @@ public class StatementCompiler implements Opcodes {
         visitor.visitLabel(endLabel);
     }
 
-    private void insertExpression(Expression expression) {
-        ExpressionCompiler.compile(expression, metadata, visitor, className);
+    private void compileVariableCreation(VariableCreationStatement statement) {
+        functionCompiler.compileExpression(statement.initializer());
+        visitor.visitVarInsn(Opcodes.ASTORE, functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_DEFINITION).orElseThrow()));
     }
 }
