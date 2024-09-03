@@ -1,9 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
 public class ExpressionInterpreter {
@@ -43,27 +42,27 @@ public class ExpressionInterpreter {
                 if (parent instanceof Value.ObjectValue objectValue) {
                     if (!(index instanceof Value.StringValue stringValue)) {
                         String message = "Tried to index object by %s. Objects can only be indexed by string".formatted(index);
-                        throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                        throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                     }
-                    objectValue.set(stringValue.value(), value, context.config(), context.getPos(expression).orElse(null));
+                    objectValue.set(stringValue.value(), value, context.createFunctionContext(context.getPos(expression).orElse(null)));
                 } else if (parent instanceof Value.ArrayValue arrayValue) {
                     if (!(index instanceof Value.NumberValue numberValue)) {
                         String message = "Tried to index array by %s. Arrays can only be indexed by number.".formatted(index);
-                        throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                        throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                     }
-                    arrayValue.set((int) numberValue.value(), value, context.config(), context.getPos(expression).orElse(null));
+                    arrayValue.set((int) numberValue.value(), value, context.createFunctionContext(context.getPos(expression).orElse(null)));
                 } else {
                     String message = "Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index);
-                    throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                    throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                 }
             }
             case PropertyAccessExpression expression -> {
                 var parent = evaluate(expression.parent(), context);
                 if (parent instanceof Value.ObjectValue objectValue) {
-                    objectValue.set(expression.name(), value, context.config(), context.getPos(expression).orElse(null));
+                    objectValue.set(expression.name(), value, context.createFunctionContext(context.getPos(expression).orElse(null)));
                 } else {
                     String message = "Tried to write property %s of %s. Only objects have writable properties.".formatted(expression.name(), parent);
-                    throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                    throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                 }
             }
             case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression", e.error());
@@ -118,14 +117,14 @@ public class ExpressionInterpreter {
         var value = evaluate(expression.function(), context);
         if (!(value instanceof Value.FunctionValue functionValue)) {
             String message = "Tried to call %s, not a function".formatted(value);
-            throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+            throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
         }
         var args = expression.arguments().stream().map(argument -> evaluate(argument, context)).toList();
         
         return switch (functionValue.function()) {
             case LegacyRuntimePatchFunction function -> function.execute(context, args, context.getPos(expression).orElse(null));
             case PatchFunction.RuntimePatchFunction other -> throw new IllegalStateException("Unsupported function from foreign runtime: " + other);
-            case PatchFunction.BuiltInPatchFunction function -> function.execute(context, args, context.getPos(expression).orElse(null));
+            case PatchFunction.BuiltInPatchFunction function -> function.execute(context.createFunctionContext(context.getPos(expression).orElse(null)), args);
         };
     }
 
@@ -139,19 +138,19 @@ public class ExpressionInterpreter {
         if (parent instanceof Value.ObjectValue objectValue) {
             if (!(index instanceof Value.StringValue stringValue)) {
                 String message = "Tried to index object by %s. Objects can only be indexed by string".formatted(index);
-                throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
             }
-            return objectValue.get(stringValue.value(), context.config(), context.getPos(expression).orElse(null));
+            return objectValue.get(stringValue.value(), context.createFunctionContext(context.getPos(expression).orElse(null)));
         }
         if (parent instanceof Value.ArrayValue arrayValue) {
             if (!(index instanceof Value.NumberValue numberValue)) {
                 String message = "Tried to index array by %s. Arrays can only be indexed by number.".formatted(index);
-                throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+                throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
             }
-            return arrayValue.get((int) numberValue.value(), context.config(), context.getPos(expression).orElse(null));
+            return arrayValue.get((int) numberValue.value(), context.createFunctionContext(context.getPos(expression).orElse(null)));
         }
         String message = "Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index);
-        throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+        throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
     }
 
     private static Value.BooleanValue evaluateIsInstance(EvaluationContext context, IsInstanceExpression expression) {
@@ -170,12 +169,12 @@ public class ExpressionInterpreter {
     private static Value evaluatePropertyAccess(EvaluationContext context, PropertyAccessExpression expression) {
         var parent = evaluate(expression.parent(), context);
         if (parent instanceof Value.ObjectValue objectValue) {
-            return objectValue.get(expression.name(), context.config(), context.getPos(expression).orElse(null));
+            return objectValue.get(expression.name(), context.createFunctionContext(context.getPos(expression).orElse(null)));
         }
         var stdlibProp = Libraries.getProperty(parent, expression.name());
         if (stdlibProp == null) {
             String message = "Tried to read invalid property %s of %s.".formatted(expression.name(), parent);
-            throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(expression).orElse(null));
+            throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
         }
         return stdlibProp;
     }

@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparedProgram;
-import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 
 public class LegacyRuntime implements Runtime {

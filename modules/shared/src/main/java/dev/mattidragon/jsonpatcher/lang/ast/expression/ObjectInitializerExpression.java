@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.ast.expression;
 
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 
 import java.util.List;
 

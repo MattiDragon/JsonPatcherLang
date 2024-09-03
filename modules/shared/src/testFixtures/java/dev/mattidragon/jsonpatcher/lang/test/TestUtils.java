@@ -5,18 +5,18 @@ import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
+import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.ContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 
@@ -48,7 +48,7 @@ public class TestUtils {
         Assertions.assertDoesNotThrow(() -> {
             runtime.prepare(result.program(), result.treeMetadata()).run(
                     builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER)
-                            .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args, pos) -> {
+                            .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args) -> {
                                 output[0] = args.getFirst();
                                 return Value.NullValue.NULL;
                             })),
@@ -145,15 +145,25 @@ public class TestUtils {
         return parse;
     }
 
-    public static LibraryBuilder.FunctionContext createTestFunctionContext() {
-        return new LibraryBuilder.FunctionContext(new PatchFunction.BuiltInPatchFunction.Context() {
+    public static FunctionContext createTestFunctionContext() {
+        return new FunctionContext() {
+            @Override
+            public RuntimeException createException(String message) {
+                return new RuntimeException("Error in test: " + message);
+            }
+
+            @Override
+            public RuntimeException createException(String message, RuntimeException e) {
+                return new RuntimeException("Error in test: " + message, e);
+            }
+
             @Override
             public LangConfig config() {
                 return CONFIG;
             }
 
             @Override
-            public Value execute(PatchFunction function, List<Value> args, SourceSpan callPos) {
+            public Value execute(PatchFunction function, List<Value> args) {
                 throw new UnsupportedOperationException("execute");
             }
 
@@ -161,6 +171,6 @@ public class TestUtils {
             public void log(Value value) {
                 throw new UnsupportedOperationException("log");
             }
-        }, POS);
+        };
     }
 }

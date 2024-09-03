@@ -1,9 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -54,9 +53,11 @@ public class LibraryBuilder {
         methods.forEach((name, overloads) -> {
             var byArgCount = groupOverloadsByArgCount(name, overloads);
 
-            functions.put(name, (context, args, callPos) -> {
+            functions.put(name, (context, args) -> {
                 var overload = byArgCount.get(args.size());
-                if (overload == null) throw new EvaluationException(context.config(), "No overload of %s with %s arguments".formatted(name, args.size()), callPos);
+                if (overload == null) {
+                    throw context.createException("No overload of %s with %s arguments".formatted(name, args.size()));
+                }
 
                 var hasContext = overload.getParameterTypes()[0] == FunctionContext.class;
 
@@ -64,7 +65,7 @@ public class LibraryBuilder {
                     var arg = args.get(i);
                     var param = overload.getParameterTypes()[hasContext ? i + 1 : i];
                     if (!param.isInstance(arg)) {
-                        throw new EvaluationException(context.config(), "Expected argument %s to be %s, was %s".formatted(i, getTypeName(param), arg), callPos);
+                        throw context.createException("Expected argument %s to be %s, was %s".formatted(i, getTypeName(param), arg));
                     }
                 }
 
@@ -73,7 +74,7 @@ public class LibraryBuilder {
                     if (hasContext) {
                         argsArray = new Object[args.size() + 1];
                         System.arraycopy(args.toArray(), 0, argsArray, 1, args.size());
-                        argsArray[0] = new FunctionContext(context, callPos);
+                        argsArray[0] = context;
                     } else {
                         argsArray = args.toArray();
                     }
@@ -84,12 +85,8 @@ public class LibraryBuilder {
                     if (result instanceof Value value) return value;
                     throw new IllegalStateException("Unexpected return value from library function %s: %s".formatted(name, result));
                 } catch (InvocationTargetException e) {
-                    if (e.getCause() instanceof EvaluationException e1) {
-                        if (overload.isAnnotationPresent(DisableErrorWrapping.class)) {
-                            throw e1;
-                        } else {
-                            throw new EvaluationException(context.config(), "Error while calling builtin function %s".formatted(name), callPos, e1);
-                        }
+                    if (e.getCause() instanceof RuntimeException e1) {
+                        throw context.createException("Error while calling builtin function %s".formatted(name), e1);
                     } else {
                         throw new RuntimeException("Unexpected error while calling builtin function %s".formatted(name), e);
                     }
@@ -197,8 +194,5 @@ public class LibraryBuilder {
         functions.forEach((name, function) -> object.value().put(name, new Value.FunctionValue(function)));
         constants.forEach(object.value()::put);
         return object;
-    }
-
-    public record FunctionContext(PatchFunction.BuiltInPatchFunction.Context context, SourceSpan callPos) {
     }
 }

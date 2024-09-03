@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
+@SuppressWarnings("unused")
 public final class Box {
     private Value value;
 

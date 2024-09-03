@@ -2,8 +2,6 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import static dev.mattidragon.jsonpatcher.lang.runtime.legacy.ExpressionInterpreter.evaluate;
@@ -23,7 +21,7 @@ public class StatementInterpreter {
             case WhileLoopStatement s -> executeWhileLoop(context, s);
             case FunctionDeclarationStatement s -> context.variables().createVariable(s.name(), evaluate(s.value(), context), false, context.getPos(s.value()).orElse(null));
             case IfStatement s -> executeIf(context, s);
-            case ImportStatement s -> context.variables().createVariable(s.variableName(), context.findLibrary(s.libraryName(), context.getPos(s).orElse(null)), false, context.getPos(s).orElse(null));
+            case ImportStatement s -> context.variables().createVariable(s.variableName(), context.findLibrary(s.libraryName(), context.createFunctionContext(context.getPos(s).orElse(null))), false, context.getPos(s).orElse(null));
             case ReturnStatement s -> throw new ReturnException(s.value().map(expression -> evaluate(expression, context)).orElse(Value.NullValue.NULL), context.getPos(s).orElse(null));
             case VariableCreationStatement s -> context.variables().createVariable(s.name(), evaluate(s.initializer(), context), s.mutable(), context.getPos(s).orElse(null));
 
@@ -40,28 +38,28 @@ public class StatementInterpreter {
                 if (parent instanceof Value.ObjectValue objectValue) {
                     if (!(index instanceof Value.StringValue stringValue)) {
                         String message = "Tried to index object by %s. Objects can only be indexed by string".formatted(index);
-                        throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(e).orElse(null));
+                        throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
                     }
-                    objectValue.remove(stringValue.value(), context.config(), context.getPos(e).orElse(null));
+                    objectValue.remove(stringValue.value(), context.createFunctionContext(context.getPos(e).orElse(null)));
                 } else if (parent instanceof Value.ArrayValue arrayValue) {
                     if (!(index instanceof Value.NumberValue numberValue)) {
                         String message = "Tried to index array by %s. Arrays can only be indexed by number.".formatted(index);
-                        throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(e).orElse(null));
+                        throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
                     }
-                    arrayValue.remove((int) numberValue.value(), context.config(), context.getPos(e).orElse(null));
+                    arrayValue.remove((int) numberValue.value(), context.createFunctionContext(context.getPos(e).orElse(null)));
                 } else {
                     String message = "Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index);
-                    throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(e).orElse(null));
+                    throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
                 }
             }
             case VariableAccessExpression e -> context.variables().deleteVariable(e.name(), context.getPos(e).orElse(null));
             case PropertyAccessExpression e -> {
                 var parent = evaluate(e.parent(), context);
                 if (parent instanceof Value.ObjectValue objectValue) {
-                    objectValue.remove(e.name(), context.config(), context.getPos(e).orElse(null));
+                    objectValue.remove(e.name(), context.createFunctionContext(context.getPos(e).orElse(null)));
                 } else {
                     String message = "Tried to delete property %s of %s. Only objects have writable properties.".formatted(e.name(), parent);
-                    throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), message, context.getPos(e).orElse(null));
+                    throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
                 }
             }
             case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression", e.error());
@@ -72,7 +70,7 @@ public class StatementInterpreter {
     private static void executeApply(EvaluationContext context, ApplyStatement statement) {
         var root = evaluate(statement.root(), context);
         if (!(root instanceof Value.ObjectValue objectValue)) {
-            throw new EvaluationException(((PatchFunction.BuiltInPatchFunction.Context) context).config(), "Only objects can be used in apply statements, tried to use %s".formatted(root), context.getPos(statement).orElse(null));
+            throw new EvaluationException(context.config(), "Only objects can be used in apply statements, tried to use %s".formatted(root), context.getPos(statement).orElse(null));
         }
         execute(statement.action(), context.withRoot(objectValue));
     }

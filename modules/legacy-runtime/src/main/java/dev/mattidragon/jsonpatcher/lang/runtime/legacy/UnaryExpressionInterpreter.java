@@ -1,9 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.UnaryExpression;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class UnaryExpressionInterpreter {
     public static Value evaluate(UnaryExpression.Operator operator, Value value, SourceSpan pos, EvaluationContext context) {

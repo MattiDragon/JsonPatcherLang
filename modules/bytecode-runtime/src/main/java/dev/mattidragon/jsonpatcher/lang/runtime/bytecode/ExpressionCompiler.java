@@ -51,7 +51,7 @@ public class ExpressionCompiler implements Opcodes {
                     Types.BOOLEAN_VALUE,
                     value.value() ? "TRUE" : "FALSE",
                     "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$BooleanValue;");
-            case Value.NullValue value -> visitor.visitFieldInsn(GETSTATIC,
+            case Value.NullValue.NULL -> visitor.visitFieldInsn(GETSTATIC,
                     Types.NULL_VALUE,
                     "NULL",
                     "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NullValue;");
@@ -249,11 +249,8 @@ public class ExpressionCompiler implements Opcodes {
     }
 
     private void compileBinaryOp(BinaryExpression.Operator op) {
-        visitor.visitInsn(ACONST_NULL);
-        visitor.visitVarInsn(ALOAD, 0);
-        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
         visitor.visitInvokeDynamicInsn(op.name().toLowerCase(Locale.ROOT),
-                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(Value.class), Type.getType(SourceSpan.class), Type.getType(EvaluationContext.class)),
+                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(Value.class)),
                 new Handle(H_INVOKESTATIC, Types.BINARY_EXPRESSION_HOOKS, "hook", "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;", false));
     }
 }

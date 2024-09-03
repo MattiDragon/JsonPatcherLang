@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.test.runtime.expression;
 
+import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 
 public class BinaryExpressionTests {
     // TODO: implement more tests. Not very high priority as these are unlikely to be broken

@@ -1,10 +1,10 @@
 package dev.mattidragon.jsonpatcher.lang.test.runtime.statement;
 
-import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
-import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.legacy.EvaluationException;
+import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
+import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 
 public class ImportStatementTests {
@@ -18,7 +18,7 @@ public class ImportStatementTests {
         Assertions.assertDoesNotThrow(() -> runtime.prepare(result.program(), result.treeMetadata()).run(
                 builder -> builder
                         .debugConsumer(TestUtils.EMPTY_DEBUG_CONSUMER)
-                        .libraryLocator((libraryName, libraryObject, importPos, config) -> {
+                        .libraryLocator((libraryName, libraryObject, context) -> {
                             // test library locator always returns a library
                             libraryObject.value().put("a", new Value.NumberValue(1));
                         }),
@@ -34,7 +34,7 @@ public class ImportStatementTests {
         Assertions.assertThrowsExactly(EvaluationException.class, () -> runtime.prepare(result.program(), result.treeMetadata()).run(
                 builder -> builder
                         .debugConsumer(TestUtils.EMPTY_DEBUG_CONSUMER)
-                        .libraryLocator((libraryName, libraryObject, importPos, config) -> {
+                        .libraryLocator((libraryName, libraryObject, context) -> {
                             // test library locator always returns a library
                             libraryObject.value().put("a", new Value.NumberValue(1));
                         }),

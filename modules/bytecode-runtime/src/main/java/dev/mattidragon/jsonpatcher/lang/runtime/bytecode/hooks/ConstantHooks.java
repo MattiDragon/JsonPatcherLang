@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.lang.invoke.MethodHandles;
 
+@SuppressWarnings("unused")
 public class ConstantHooks {
     public Value.NumberValue number(MethodHandles.Lookup caller, String name, double value) {
         return new Value.NumberValue(value);

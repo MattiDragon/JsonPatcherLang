@@ -2,13 +2,9 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
-import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.FunctionCompiler;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.StatementCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.objectweb.asm.ClassReader;
@@ -23,7 +19,6 @@ import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 
 public class Compiler {
     private static int classCounter = 0;

@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.lexer;
 
-import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
+import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

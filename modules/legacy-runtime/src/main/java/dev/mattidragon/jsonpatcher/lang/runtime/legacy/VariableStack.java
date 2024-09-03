@@ -2,7 +2,6 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;

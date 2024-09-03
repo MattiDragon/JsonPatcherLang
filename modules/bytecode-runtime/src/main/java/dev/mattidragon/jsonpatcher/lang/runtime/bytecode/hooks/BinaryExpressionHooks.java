@@ -1,10 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks;
 
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.IncompatibleOperandsException;
 
 import java.lang.invoke.*;
 import java.util.Collections;
@@ -12,9 +10,10 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class BinaryExpressionHooks {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final MethodType BOOTSTRAP_TYPE = MethodType.methodType(Value.class, Value.class, Value.class, SourceSpan.class, EvaluationContext.class);
+    private static final MethodType BOOTSTRAP_TYPE = MethodType.methodType(Value.class, Value.class, Value.class);
     private static final MethodHandle PAIR_CONSTRUCTOR;
     private static final Map<BinaryExpression.Operator, MethodHandle> OPERATOR_HANDLES;
 
@@ -41,13 +40,13 @@ public class BinaryExpressionHooks {
         map.put(BinaryExpression.Operator.LESS_THAN_EQUAL, getPacked("lessThanEqual"));
         map.put(BinaryExpression.Operator.GREATER_THAN_EQUAL, getPacked("greaterThanEqual"));
         map.put(BinaryExpression.Operator.IN, getLoose("in"));
-        map.put(BinaryExpression.Operator.ASSIGN, MethodHandles.dropArguments(MethodHandles.dropArguments(MethodHandles.identity(Value.class), 1, SourceSpan.class, EvaluationContext.class), 0, Value.class));
+        map.put(BinaryExpression.Operator.ASSIGN, MethodHandles.dropArguments(MethodHandles.identity(Value.class), 0, Value.class));
         OPERATOR_HANDLES = Collections.unmodifiableMap(map);
     }
     
     private static MethodHandle getLoose(String name) {
         try {
-            return LOOKUP.findStatic(BinaryExpressionHooks.class, name, MethodType.methodType(Value.class, Value.class, Value.class, SourceSpan.class, EvaluationContext.class));
+            return LOOKUP.findStatic(BinaryExpressionHooks.class, name, MethodType.methodType(Value.class, Value.class, Value.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new IllegalStateException("Unable to find internal method handle", e);
         }
@@ -55,7 +54,7 @@ public class BinaryExpressionHooks {
     
     private static MethodHandle getPacked(String name) {
         try {
-            var raw = LOOKUP.findStatic(BinaryExpressionHooks.class, name, MethodType.methodType(Value.class, Pair.class, SourceSpan.class, EvaluationContext.class));
+            var raw = LOOKUP.findStatic(BinaryExpressionHooks.class, name, MethodType.methodType(Value.class, Pair.class));
             return MethodHandles.collectArguments(raw, 0, PAIR_CONSTRUCTOR);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new IllegalStateException("Unable to find internal method handle", e);
@@ -72,7 +71,7 @@ public class BinaryExpressionHooks {
         return new ConstantCallSite(OPERATOR_HANDLES.get(BinaryExpression.Operator.valueOf(methodName.toUpperCase(Locale.ROOT))));
     }
     
-    private static Value plus(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value plus(Pair pair) {
         return switch (pair) {
             case Pair(Value.NumberValue(var first), Value.NumberValue(var second)) -> new Value.NumberValue(first + second);
             case Pair(Value.StringValue(var first), Value.StringValue(var second)) -> new Value.StringValue(first + second);
@@ -88,20 +87,20 @@ public class BinaryExpressionHooks {
                 object.value().putAll(second);
                 yield object;
             }
-            default -> throw new EvaluationException(context.config(), "Can't add %s and %s together".formatted(pair.first, pair.second), pos);
+            default -> throw new IncompatibleOperandsException("Can't add %s and %s together".formatted(pair.first, pair.second));
         };
     }
 
-    private static Value minus(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value minus(Pair pair) {
         if (pair instanceof Pair(Value.NumberValue first, Value.NumberValue second)) {
             return new Value.NumberValue(first.value() - second.value());
         }
-        throw new EvaluationException(context.config(), "Can't subtract %s from %s".formatted(pair.first, pair.second), pos);
+        throw new IncompatibleOperandsException("Can't subtract %s from %s".formatted(pair.first, pair.second));
     }
 
-    private static Value multiply(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value multiply(Value first, Value second) {
         if (!(second instanceof Value.NumberValue(var multiplier))) {
-            throw new EvaluationException(context.config(), "Can't multiply by %s".formatted(second), pos);
+            throw new IncompatibleOperandsException("Can't multiply by %s".formatted(second));
         }
         return switch (first) {
             case Value.NumberValue(var number) -> new Value.NumberValue(number * multiplier);
@@ -113,93 +112,93 @@ public class BinaryExpressionHooks {
                 }
                 yield array;
             }
-            default -> throw new EvaluationException(context.config(), "Can't multiply %s with %s".formatted(first, second), pos);
+            default -> throw new IncompatibleOperandsException("Can't multiply %s with %s".formatted(first, second));
         };
     }
 
-    private static Value divide(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value divide(Value first, Value second) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(number1 / number2);
         }
-        throw new EvaluationException(context.config(), "Can't divide %s by %s".formatted(first, second), pos);
+        throw new IncompatibleOperandsException("Can't divide %s by %s".formatted(first, second));
     }
 
-    private static Value modulo(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value modulo(Value first, Value second) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(number1 % number2);
         }
-        throw new EvaluationException(context.config(), "Can't take %s modulo %s".formatted(first, second), pos);
+        throw new IncompatibleOperandsException("Can't take %s modulo %s".formatted(first, second));
     }
 
-    private static Value exponent(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value exponent(Value first, Value second) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(Math.pow(number1, number2));
         }
-        throw new EvaluationException(context.config(), "Can't take %s to the %s".formatted(first, second), pos);
+        throw new IncompatibleOperandsException("Can't take %s to the %s".formatted(first, second));
     }
 
-    private static Value and(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value and(Pair pair) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 & (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() && boolean2.value());
-            default -> throw new EvaluationException(context.config(), "Can't apply and to %s and %s".formatted(pair.first, pair.second), pos);
+            default -> throw new IncompatibleOperandsException("Can't apply and to %s and %s".formatted(pair.first, pair.second));
         };
     }
 
-    private static Value or(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value or(Pair pair) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 | (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() || boolean2.value());
-            default -> throw new EvaluationException(context.config(), "Can't apply and to %s and %s".formatted(pair.first, pair.second), pos);
+            default -> throw new IncompatibleOperandsException("Can't apply or to %s and %s".formatted(pair.first, pair.second));
         };
     }
 
-    private static Value xor(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value xor(Pair pair) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 ^ (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() ^ boolean2.value());
-            default -> throw new EvaluationException(context.config(), "Can't apply and to %s and %s".formatted(pair.first, pair.second), pos);
+            default -> throw new IncompatibleOperandsException("Can't apply xor to %s and %s".formatted(pair.first, pair.second));
         };
     }
 
-    private static Value in(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value in(Value first, Value second) {
         if (second instanceof Value.ArrayValue arrayValue) {
             return Value.BooleanValue.of(arrayValue.value().contains(first));
         }
         if (first instanceof Value.StringValue string && second instanceof Value.ObjectValue objectValue) {
             return Value.BooleanValue.of(objectValue.value().containsKey(string.value()));
         }
-        throw new EvaluationException(context.config(), "Can't check if %s is in %s".formatted(first, second), pos);
+        throw new IncompatibleOperandsException("Can't check if %s is in %s".formatted(first, second));
     }
 
-    private static int compare(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static int compare(Pair pair) {
         if (pair instanceof Pair(Value.NumberValue(var first), Value.NumberValue(var second))) {
             return Double.compare(first, second);
         }
-        throw new EvaluationException(context.config(), "Can't compare %s and %s".formatted(pair.first, pair.second), pos);
+        throw new IncompatibleOperandsException("Can't compare %s and %s".formatted(pair.first, pair.second));
     }
     
-    private static Value lessThan(Pair pair, SourceSpan pos, EvaluationContext context) {
-        return Value.BooleanValue.of(compare(pair, pos, context) < 0);
+    private static Value lessThan(Pair pair) {
+        return Value.BooleanValue.of(compare(pair) < 0);
     }
     
-    private static Value greaterThan(Pair pair, SourceSpan pos, EvaluationContext context) {
-        return Value.BooleanValue.of(compare(pair, pos, context) > 0);
+    private static Value greaterThan(Pair pair) {
+        return Value.BooleanValue.of(compare(pair) > 0);
     }
     
-    private static Value lessThanEqual(Pair pair, SourceSpan pos, EvaluationContext context) {
-        return Value.BooleanValue.of(compare(pair, pos, context) <= 0);
+    private static Value lessThanEqual(Pair pair) {
+        return Value.BooleanValue.of(compare(pair) <= 0);
     }
     
-    private static Value greaterThanEqual(Pair pair, SourceSpan pos, EvaluationContext context) {
-        return Value.BooleanValue.of(compare(pair, pos, context) >= 0);
+    private static Value greaterThanEqual(Pair pair) {
+        return Value.BooleanValue.of(compare(pair) >= 0);
     }
     
-    private static Value equal(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value equal(Value first, Value second) {
         return Value.BooleanValue.of(Value.isEqual(first, second));
     }
     
-    private static Value notEqual(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value notEqual(Value first, Value second) {
         return Value.BooleanValue.of(!Value.isEqual(first, second));
     }
 

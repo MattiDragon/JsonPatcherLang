@@ -1,15 +1,15 @@
 package dev.mattidragon.jsonpatcher.lang.parse.parselet;
 
-import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
-import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.parse.Token;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
+import dev.mattidragon.jsonpatcher.lang.parse.Parser;
+import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import dev.mattidragon.jsonpatcher.lang.parse.Token;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;

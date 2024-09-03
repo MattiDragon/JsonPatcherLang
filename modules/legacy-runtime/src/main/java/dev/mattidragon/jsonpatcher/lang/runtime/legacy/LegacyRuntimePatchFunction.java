@@ -1,12 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.List;
 

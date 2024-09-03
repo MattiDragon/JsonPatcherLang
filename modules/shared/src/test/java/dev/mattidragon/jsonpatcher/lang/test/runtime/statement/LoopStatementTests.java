@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.test.runtime.statement;
 
+import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
-import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
 import org.junit.jupiter.api.Assertions;
 
 import java.time.Duration;

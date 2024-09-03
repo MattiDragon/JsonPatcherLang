@@ -1,8 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.ast.function;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
@@ -15,22 +12,17 @@ public sealed interface PatchFunction {
 
     @FunctionalInterface
     non-sealed interface BuiltInPatchFunction extends PatchFunction {
-        Value execute(Context context, List<Value> args, SourceSpan callPos);
+        Value execute(FunctionContext context, List<Value> args);
         
         default BuiltInPatchFunction argCount(int count) {
-            return (context, args, callPos) -> {
+            return (context, args) -> {
                 if (args.size() != count) {
-                    throw new EvaluationException(context.config(), "Incorrect function argument count: expected %s but found %s".formatted(count, args.size()), callPos);
+                    throw context.createException("Incorrect function argument count: expected %s but found %s".formatted(count, args.size()));
                 }
-                return execute(context, args, callPos);
+                return execute(context, args);
             };
         }
-        
-        interface Context {
-            LangConfig config();
-            Value execute(PatchFunction function, List<Value> args, SourceSpan callPos);
-            void log(Value value);
-        }
+
     }
 
     /**

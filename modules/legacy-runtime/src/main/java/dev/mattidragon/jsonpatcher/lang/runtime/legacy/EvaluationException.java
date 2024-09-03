@@ -1,7 +1,7 @@
-package dev.mattidragon.jsonpatcher.lang.runtime;
+package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
-import dev.mattidragon.jsonpatcher.lang.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +14,7 @@ public class EvaluationException extends PositionedException {
         this.pos = pos;
     }
 
-    public EvaluationException(LangConfig config, String message, @Nullable SourceSpan pos, EvaluationException cause) {
+    public EvaluationException(LangConfig config, String message, @Nullable SourceSpan pos, RuntimeException cause) {
         super(config, message, cause);
         this.pos = pos;
     }

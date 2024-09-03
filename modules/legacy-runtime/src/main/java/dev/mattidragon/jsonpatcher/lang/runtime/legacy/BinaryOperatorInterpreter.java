@@ -1,9 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class BinaryOperatorInterpreter {
     public static Value evaluate(BinaryExpression.Operator operator, Value first, Value second, SourceSpan pos, EvaluationContext context) {

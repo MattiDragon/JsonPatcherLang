@@ -4,7 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationException;
+import dev.mattidragon.jsonpatcher.lang.runtime.legacy.EvaluationException;
 
 // Quick tool to test stack trace logic that's difficult to automate.
 public class StacktraceTester {
