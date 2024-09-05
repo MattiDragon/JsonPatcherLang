@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 
-import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
@@ -59,7 +59,7 @@ public class LibraryBuilder {
                     throw context.createException("No overload of %s with %s arguments".formatted(name, args.size()));
                 }
 
-                var hasContext = overload.getParameterTypes()[0] == FunctionContext.class;
+                var hasContext = overload.getParameterTypes()[0] == PlatformContext.class;
 
                 for (int i = 0; i < args.size(); i++) {
                     var arg = args.get(i);
@@ -123,7 +123,7 @@ public class LibraryBuilder {
         var byArgCount = new HashMap<Integer, Method>();
         for (var overload : overloads) {
             var argCount = overload.getParameterCount();
-            if (argCount >= 1 && overload.getParameterTypes()[0] == FunctionContext.class) {
+            if (argCount >= 1 && overload.getParameterTypes()[0] == PlatformContext.class) {
                 argCount--;
             }
 
@@ -149,7 +149,7 @@ public class LibraryBuilder {
                 var type = parameterTypes[i];
 
                 // Allow context as first argument
-                if (i == 0 && type == FunctionContext.class) {
+                if (i == 0 && type == PlatformContext.class) {
                     continue;
                 }
 

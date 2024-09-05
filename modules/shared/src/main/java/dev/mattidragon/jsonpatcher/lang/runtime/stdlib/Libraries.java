@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 
-import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jetbrains.annotations.Nullable;
@@ -118,7 +118,7 @@ public class Libraries {
         public static final Map<String, PatchFunction.BuiltInPatchFunction> METHODS = new LibraryBuilder(ArraysLibrary.class, Method.class).getFunctions();
 
         @Method
-        public Value.ArrayValue insert(FunctionContext context, Value.ArrayValue array, Value.NumberValue index, Value value) {
+        public Value.ArrayValue insert(PlatformContext context, Value.ArrayValue array, Value.NumberValue index, Value value) {
             array.value().add(fixIndexForInsert(context, (int) index.value(), array.value().size()), value);
             return array;
         }
@@ -130,27 +130,26 @@ public class Libraries {
         }
 
         @Method
-        public Value pop(FunctionContext context, Value.ArrayValue array) {
+        public Value pop(PlatformContext context, Value.ArrayValue array) {
             if (array.value().isEmpty()) throw context.createException("Can't pop from empty array");
             return array.value().removeLast();
         }
 
         @Method
-        public Value.ArrayValue remove(FunctionContext context, Value.ArrayValue array, Value element) {
+        public Value.ArrayValue remove(PlatformContext context, Value.ArrayValue array, Value element) {
             array.value().remove(element);
             return array;
         }
 
         @Method
-        public Value removeAt(FunctionContext context, Value.ArrayValue array, Value.NumberValue index) {
-            var i = (int) index.value();
-            var found = array.get(i, context);
-            array.remove(i, context);
+        public Value removeAt(PlatformContext context, Value.ArrayValue array, Value.NumberValue index) {
+            var found = array.get(index, context);
+            array.delete(index, context);
             return found;
         }
 
         @Method
-        public Value.ArrayValue map(FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+        public Value.ArrayValue map(PlatformContext context, Value.ArrayValue array, Value.FunctionValue function) {
             var newArray = new Value.ArrayValue();
             for (var value : array.value()) {
                 newArray.value().add(context.execute(function.function(), List.of(value)));
@@ -159,15 +158,15 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue replace(FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+        public Value.ArrayValue replace(PlatformContext context, Value.ArrayValue array, Value.FunctionValue function) {
             for (int i = 0; i < array.value().size(); i++) {
-                array.value().set(i, context.execute(function.function(), List.of(array.get(i, context))));
+                array.value().set(i, context.execute(function.function(), List.of(array.get(new Value.NumberValue(i), context))));
             }
             return array;
         }
 
         @Method
-        public Value.ArrayValue filter(FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+        public Value.ArrayValue filter(PlatformContext context, Value.ArrayValue array, Value.FunctionValue function) {
             var newArray = new Value.ArrayValue();
             for (var value : array.value()) {
                 var result = context.execute(function.function(), List.of(value));
@@ -177,13 +176,13 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue removeIf(FunctionContext context, Value.ArrayValue array, Value.FunctionValue function) {
+        public Value.ArrayValue removeIf(PlatformContext context, Value.ArrayValue array, Value.FunctionValue function) {
             array.value().removeIf(value -> context.execute(function.function(), List.of(value)).asBoolean());
             return array;
         }
 
         @Method
-        public Value reduce(FunctionContext context, Value.ArrayValue array, Value.FunctionValue function, Value initialValue) {
+        public Value reduce(PlatformContext context, Value.ArrayValue array, Value.FunctionValue function, Value initialValue) {
             var result = initialValue;
             for (var value : array.value()) {
                 result = context.execute(function.function(), List.of(result, value));
@@ -192,7 +191,7 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue slice(FunctionContext context, Value.ArrayValue array, Value.NumberValue start, Value.NumberValue end) {
+        public Value.ArrayValue slice(PlatformContext context, Value.ArrayValue array, Value.NumberValue start, Value.NumberValue end) {
             var newArray = new Value.ArrayValue();
             var s = (int) start.value();
             var e = (int) end.value();
@@ -206,7 +205,7 @@ public class Libraries {
         }
 
         @Method
-        public Value.ArrayValue slice(FunctionContext context, Value.ArrayValue array, Value.NumberValue start) {
+        public Value.ArrayValue slice(PlatformContext context, Value.ArrayValue array, Value.NumberValue start) {
             var newArray = new Value.ArrayValue();
             var s = (int) start.value();
             if (s < 0 || s > array.value().size()) throw context.createException("Array index out of bounds (index: %s, size: %s)".formatted(s, array.value().size()));
@@ -223,7 +222,7 @@ public class Libraries {
 
         // Can't use same algorithm as normal access, because you can also add at the end.
         @DontBind
-        private static int fixIndexForInsert(FunctionContext context, int index, int size) {
+        private static int fixIndexForInsert(PlatformContext context, int index, int size) {
             if (index > size || index < -size) {
                 throw context.createException("Array index out of bounds (index: %s, size: %s)".formatted(index, size));
             }
@@ -250,17 +249,17 @@ public class Libraries {
         }
         
         @Method
-        public Value.StringValue replace(FunctionContext context, Value.StringValue string, Value.StringValue pattern, Value.StringValue replacement) {
+        public Value.StringValue replace(PlatformContext context, Value.StringValue string, Value.StringValue pattern, Value.StringValue replacement) {
             return new Value.StringValue(string.value().replace(pattern.value(), replacement.value()));
         }
 
         @Method
-        public Value.StringValue replaceRegex(FunctionContext context, Value.StringValue string, Value.StringValue pattern, Value.StringValue replacement) {
+        public Value.StringValue replaceRegex(PlatformContext context, Value.StringValue string, Value.StringValue pattern, Value.StringValue replacement) {
             return new Value.StringValue(string.value().replaceAll(pattern.value(), replacement.value()));
         }
 
         @Method
-        public Value.ArrayValue split(FunctionContext context, Value.StringValue string, Value.StringValue pattern) {
+        public Value.ArrayValue split(PlatformContext context, Value.StringValue string, Value.StringValue pattern) {
             var array = new Value.ArrayValue();
             for (var part : string.value().split(pattern.value())) {
                 array.value().add(new Value.StringValue(part));
@@ -269,69 +268,69 @@ public class Libraries {
         }
 
         @Method
-        public Value.StringValue toLowerCase(FunctionContext context, Value.StringValue string) {
+        public Value.StringValue toLowerCase(PlatformContext context, Value.StringValue string) {
             return new Value.StringValue(string.value().toLowerCase(Locale.ROOT));
         }
 
         @Method
-        public Value.StringValue toUpperCase(FunctionContext context, Value.StringValue string) {
+        public Value.StringValue toUpperCase(PlatformContext context, Value.StringValue string) {
             return new Value.StringValue(string.value().toUpperCase(Locale.ROOT));
         }
 
         @Method
-        public Value.StringValue trim(FunctionContext context, Value.StringValue string) {
+        public Value.StringValue trim(PlatformContext context, Value.StringValue string) {
             return new Value.StringValue(string.value().strip());
         }
 
         @Method
-        public Value.StringValue trimStart(FunctionContext context, Value.StringValue string) {
+        public Value.StringValue trimStart(PlatformContext context, Value.StringValue string) {
             return new Value.StringValue(string.value().stripLeading());
         }
 
         @Method
-        public Value.StringValue trimEnd(FunctionContext context, Value.StringValue string) {
+        public Value.StringValue trimEnd(PlatformContext context, Value.StringValue string) {
             return new Value.StringValue(string.value().stripTrailing());
         }
 
         @Method
-        public Value.BooleanValue startsWith(FunctionContext context, Value.StringValue string, Value.StringValue prefix) {
+        public Value.BooleanValue startsWith(PlatformContext context, Value.StringValue string, Value.StringValue prefix) {
             return Value.BooleanValue.of(string.value().startsWith(prefix.value()));
         }
 
         @Method
-        public Value.BooleanValue endsWith(FunctionContext context, Value.StringValue string, Value.StringValue suffix) {
+        public Value.BooleanValue endsWith(PlatformContext context, Value.StringValue string, Value.StringValue suffix) {
             return Value.BooleanValue.of(string.value().endsWith(suffix.value()));
         }
 
         @Method
-        public Value.BooleanValue contains(FunctionContext context, Value.StringValue string, Value.StringValue substring) {
+        public Value.BooleanValue contains(PlatformContext context, Value.StringValue string, Value.StringValue substring) {
             return Value.BooleanValue.of(string.value().contains(substring.value()));
         }
 
         @Method
-        public Value.NumberValue length(FunctionContext context, Value.StringValue string) {
+        public Value.NumberValue length(PlatformContext context, Value.StringValue string) {
             return new Value.NumberValue(string.value().length());
         }
 
         @Method
-        public Value.BooleanValue isEmpty(FunctionContext context, Value.StringValue string) {
+        public Value.BooleanValue isEmpty(PlatformContext context, Value.StringValue string) {
             return Value.BooleanValue.of(string.value().isEmpty());
         }
 
         @Method
-        public Value.BooleanValue isBlank(FunctionContext context, Value.StringValue string) {
+        public Value.BooleanValue isBlank(PlatformContext context, Value.StringValue string) {
             return Value.BooleanValue.of(string.value().isBlank());
         }
 
         @Method
-        public Value.StringValue charAt(FunctionContext context, Value.StringValue string, Value.NumberValue index) {
+        public Value.StringValue charAt(PlatformContext context, Value.StringValue string, Value.NumberValue index) {
             var i = (int) index.value();
             if (i < 0 || i >= string.value().length()) throw context.createException("String index out of bounds (index: %s, size: %s)".formatted(i, string.value().length()));
             return new Value.StringValue(string.value().substring(i, i + 1));
         }
 
         @Method
-        public Value.ArrayValue chars(FunctionContext context, Value.StringValue string) {
+        public Value.ArrayValue chars(PlatformContext context, Value.StringValue string) {
             var array = new Value.ArrayValue();
             for (var c : string.value().toCharArray()) {
                 array.value().add(new Value.StringValue(String.valueOf(c)));
@@ -340,7 +339,7 @@ public class Libraries {
         }
 
         @Method
-        public Value.StringValue substring(FunctionContext context, Value.StringValue string, Value.NumberValue start, Value.NumberValue end) {
+        public Value.StringValue substring(PlatformContext context, Value.StringValue string, Value.NumberValue start, Value.NumberValue end) {
             var s = (int) start.value();
             var e = (int) end.value();
             if (s < 0 || s > string.value().length()) throw context.createException("String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()));
@@ -350,13 +349,13 @@ public class Libraries {
         }
 
         @Method
-        public Value.StringValue substring(FunctionContext context, Value.StringValue string, Value.NumberValue start) {
+        public Value.StringValue substring(PlatformContext context, Value.StringValue string, Value.NumberValue start) {
             var s = (int) start.value();
             if (s < 0 || s > string.value().length()) throw context.createException("String index out of bounds (index: %s, size: %s)".formatted(s, string.value().length()));
             return new Value.StringValue(string.value().substring(s));
         }
 
-        public Value.StringValue join(FunctionContext context, Value.ArrayValue array, Value.StringValue separator) {
+        public Value.StringValue join(PlatformContext context, Value.ArrayValue array, Value.StringValue separator) {
             var builder = new StringBuilder();
             var first = true;
             for (var value : array.value()) {
@@ -367,7 +366,7 @@ public class Libraries {
             return new Value.StringValue(builder.toString());
         }
 
-        public Value asString(FunctionContext context, Value value) {
+        public Value asString(PlatformContext context, Value value) {
             if (value instanceof Value.StringValue string) {
                 return string;
             }
@@ -447,25 +446,25 @@ public class Libraries {
     }
 
     public static class DebugLibrary {
-        public void log(FunctionContext context, Value value) {
+        public void log(PlatformContext context, Value value) {
             context.log(value);
         }
 
         @DisableErrorWrapping
         @FunctionName("throw")
-        public void throw_(FunctionContext context, Value value) {
+        public void throw_(PlatformContext context, Value value) {
             throw context.createException(value.toString());
         }
 
         @DisableErrorWrapping
         @FunctionName("assert")
-        public void assert_(FunctionContext context, Value value) {
+        public void assert_(PlatformContext context, Value value) {
             assert_(context, value, new Value.StringValue("Assertion failed"));
         }
 
         @DisableErrorWrapping
         @FunctionName("assert")
-        public void assert_(FunctionContext context, Value value, Value message) {
+        public void assert_(PlatformContext context, Value value, Value message) {
             if (!value.asBoolean()) throw context.createException(message.toString());
         }
     }

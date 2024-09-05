@@ -1,11 +1,12 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.*;
 
@@ -40,6 +41,8 @@ public class ExpressionCompiler implements Opcodes {
             case BinaryExpression e -> compileBinary(e);
             case UnaryExpression e -> compileUnary(e);
             case VariableAccessExpression e -> compileVariableAccess(e);
+            case PropertyAccessExpression e -> compilePropertyAccess(e);
+            case IndexExpression e -> compileIndex(e);
             case AssignmentExpression e -> compileAssignment(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
@@ -168,25 +171,90 @@ public class ExpressionCompiler implements Opcodes {
     private void compileVariableAccess(VariableAccessExpression expression) {
         var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+        if (variable.isCaptured()) {
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "getValue", Type.getMethodDescriptor(Type.getType(Value.class)), false);
+        }
+    }
+
+    private void compilePropertyAccess(PropertyAccessExpression expression) {
+        compile(expression.parent());
+        visitor.visitLdcInsn(expression.name());
+        loadContext();
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+    }
+
+    private void compileIndex(IndexExpression expression) {
+        compile(expression.parent());
+        compile(expression.index());
+        loadContext();
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
     }
 
     private void compileAssignment(AssignmentExpression expression) {
         var op = expression.operator();
         switch (expression.target()) {
-            case VariableAccessExpression e -> {
-                var variable = metadata.get(e, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+            case VariableAccessExpression accessExpression -> {
+                var variable = metadata.get(accessExpression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
                 if (op == BinaryExpression.Operator.ASSIGN) {
                     compile(expression.value());
                 } else {
-                    visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+                    compile(accessExpression);
                     compile(expression.value());
                     compileBinaryOp(op);
                 }
                 visitor.visitInsn(DUP);
-                visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
+                if (variable.isCaptured()) {
+                    visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+                    visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+                } else {
+                    visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
+                }
+            }
+            case PropertyAccessExpression e -> {
+                compile(e.parent());
+                visitor.visitLdcInsn(e.name());
+                
+                if (op == BinaryExpression.Operator.ASSIGN) {
+                    compile(expression.value());
+                } else {
+                    visitor.visitInsn(DUP2);
+                    loadContext();
+                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+                    compile(expression.value());
+                    compileBinaryOp(op);
+                }
+                
+                visitor.visitInsn(DUP_X2);
+                
+                loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+            }
+            case IndexExpression e -> {
+                compile(e.parent());
+                compile(e.index());
+
+                if (op == BinaryExpression.Operator.ASSIGN) {
+                    compile(expression.value());
+                } else {
+                    visitor.visitInsn(DUP2);
+                    loadContext();
+                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                    compile(expression.value());
+                    compileBinaryOp(op);
+                }
+
+                visitor.visitInsn(DUP_X2);
+
+                loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "set", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
             }
             default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
         }
+    }
+
+    private void loadContext() {
+        visitor.visitVarInsn(ALOAD, 0);
+        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
     }
 
     private void compileUnaryOp(UnaryExpression.Operator op) {

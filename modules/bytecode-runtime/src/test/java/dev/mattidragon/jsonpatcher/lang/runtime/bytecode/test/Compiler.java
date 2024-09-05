@@ -35,14 +35,8 @@ public class Compiler {
         mainMethod.visitCode();
 
         var code = """
-                !10;
-                
-                # var a = 10;
-                # if (true) {
-                #     a *= 10;
-                #     a += 5;
-                # }
-                # return a;
+                val b = {a: 1, b: 2, c: 3};
+                return b.a = 1;
                 """;
         var result = TestUtils.parseFull(code);
         VariableAnalyser.analyse(result.program(), result.treeMetadata(), List.of());

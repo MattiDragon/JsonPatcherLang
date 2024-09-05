@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime;
 
-import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +27,33 @@ public sealed interface Value {
     }
 
     boolean asBoolean();
+    
+    default Value get(Value index, PlatformContext context) {
+        throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
+    }
+    
+    default void set(Value index, Value value, PlatformContext context) {
+        throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
+    }
+    
+    default void delete(Value index, PlatformContext context) {
+        throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
+    }
+    
+    default Value getProperty(String property, PlatformContext context) {
+        var libProp = Libraries.getProperty(this, property);
+        if (libProp != null) return libProp;
+        
+        throw context.createException("Tried to read invalid property %s of %s.".formatted(property, this));
+    }
+    
+    default void setProperty(String property, Value value, PlatformContext context) {
+        throw context.createException("%s does not have mutable properties (tried to set %s)".formatted(this, property));
+    }
+    
+    default void deleteProperty(String property, PlatformContext context) {
+        throw context.createException("%s does not have mutable properties (tried to set %s)".formatted(this, property));
+    }
 
     @NotNull
     static Value convertNull(@Nullable Value value) {
@@ -42,18 +69,48 @@ public sealed interface Value {
             this(Map.of());
         }
 
-        public Value get(String key, FunctionContext context) {
+        @Override
+        public Value get(Value index, PlatformContext context) {
+            if (!(index instanceof StringValue(var key))) {
+                throw context.createException("Object %s can only be indexed by string".formatted(this));
+            }
+            
+            return getProperty(key, context);
+        }
+
+        @Override
+        public void set(Value index, Value value, PlatformContext context) {
+            if (!(index instanceof StringValue(var key))) {
+                throw context.createException("Object %s can only be indexed by string".formatted(this));
+            }
+            
+            setProperty(key, value, context);
+        }
+
+        @Override
+        public void delete(Value index, PlatformContext context) {
+            if (!(index instanceof StringValue(var key))) {
+                throw context.createException("Object %s can only be indexed by string".formatted(this));
+            }
+            
+            deleteProperty(key, context);
+        }
+
+        @Override
+        public Value getProperty(String key, PlatformContext context) {
             if (!value.containsKey(key)) {
                 throw context.createException("Object %s has no key %s".formatted(this, key));
             }
             return value.get(key);
         }
 
-        public void set(String key, Value value, FunctionContext context) {
+        @Override
+        public void setProperty(String key, Value value, PlatformContext context) {
             this.value.put(key, value);
         }
 
-        public void remove(String key, FunctionContext context) {
+        @Override
+        public void deleteProperty(String key, PlatformContext context) {
             if (!value.containsKey(key)) {
                 throw context.createException("Object %s has no key %s".formatted(this, key));
             }
@@ -96,19 +153,27 @@ public sealed interface Value {
             this(List.of());
         }
 
-        public Value get(int index, FunctionContext context) {
+        @Override
+        public Value get(Value index, PlatformContext context) {
             return this.value.get(fixIndex(index, context));
         }
 
-        public void set(int index, Value value, FunctionContext context) {
+        @Override
+        public void set(Value index, Value value, PlatformContext context) {
             this.value.set(fixIndex(index, context), value);
         }
 
-        public void remove(int index, FunctionContext context) {
+        @Override
+        public void delete(Value index, PlatformContext context) {
             value.remove(fixIndex(index, context));
         }
 
-        private int fixIndex(int index, FunctionContext context) {
+        private int fixIndex(Value indexValue, PlatformContext context) {
+            if (!(indexValue instanceof NumberValue(var doubleIndex))) {
+                throw context.createException("Array %s can only be indexed by number".formatted(this));
+            }
+            var index = (int) doubleIndex;
+            
             if (index >= value.size() || index < -value.size()) {
                 throw context.createException("Array index out of bounds (index: %s, size: %s)".formatted(index, value.size()));
             }

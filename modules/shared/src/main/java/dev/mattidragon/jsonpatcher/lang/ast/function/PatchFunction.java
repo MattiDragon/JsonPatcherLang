@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.ast.function;
 
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
@@ -12,7 +13,7 @@ public sealed interface PatchFunction {
 
     @FunctionalInterface
     non-sealed interface BuiltInPatchFunction extends PatchFunction {
-        Value execute(FunctionContext context, List<Value> args);
+        Value execute(PlatformContext context, List<Value> args);
         
         default BuiltInPatchFunction argCount(int count) {
             return (context, args) -> {

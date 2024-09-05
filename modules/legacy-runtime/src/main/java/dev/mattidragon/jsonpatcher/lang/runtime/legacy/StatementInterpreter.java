@@ -35,28 +35,13 @@ public class StatementInterpreter {
             case IndexExpression e -> {
                 var parent = evaluate(e.parent(), context);
                 var index = evaluate(e.index(), context);
-                if (parent instanceof Value.ObjectValue objectValue) {
-                    if (!(index instanceof Value.StringValue stringValue)) {
-                        String message = "Tried to index object by %s. Objects can only be indexed by string".formatted(index);
-                        throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
-                    }
-                    objectValue.remove(stringValue.value(), context.createFunctionContext(context.getPos(e).orElse(null)));
-                } else if (parent instanceof Value.ArrayValue arrayValue) {
-                    if (!(index instanceof Value.NumberValue numberValue)) {
-                        String message = "Tried to index array by %s. Arrays can only be indexed by number.".formatted(index);
-                        throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
-                    }
-                    arrayValue.remove((int) numberValue.value(), context.createFunctionContext(context.getPos(e).orElse(null)));
-                } else {
-                    String message = "Tried to index %s with %s. Only arrays and objects are indexable.".formatted(parent, index);
-                    throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
-                }
+                parent.delete(index, context.createFunctionContext(context.getPos(e).orElse(null)));
             }
             case VariableAccessExpression e -> context.variables().deleteVariable(e.name(), context.getPos(e).orElse(null));
             case PropertyAccessExpression e -> {
                 var parent = evaluate(e.parent(), context);
                 if (parent instanceof Value.ObjectValue objectValue) {
-                    objectValue.remove(e.name(), context.createFunctionContext(context.getPos(e).orElse(null)));
+                    objectValue.value().remove(e.name());
                 } else {
                     String message = "Tried to delete property %s of %s. Only objects have writable properties.".formatted(e.name(), parent);
                     throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));

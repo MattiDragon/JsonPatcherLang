@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -41,7 +41,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
         return metadata.get(node, key);
     }
 
-    public Value findLibrary(String libraryName, FunctionContext context) {
+    public Value findLibrary(String libraryName, PlatformContext context) {
         if (Libraries.LOOKUP.containsKey(libraryName)) {
             return Libraries.LOOKUP.get(libraryName).get();
         }
@@ -61,14 +61,14 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
         }
     }
     
-    public FunctionContext createFunctionContext(@Nullable SourceSpan pos) {
-        return new FunctionContextWrapper(pos);
+    public PlatformContext createFunctionContext(@Nullable SourceSpan pos) {
+        return new PlatformContextWrapper(pos);
     }
     
-    private class FunctionContextWrapper implements FunctionContext {
+    private class PlatformContextWrapper implements PlatformContext {
         private final @Nullable SourceSpan callPos;
 
-        private FunctionContextWrapper(@Nullable SourceSpan callPos) {
+        private PlatformContextWrapper(@Nullable SourceSpan callPos) {
             this.callPos = callPos;
         }
 

@@ -7,7 +7,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
@@ -145,8 +145,8 @@ public class TestUtils {
         return parse;
     }
 
-    public static FunctionContext createTestFunctionContext() {
-        return new FunctionContext() {
+    public static PlatformContext createTestFunctionContext() {
+        return new PlatformContext() {
             @Override
             public RuntimeException createException(String message) {
                 return new RuntimeException("Error in test: " + message);

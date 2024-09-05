@@ -1,11 +1,11 @@
-package dev.mattidragon.jsonpatcher.lang.ast.function;
+package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 
 import java.util.List;
 
-public interface FunctionContext {
+public interface PlatformContext {
     RuntimeException createException(String message);
 
     RuntimeException createException(String message, RuntimeException e);
