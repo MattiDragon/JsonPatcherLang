@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.RootExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -17,8 +18,8 @@ import java.util.*;
  * Generic variable analyser for jsonpatcher meant to serve both the language server and the bytecode compiler.
  */
 public class VariableAnalyser {
-    public static final MetadataKey<Variable> VARIABLE_DEFINITION = new MetadataKey<>();
     public static final MetadataKey<Variable> VARIABLE_REFERENCE = new MetadataKey<>();
+    public static final MetadataKey<RootVariable> ROOT_REFERENCE = new MetadataKey<>();
     public static final MetadataKey<Scope> SCOPE = new MetadataKey<>();
     
     private final TreeMetadata metadata;
@@ -102,18 +103,18 @@ public class VariableAnalyser {
                 analyse(statement.initializer(), current);
                 var variable = new Variable(statement.name(), statement.mutable(), statement);
                 define(variable, current, statement);
-                metadata.put(statement, VARIABLE_DEFINITION, variable);
+                metadata.put(statement, VARIABLE_REFERENCE, variable);
             }
             case ImportStatement statement -> {
                 var variable = new Variable(statement.variableName(), false, statement);
                 define(variable, current, statement);
-                metadata.put(statement, VARIABLE_DEFINITION, variable);
+                metadata.put(statement, VARIABLE_REFERENCE, variable);
             }
             case FunctionDeclarationStatement statement -> {
                 analyse(statement.value(), current);
                 var variable = new Variable(statement.name(), false, statement);
                 define(variable, current, statement);
-                metadata.put(statement, VARIABLE_DEFINITION, variable);
+                metadata.put(statement, VARIABLE_REFERENCE, variable);
             }
             case ForEachLoopStatement statement -> {
                 analyse(statement.iterable(), current);
@@ -122,7 +123,7 @@ public class VariableAnalyser {
                 scopes.add(scope);
                 var variable = new Variable(statement.variableName(), false, statement);
                 define(variable, current, statement);
-                metadata.put(statement, VARIABLE_DEFINITION, variable);
+                metadata.put(statement, VARIABLE_REFERENCE, variable);
                 analyse(statement.body(), scope);
             }
             case ForLoopStatement statement -> {
@@ -143,6 +144,7 @@ public class VariableAnalyser {
                     case null -> errors.add(new AnalysisError.MissingVariable(access.name(), access, metadata.get(access, MetadataKey.MAIN_POS).orElse(null)));
                 }
             }
+            case RootExpression expression -> metadata.put(expression, ROOT_REFERENCE, current.root());
             default -> analyseAll(node.getChildren(), current);
         }
     }

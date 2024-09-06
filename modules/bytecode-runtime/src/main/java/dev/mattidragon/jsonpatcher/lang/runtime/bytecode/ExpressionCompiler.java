@@ -39,11 +39,13 @@ public class ExpressionCompiler implements Opcodes {
             case ArrayInitializerExpression e -> compileArrayInit(e);
             case ObjectInitializerExpression e -> compileObjectInit(e);
             case BinaryExpression e -> compileBinary(e);
+            case ShortedBinaryExpression e -> compileShortedBinary(e);
             case UnaryExpression e -> compileUnary(e);
             case VariableAccessExpression e -> compileVariableAccess(e);
             case PropertyAccessExpression e -> compilePropertyAccess(e);
             case IndexExpression e -> compileIndex(e);
             case AssignmentExpression e -> compileAssignment(e);
+            case RootExpression e -> compileRoot(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
     }
@@ -168,6 +170,35 @@ public class ExpressionCompiler implements Opcodes {
         compileUnaryOp(e.op());
     }
 
+    private void compileShortedBinary(ShortedBinaryExpression expression) {
+        compile(expression.first());
+        visitor.visitTypeInsn(CHECKCAST, Types.BOOLEAN_VALUE);
+        visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOOLEAN_VALUE, "value", "()Z", false);
+        var trueLabel = new Label();
+        var falseLabel = new Label();
+        var endLabel = new Label();
+        
+        switch (expression.op()) {
+            case AND -> visitor.visitJumpInsn(IFEQ, falseLabel);
+            case OR -> visitor.visitJumpInsn(IFNE, trueLabel);
+        }
+        
+        compile(expression.second());
+        visitor.visitTypeInsn(CHECKCAST, Types.BOOLEAN_VALUE);
+        visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOOLEAN_VALUE, "value", "()Z", false);
+        
+        visitor.visitJumpInsn(IFEQ, falseLabel);
+        
+        visitor.visitLabel(trueLabel);
+        visitor.visitInsn(ICONST_1);
+        visitor.visitJumpInsn(GOTO, endLabel);
+        visitor.visitLabel(falseLabel);
+        visitor.visitInsn(ICONST_0);
+        
+        visitor.visitLabel(endLabel);
+        visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
+    }
+
     private void compileVariableAccess(VariableAccessExpression expression) {
         var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
@@ -250,6 +281,11 @@ public class ExpressionCompiler implements Opcodes {
             }
             default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
         }
+    }
+
+    private void compileRoot(RootExpression e) {
+        var root = metadata.get(e,  VariableAnalyser.ROOT_REFERENCE).orElseThrow();
+        visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateRoot(root));
     }
 
     private void loadContext() {

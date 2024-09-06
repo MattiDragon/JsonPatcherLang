@@ -31,12 +31,14 @@ public class Compiler {
 
         addConstructor(classWriter, className);
 
-        var mainMethod = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "run", Type.getMethodDescriptor(Type.getType(Value.class)), null, null);
+        var mainMethod = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "run", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.ObjectValue.class)), null, null);
         mainMethod.visitCode();
 
         var code = """
-                val b = {a: 1, b: 2, c: 3};
-                return b.a = 1;
+                val b = {a: {n: 10}, b: 2, c: 3};
+                b.b = false || true;
+                b.b = false && true;
+                return b;
                 """;
         var result = TestUtils.parseFull(code);
         VariableAnalyser.analyse(result.program(), result.treeMetadata(), List.of());
@@ -45,6 +47,7 @@ public class Compiler {
         functionCompiler.compileProgram(result.program());
 
         mainMethod.visitMaxs(0, 0);
+        mainMethod.visitParameter("$", 0);
         mainMethod.visitEnd();
         
         classWriter.visitEnd();
@@ -59,7 +62,7 @@ public class Compiler {
             var definedLookup = GeneratedProgram.PACKAGE_ACCESS.defineHiddenClass(bytes, false);
             var constructor = definedLookup.findConstructor(definedLookup.lookupClass(), MethodType.methodType(void.class, EvaluationContext.class));
             var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA)));
-            System.out.println("Result: " + instance.run());
+            System.out.println("Result: " + instance.run(new Value.ObjectValue()));
         } catch (Throwable e) {
             throw new RuntimeException("Failed to run", e);
         }

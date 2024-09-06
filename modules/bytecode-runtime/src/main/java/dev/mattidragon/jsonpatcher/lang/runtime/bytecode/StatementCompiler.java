@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -50,6 +51,7 @@ public class StatementCompiler implements Opcodes {
             case BreakStatement s -> compileBreak();
             case IfStatement s -> compileIf(s);
             case VariableCreationStatement s -> compileVariableCreation(s);
+            case ApplyStatement s -> compileApply(s);
             default -> throw new UnsupportedOperationException("Unsupported statement: %s".formatted(statement));
         }
     }
@@ -157,6 +159,19 @@ public class StatementCompiler implements Opcodes {
 
     private void compileVariableCreation(VariableCreationStatement statement) {
         functionCompiler.compileExpression(statement.initializer());
-        visitor.visitVarInsn(Opcodes.ASTORE, functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_DEFINITION).orElseThrow()));
+        visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow()));
+    }
+
+    private void compileApply(ApplyStatement statement) {
+        var scope = metadata.get(statement, VariableAnalyser.SCOPE).orElseThrow();
+        functionCompiler.compileExpression(statement.root());
+        var varIndex = functionCompiler.getOrAllocateRoot(scope.root());
+        var fromLabel = new Label();
+        visitor.visitLabel(fromLabel);
+        visitor.visitVarInsn(ASTORE, varIndex);
+        compile(statement.action());
+        var toLabel = new Label();
+        visitor.visitLabel(toLabel);
+        visitor.visitLocalVariable(functionCompiler.allocateRootName(), Type.getDescriptor(Value.ObjectValue.class), null, fromLabel, toLabel, varIndex);
     }
 }

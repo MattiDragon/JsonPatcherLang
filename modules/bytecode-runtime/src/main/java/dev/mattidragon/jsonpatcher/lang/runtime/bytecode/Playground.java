@@ -4,6 +4,6 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class Playground {
     {
-        Value.BooleanValue.of(!((Value.BooleanValue)(Object) new Value.NumberValue(10)).value());
+        System.out.println(Boolean.getBoolean("a") || Boolean.getBoolean("b"));
     }
 }
