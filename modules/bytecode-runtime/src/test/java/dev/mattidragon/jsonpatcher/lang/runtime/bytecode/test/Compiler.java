@@ -35,10 +35,12 @@ public class Compiler {
         mainMethod.visitCode();
 
         var code = """
-                val b = {a: {n: 10}, b: 2, c: 3};
-                b.b = false || true;
-                b.b = false && true;
-                return b;
+                val s = 0;
+                val a = [1, 2, 3];
+                foreach (v in a) {
+                    s += v;
+                }
+                return a;
                 """;
         var result = TestUtils.parseFull(code);
         VariableAnalyser.analyse(result.program(), result.treeMetadata(), List.of());

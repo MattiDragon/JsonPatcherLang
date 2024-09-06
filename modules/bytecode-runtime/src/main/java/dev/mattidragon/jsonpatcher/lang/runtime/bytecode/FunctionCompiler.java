@@ -6,7 +6,6 @@ import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
@@ -35,7 +34,7 @@ public class FunctionCompiler {
         return "$" + rootNameCounter++;
     }
     
-    public int allocateParameter() {
+    public int allocateAnonymous() {
         return currentLine++;
     }
     
@@ -57,7 +56,7 @@ public class FunctionCompiler {
     
     public void compileProgram(Program program) {
         var scope = metadata.get(program, VariableAnalyser.SCOPE).orElseThrow();
-        rootAllocations.put(scope.root(), allocateParameter());
+        rootAllocations.put(scope.root(), allocateAnonymous());
         statementCompiler.compile(program);
     }
     

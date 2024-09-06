@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -15,6 +14,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,6 +47,7 @@ public class StatementCompiler implements Opcodes {
             case BlockStatement s -> compileBlock(s, s.statements());
             case ForLoopStatement s -> compileFor(s);
             case WhileLoopStatement s -> compileWhile(s);
+            case ForEachLoopStatement s -> compileForEach(s);
             case ContinueStatement s -> compileContinue();
             case BreakStatement s -> compileBreak();
             case IfStatement s -> compileIf(s);
@@ -126,6 +127,40 @@ public class StatementCompiler implements Opcodes {
         
         continueLabel = null;
         breakLabel = null;
+    }
+
+    private void compileForEach(ForEachLoopStatement statement) {
+        var startLabel = new Label();
+        var endLabel = new Label();
+        functionCompiler.compileExpression(statement.iterable());
+        
+        visitor.visitLabel(startLabel);
+        var iterIndex = functionCompiler.allocateAnonymous();
+        var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+        visitor.visitTypeInsn(CHECKCAST, Types.ARRAY_VALUE);
+        visitor.visitMethodInsn(INVOKEVIRTUAL, Types.ARRAY_VALUE, "value", Type.getMethodDescriptor(Type.getType(List.class)), false);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(Iterable.class), "iterator", Type.getMethodDescriptor(Type.getType(Iterator.class)), true);
+        visitor.visitVarInsn(ASTORE, iterIndex);
+        var continueLabel = new Label();
+        visitor.visitLabel(continueLabel);
+        visitor.visitVarInsn(ALOAD, iterIndex);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(Iterator.class), "hasNext", Type.getMethodDescriptor(Type.BOOLEAN_TYPE), true);
+        visitor.visitJumpInsn(IFEQ, endLabel);
+        visitor.visitVarInsn(ALOAD, iterIndex);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(Iterator.class), "next", Type.getMethodDescriptor(Type.getType(Object.class)), true);
+        visitor.visitVarInsn(ASTORE, varIndex);
+        
+        this.continueLabel = continueLabel;
+        this.breakLabel = endLabel;
+        
+        compile(statement.body());
+
+        this.continueLabel = null;
+        this.breakLabel = null;
+        
+        visitor.visitJumpInsn(GOTO, continueLabel);
+        visitor.visitLabel(endLabel);
+        visitor.visitLocalVariable(statement.variableName(), Type.getDescriptor(Value.class), null, startLabel, endLabel, varIndex);
     }
 
     private void compileContinue() {

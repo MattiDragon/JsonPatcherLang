@@ -122,7 +122,7 @@ public class VariableAnalyser {
                 metadata.put(statement, SCOPE, scope);
                 scopes.add(scope);
                 var variable = new Variable(statement.variableName(), false, statement);
-                define(variable, current, statement);
+                define(variable, scope, statement);
                 metadata.put(statement, VARIABLE_REFERENCE, variable);
                 analyse(statement.body(), scope);
             }
@@ -133,6 +133,23 @@ public class VariableAnalyser {
                 analyse(statement.condition(), scope);
                 analyse(statement.body(), scope);
                 analyse(statement.incrementer(), scope);
+            }
+            case WhileLoopStatement statement -> {
+                var scope = new BlockScope(statement, current);
+                scopes.add(scope);
+                analyse(statement.condition(), current);
+                analyse(statement.body(), scope);
+            }
+            case IfStatement statement -> {
+                var scope = new BlockScope(statement, current);
+                scopes.add(scope);
+                analyse(statement.condition(), current);
+                analyse(statement.action(), scope);
+                if (statement.elseAction() != null) {
+                    var elseScope = new BlockScope(statement, current);
+                    scopes.add(scope);
+                    analyse(statement.elseAction(), elseScope);
+                }
             }
             case VariableAccessExpression access -> {
                 switch (current.find(access.name())) {
