@@ -2,8 +2,6 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
-import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.FunctionCompiler;

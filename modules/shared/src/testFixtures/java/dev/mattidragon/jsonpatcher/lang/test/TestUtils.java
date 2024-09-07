@@ -7,16 +7,14 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.ContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 
@@ -32,13 +30,14 @@ public class TestUtils {
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
     public static final Consumer<Value> EMPTY_DEBUG_CONSUMER = (value) -> {};
-    public static final Consumer<ContextBuilder> CONTEXT_BUILDER_CONSUMER = builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER);
+    public static final Consumer<RuntimeContextBuilder> RUNTIME_CONTEXT_BUILDER_CONSUMER = builder -> builder.addStdlib().debugConsumer(EMPTY_DEBUG_CONSUMER);
+    public static final Consumer<PreparationContextBuilder> PREPARE_CONTEXT_BUILDER_CONSUMER = PreparationContextBuilder::declareStdlib;
 
     public static void testCode(Runtime runtime, String code) {
         var result = parseFull(code);
         var program = result.program();
         
-        Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata()).run(CONTEXT_BUILDER_CONSUMER, CONFIG));
+        Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata(), PREPARE_CONTEXT_BUILDER_CONSUMER).run(RUNTIME_CONTEXT_BUILDER_CONSUMER, CONFIG));
     }
 
     public static void testCode(Runtime runtime, String code, Value expected) {
@@ -46,9 +45,9 @@ public class TestUtils {
         var output = new Value[1];
 
         Assertions.assertDoesNotThrow(() -> {
-            runtime.prepare(result.program(), result.treeMetadata()).run(
+            runtime.prepare(result.program(), result.treeMetadata(), builder -> builder.declareVariable("testResult")).run(
                     builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER)
-                            .variable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args) -> {
+                            .fillVariable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args) -> {
                                 output[0] = args.getFirst();
                                 return Value.NullValue.NULL;
                             })),

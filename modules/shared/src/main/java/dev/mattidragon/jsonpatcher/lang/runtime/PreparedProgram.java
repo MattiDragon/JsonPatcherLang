@@ -5,5 +5,5 @@ import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import java.util.function.Consumer;
 
 public interface PreparedProgram {
-    void run(Consumer<ContextBuilder> contextBuilder, LangConfig config);
+    void run(Consumer<RuntimeContextBuilder> contextBuilder, LangConfig config);
 }

@@ -3,26 +3,25 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.runtime.ContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.RuntimeContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public record EvaluationContext(Value.ObjectValue root, VariableStack variables, LibraryLocator libraryLocator, Consumer<Value> debugConsumer, LangConfig config,
                                 TreeMetadata metadata) {
     private static final ThreadLocal<SequencedSet<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(LinkedHashSet::new);
 
-    public static Builder builder(LangConfig config, TreeMetadata metadata) {
-        return new Builder(config, metadata);
+    public static Builder builder(LangConfig config, TreeMetadata metadata, VariableHolder variables) {
+        return new Builder(config, metadata, variables);
     }
 
     public EvaluationContext withRoot(Value.ObjectValue root) {
@@ -102,43 +101,28 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
         }
     } 
 
-    public static class Builder implements ContextBuilder {
+    public static class Builder implements RuntimeContextBuilder {
         private final LangConfig config;
         private final TreeMetadata metadata;
+        private final Set<String> declaredVars;
         private Value.ObjectValue root = new Value.ObjectValue();
         private final VariableStack variables;
         private LibraryLocator libraryLocator;
         private Consumer<Value> debugConsumer = x -> System.out.println("Debug from patch: " + x);
-        private Map<String, Supplier<Value.ObjectValue>> stdlib = Libraries.BUILTIN;
 
-        public Builder(LangConfig config, TreeMetadata metadata) {
+        public Builder(LangConfig config, TreeMetadata metadata, VariableHolder variableHolder) {
             this.config = config;
             libraryLocator = (name, obj, context) -> {
                 throw context.createException("No libraries available");
             };
             variables = new VariableStack(config);
+            this.declaredVars = new HashSet<>(variableHolder.getDeclared());
             this.metadata = metadata;
         }
 
         @Override
         public Builder root(Value.ObjectValue root) {
             this.root = root;
-            return this;
-        }
-
-        @Override
-        public Builder variable(String name, String value) {
-            return variable(name, new Value.StringValue(value));
-        }
-
-        @Override
-        public Builder variable(String name, boolean value) {
-            return variable(name, Value.BooleanValue.of(value));
-        }
-
-        @Override
-        public Builder variable(String name, Value value) {
-            variables.createVariable(name, value, false, null);
             return this;
         }
 
@@ -155,13 +139,18 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
         }
 
         @Override
-        public Builder stdlib(Map<String, Supplier<Value.ObjectValue>> stdlib) {
-            this.stdlib = stdlib;
+        public RuntimeContextBuilder fillVariable(String name, Value value) {
+            if (!declaredVars.remove(name)) {
+                throw new IllegalStateException("Tried to fill variable that wasn't declared: " + name);
+            }
+            variables.createVariable(name, value, false, null);
             return this;
         }
 
         public EvaluationContext build() {
-            stdlib.forEach((name, supplier) -> variables.createVariable(name, supplier.get(), false, null));
+            if (!declaredVars.isEmpty()) {
+                throw new IllegalStateException("Variables declared, but not filled: " + String.join(", ", declaredVars));
+            }
             return new EvaluationContext(root, variables, libraryLocator, debugConsumer, config, metadata).newScope();
         }
     }

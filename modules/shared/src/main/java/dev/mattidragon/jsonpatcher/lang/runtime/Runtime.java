@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,9 +22,10 @@ public interface Runtime {
     /**
      * Prepares a program. A single prepared program can be executed multiple times.
      *
-     * @param program The program to prepare
-     * @param metadata Metadata about program nodes, like source code positions 
+     * @param program        The program to prepare
+     * @param metadata       Metadata about program nodes, like source code positions
+     * @param contextBuilder A consumer accepting a context builder for configuring global variables
      * @return The prepared program
      */
-    PreparedProgram prepare(Program program, TreeMetadata metadata);
+    PreparedProgram prepare(Program program, TreeMetadata metadata, Consumer<PreparationContextBuilder> contextBuilder);
 }
