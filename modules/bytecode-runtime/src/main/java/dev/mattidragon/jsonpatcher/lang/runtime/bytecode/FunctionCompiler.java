@@ -8,6 +8,8 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +19,7 @@ public class FunctionCompiler {
     private final ExpressionCompiler expressionCompiler;
     private final MethodVisitor visitor;
     private final TreeMetadata metadata;
+    private final String className;
     private int varCounter = 1;
     private int rootNameCounter = 1;
     private int currentLine = 0;
@@ -28,6 +31,7 @@ public class FunctionCompiler {
         expressionCompiler = new ExpressionCompiler(metadata, visitor, className, this);
         this.visitor = visitor;
         this.metadata = metadata;
+        this.className = className;
     }
     
     public String allocateRootName() {
@@ -35,7 +39,7 @@ public class FunctionCompiler {
     }
     
     public int allocateAnonymous() {
-        return currentLine++;
+        return varCounter++;
     }
     
     public int getOrAllocateVariable(Variable variable) {
@@ -44,6 +48,11 @@ public class FunctionCompiler {
     
     public int getOrAllocateRoot(RootVariable root) {
         return rootAllocations.computeIfAbsent(root, var1 -> varCounter++);
+    }
+    
+    public void loadContext() {
+        visitor.visitVarInsn(Opcodes.ALOAD, 0);
+        visitor.visitFieldInsn(Opcodes.GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
     }
     
     public void emitLineNumber(int line) {

@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 public class TestUtils {
     @SuppressWarnings("unused")
-    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy"));
+    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy")/*, Runtime.RUNTIMES.get("bytecode")*/);
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);

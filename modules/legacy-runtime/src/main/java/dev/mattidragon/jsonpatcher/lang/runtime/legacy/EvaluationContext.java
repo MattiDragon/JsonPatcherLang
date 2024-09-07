@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 
 public record EvaluationContext(Value.ObjectValue root, VariableStack variables, LibraryLocator libraryLocator, Consumer<Value> debugConsumer, LangConfig config,
                                 TreeMetadata metadata) {
-    private static final ThreadLocal<Set<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(HashSet::new);
+    private static final ThreadLocal<SequencedSet<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(LinkedHashSet::new);
 
     public static Builder builder(LangConfig config, TreeMetadata metadata) {
         return new Builder(config, metadata);
@@ -51,7 +51,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
 
         try {
             if (!LIBRARY_RECURSION_DETECTOR.get().add(libraryName)) {
-                throw context.createException("Recursive library import detected for %s".formatted(libraryName));
+                throw context.createException("Recursive library import detected: %s -> %s".formatted(String.join(" -> ", LIBRARY_RECURSION_DETECTOR.get()), libraryName));
             }
             var json = new Value.ObjectValue();
             libraryLocator.loadLibrary(libraryName, json, context);

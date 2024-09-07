@@ -2,6 +2,8 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
+import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.FunctionCompiler;
@@ -35,12 +37,9 @@ public class Compiler {
         mainMethod.visitCode();
 
         var code = """
-                val s = 0;
-                val a = [1, 2, 3];
-                foreach (v in a) {
-                    s += v;
-                }
-                return a;
+                import "test-lib" as lib;
+                
+                return [lib.test, lib.name];
                 """;
         var result = TestUtils.parseFull(code);
         VariableAnalyser.analyse(result.program(), result.treeMetadata(), List.of());
@@ -63,7 +62,10 @@ public class Compiler {
         try {
             var definedLookup = GeneratedProgram.PACKAGE_ACCESS.defineHiddenClass(bytes, false);
             var constructor = definedLookup.findConstructor(definedLookup.lookupClass(), MethodType.methodType(void.class, EvaluationContext.class));
-            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA)));
+            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA), (libraryName, libraryObject, context) -> {
+                libraryObject.setProperty("test", new Value.NumberValue(10), context);
+                libraryObject.setProperty("name", new Value.StringValue(libraryName), context);
+            }));
             System.out.println("Result: " + instance.run(new Value.ObjectValue()));
         } catch (Throwable e) {
             throw new RuntimeException("Failed to run", e);

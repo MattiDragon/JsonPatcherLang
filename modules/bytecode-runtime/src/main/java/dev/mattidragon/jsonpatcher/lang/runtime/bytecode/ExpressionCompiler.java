@@ -210,14 +210,14 @@ public class ExpressionCompiler implements Opcodes {
     private void compilePropertyAccess(PropertyAccessExpression expression) {
         compile(expression.parent());
         visitor.visitLdcInsn(expression.name());
-        loadContext();
+        functionCompiler.loadContext();
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
     }
 
     private void compileIndex(IndexExpression expression) {
         compile(expression.parent());
         compile(expression.index());
-        loadContext();
+        functionCompiler.loadContext();
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
     }
 
@@ -249,15 +249,15 @@ public class ExpressionCompiler implements Opcodes {
                     compile(expression.value());
                 } else {
                     visitor.visitInsn(DUP2);
-                    loadContext();
+                    functionCompiler.loadContext();
                     visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
                     compile(expression.value());
                     compileBinaryOp(op);
                 }
                 
                 visitor.visitInsn(DUP_X2);
-                
-                loadContext();
+
+                functionCompiler.loadContext();
                 visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
             }
             case IndexExpression e -> {
@@ -268,7 +268,7 @@ public class ExpressionCompiler implements Opcodes {
                     compile(expression.value());
                 } else {
                     visitor.visitInsn(DUP2);
-                    loadContext();
+                    functionCompiler.loadContext();
                     visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
                     compile(expression.value());
                     compileBinaryOp(op);
@@ -276,7 +276,7 @@ public class ExpressionCompiler implements Opcodes {
 
                 visitor.visitInsn(DUP_X2);
 
-                loadContext();
+                functionCompiler.loadContext();
                 visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "set", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
             }
             default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
@@ -286,11 +286,6 @@ public class ExpressionCompiler implements Opcodes {
     private void compileRoot(RootExpression e) {
         var root = metadata.get(e,  VariableAnalyser.ROOT_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateRoot(root));
-    }
-
-    private void loadContext() {
-        visitor.visitVarInsn(ALOAD, 0);
-        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
     }
 
     private void compileUnaryOp(UnaryExpression.Operator op) {

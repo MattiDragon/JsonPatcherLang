@@ -53,6 +53,8 @@ public class StatementCompiler implements Opcodes {
             case IfStatement s -> compileIf(s);
             case VariableCreationStatement s -> compileVariableCreation(s);
             case ApplyStatement s -> compileApply(s);
+            case FunctionDeclarationStatement s -> compileFuncDecl(s);
+            case ImportStatement s -> compileImport(s);
             default -> throw new UnsupportedOperationException("Unsupported statement: %s".formatted(statement));
         }
     }
@@ -208,5 +210,19 @@ public class StatementCompiler implements Opcodes {
         var toLabel = new Label();
         visitor.visitLabel(toLabel);
         visitor.visitLocalVariable(functionCompiler.allocateRootName(), Type.getDescriptor(Value.ObjectValue.class), null, fromLabel, toLabel, varIndex);
+    }
+
+    private void compileFuncDecl(FunctionDeclarationStatement statement) {
+        var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+        functionCompiler.compileExpression(statement.value());
+        visitor.visitVarInsn(ASTORE, varIndex);
+    }
+
+    private void compileImport(ImportStatement statement) {
+        var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+        functionCompiler.loadContext();
+        visitor.visitLdcInsn(statement.libraryName());
+        visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(EvaluationContext.class), "findLibrary", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class)), false);
+        visitor.visitVarInsn(ASTORE, varIndex);
     }
 }
