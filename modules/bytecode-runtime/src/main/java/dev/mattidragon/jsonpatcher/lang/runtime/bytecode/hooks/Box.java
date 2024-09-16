@@ -6,6 +6,13 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 public final class Box {
     private Value value;
 
+    public Box() {
+    }
+
+    public Box(Value value) {
+        this.value = value;
+    }
+
     public Value getValue() {
         if (value == null) throw new IllegalStateException("Variable not assigned");
         return value;

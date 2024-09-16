@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
@@ -7,6 +7,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.Label;
@@ -195,8 +196,9 @@ public class StatementCompiler implements Opcodes {
     }
 
     private void compileVariableCreation(VariableCreationStatement statement) {
-        functionCompiler.compileExpression(statement.initializer());
-        visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow()));
+        var variable = metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+
+        functionCompiler.compileVariableCreation(variable, () -> functionCompiler.compileExpression(statement.initializer()));
     }
 
     private void compileApply(ApplyStatement statement) {

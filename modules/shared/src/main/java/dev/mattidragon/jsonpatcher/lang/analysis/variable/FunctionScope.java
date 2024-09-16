@@ -1,13 +1,14 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class FunctionScope extends MutableScope {
     private final FunctionExpression function;
-    private RootVariable root = null;
+    private final RootVariable root = new RootVariable();
     private final List<Variable> variables;
     private final List<Variable> captures;
     private final MutableScope parent;
@@ -46,11 +47,7 @@ public final class FunctionScope extends MutableScope {
 
     @Override
     public RootVariable root() {
-        return root != null ? root : parent.root();
-    }
-    
-    void setRoot(RootVariable root) {
-        this.root = root;
+        return root;
     }
 
     public FunctionExpression function() {
@@ -67,6 +64,7 @@ public final class FunctionScope extends MutableScope {
     }
 
     @Override
+    @NotNull
     public MutableScope parent() {
         return parent;
     }

@@ -1,15 +1,21 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionBody;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.*;
 
+import java.lang.invoke.LambdaMetafactory;
 import java.util.Locale;
 
 public class ExpressionCompiler implements Opcodes {
@@ -46,6 +52,7 @@ public class ExpressionCompiler implements Opcodes {
             case IndexExpression e -> compileIndex(e);
             case AssignmentExpression e -> compileAssignment(e);
             case RootExpression e -> compileRoot(e);
+            case FunctionExpression e -> compileFunction(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
     }
@@ -345,6 +352,68 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
             }
         }
+    }
+
+    private void compileFunction(FunctionExpression expression) {
+        var scope = (FunctionScope) metadata.get(expression, VariableAnalyser.SCOPE).orElseThrow();
+
+        var capturesRoot = expression.args().arguments().stream().noneMatch(argument -> argument.target() instanceof FunctionArgument.Target.Root);
+        var argCount = expression.args().arguments().size();
+        var interfaceMethodType = Type.getMethodType("(%s)L%s;".formatted(("L" + Types.VALUE + ";").repeat(argCount), Types.VALUE));
+
+        var targetType = new StringBuilder("(");
+        targetType.append(("L" + Types.BOX + ";").repeat(scope.captures().size()));
+        if (capturesRoot) {
+            targetType.append("L").append(Types.OBJECT_VALUE).append(";");
+        }
+        for (var argument : expression.args().arguments()) {
+            switch (argument.target()) {
+                case FunctionArgument.Target.Root.INSTANCE -> targetType.append("L").append(Types.VALUE).append(";");
+                case FunctionArgument.Target.Variable variable -> targetType.append("L").append(Types.VALUE).append(";");
+            }
+        }
+        targetType.append(")L").append(Types.VALUE).append(";");
+
+        var invokerType = new StringBuilder("(");
+        invokerType.append("L").append(className).append(";");
+        for (int i = 0; i < scope.captures().size(); i++) {
+            invokerType.append("L").append(Types.BOX).append(";");
+        }
+        if (capturesRoot) {
+            invokerType.append("L").append(Types.OBJECT_VALUE).append(";");
+        }
+        invokerType.append(")").append("L").append(Type.getInternalName(FunctionBody.class)).append("$F").append(argCount).append(";");
+        
+        visitor.visitVarInsn(ALOAD, 0);
+        for (var capture : scope.captures()) {
+            visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(capture));
+        }
+        if (capturesRoot) {
+            visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateRoot(((Scope) scope.parent()).root()));
+        }
+
+        visitor.visitInvokeDynamicInsn("call",
+                invokerType.toString(),
+                new Handle(H_INVOKESTATIC,
+                        Type.getInternalName(LambdaMetafactory.class),
+                        "metafactory",
+                        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+                        false),
+                interfaceMethodType,
+                new Handle(H_INVOKEVIRTUAL,
+                        className,
+                        functionCompiler.getLambdaName(expression),
+                        targetType.toString(),
+                        false),
+                interfaceMethodType);
+        visitor.visitLdcInsn(expression.args().requiredArguments());
+        visitor.visitLdcInsn(expression.args().arguments().size());
+        visitor.visitLdcInsn(expression.args().varargs());
+        visitor.visitMethodInsn(INVOKESTATIC,
+                Type.getInternalName(FunctionHooks.class),
+                "createFunction",
+                "(Ldev/mattidragon/jsonpatcher/lang/runtime/bytecode/hooks/FunctionBody;IIZ)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$FunctionValue;",
+                false);
     }
 
     private void compileBinaryOp(BinaryExpression.Operator op) {

@@ -39,13 +39,13 @@ public class VariableAnalyser {
      * @param globals A list of global variable names to consider
      * @return A record containing errors and miscellaneous information
      */
-    public static VariableAnalysis analyse(Program program, TreeMetadata metadata, List<String> globals) {
+    public static VariableAnalysis analyse(Program program, TreeMetadata metadata, Collection<String> globals) {
         var analyser = new VariableAnalyser(metadata);
         analyser.analyse(program, globals);
         return new VariableAnalysis(Collections.unmodifiableList(analyser.errors), Collections.unmodifiableList(analyser.scopes));
     }
 
-    private void analyse(Program program, List<String> globals) {
+    private void analyse(Program program, Collection<String> globals) {
         var globalScope = new ProgramScope(program);
         metadata.put(program, SCOPE, globalScope);
         for (var global : globals) {
@@ -95,8 +95,12 @@ public class VariableAnalyser {
             case FunctionArgument argument -> {
                 var functionScope = (FunctionScope) current;
                 switch (argument.target()) {
-                    case FunctionArgument.Target.Root.INSTANCE -> functionScope.setRoot(new RootVariable());
-                    case FunctionArgument.Target.Variable variable -> functionScope.variables().add(new Variable(variable.name(), true, argument));
+                    case FunctionArgument.Target.Variable target -> {
+                        var variable = new Variable(target.name(), true, argument);
+                        metadata.put(argument, VARIABLE_REFERENCE, variable);
+                        functionScope.variables().add(variable);
+                    }
+                    case FunctionArgument.Target.Root.INSTANCE -> metadata.put(argument, ROOT_REFERENCE, functionScope.root());
                 }
             }
             case VariableCreationStatement statement -> {
@@ -173,7 +177,7 @@ public class VariableAnalyser {
         scope.define(variable);
     }
 
-    public static class AnalysisError {
+    public static abstract sealed class AnalysisError {
         private final String variableName;
         private final ProgramNode node;
         private final @Nullable SourceSpan pos;
@@ -196,13 +200,13 @@ public class VariableAnalyser {
             return pos;
         }
 
-        public static class MissingVariable extends AnalysisError {
+        public static final class MissingVariable extends AnalysisError {
             private MissingVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
                 super(variableName, node, pos);
             }
         }
         
-        public static class DuplicateVariable extends AnalysisError {
+        public static final class DuplicateVariable extends AnalysisError {
             private DuplicateVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
                 super(variableName, node, pos);
             }

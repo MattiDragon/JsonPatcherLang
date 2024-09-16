@@ -60,6 +60,7 @@ public class Parser {
     }
 
     public Result program() {
+        var start = hasNext() ? peek().from() : null;
         while (hasNext(Token.SimpleToken.AT_SIGN)) {
             try {
                 next();
@@ -80,7 +81,12 @@ public class Parser {
             errors.add(e);
         } catch (EndParsingException ignored) {}
 
-        return new Result(new Program(statements), metadata, treeMetadata, errors);
+        var end = start == null ? null : previous().to();
+        var program = new Program(statements);
+        if (start != null) {
+            treeMetadata.put(program, MetadataKey.FULL_POS, new SourceSpan(start, end));
+        }
+        return new Result(program, metadata, treeMetadata, errors);
     }
 
     private Statement statement() {
