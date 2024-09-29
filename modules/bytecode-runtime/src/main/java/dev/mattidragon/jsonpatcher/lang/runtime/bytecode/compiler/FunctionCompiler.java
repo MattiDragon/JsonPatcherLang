@@ -1,9 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.RootVariable;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.*;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
@@ -16,10 +13,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class FunctionCompiler {
     private static final int GLOBAL_ROOT_VAR_INDEX = 1;
@@ -47,6 +41,7 @@ public class FunctionCompiler {
     }
     
     public static void compileMainMethod(TreeMetadata metadata, ClassVisitor classVisitor, String className, Program program, Map<FunctionExpression, String> lambdaNames) {
+        // Method header
         var visitor = classVisitor.visitMethod(Opcodes.ACC_PUBLIC,
                 "run",
                 Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.ObjectValue.class), Type.getType(Map.class)),
@@ -55,64 +50,121 @@ public class FunctionCompiler {
         visitor.visitParameter("$", 0);
         visitor.visitParameter("globals", 0);
         visitor.visitCode();
+        
         var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames);
-        compiler.varCounter = GLOBALS_VAR_INDEX + 1;
-        compiler.compileProgram(program);
+        compiler.varCounter = 3; // This, root and the global map take up the first three local slots
+
+        // Set the variable index of the top level root value to the passed in parameter
+        var scope = compiler.metadata.get(program, VariableAnalyser.SCOPE).orElseThrow();
+        compiler.rootAllocations.put(scope.root(), GLOBAL_ROOT_VAR_INDEX); 
+        
+        var startLabel = new Label();
+        visitor.visitLabel(startLabel);
+        
+        compiler.compileGlobalLoading(program, scope, visitor);
+        compiler.statementCompiler.compile(program);
+        
+        var endLabel = new Label();
+        visitor.visitLabel(endLabel);
+
+        compiler.addGlobalMetadata(program, scope, visitor, startLabel, endLabel);
         visitor.visitMaxs(0, 0);
         visitor.visitEnd();
     }
-    
+
     public static void compileLambda(TreeMetadata metadata, ClassVisitor classVisitor, String className, FunctionExpression expression, String name, Map<FunctionExpression, String> lambdaNames) {
         var scope = (FunctionScope) metadata.get(expression,  VariableAnalyser.SCOPE).orElseThrow();
         var arguments = expression.args().arguments();
-        
-        var methodArgs = new ArrayList<Type>();
         var capturesRoot = arguments.stream().noneMatch(argument -> argument.target() == FunctionArgument.Target.Root.INSTANCE);
 
-        for (int i = 0; i < scope.captures().size(); i++) {
-            methodArgs.add(Type.getType(Box.class));
-        }
-        if (capturesRoot) methodArgs.add(Type.getType(Value.ObjectValue.class));
-        for (var argument : arguments) {
-            methodArgs.add(Type.getType(Value.class));
-        }
-        
         var visitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC,
                 name,
-                Type.getMethodDescriptor(Type.getType(Value.class), methodArgs.toArray(Type[]::new)),
+                getLambdaMethodDescriptor(scope, capturesRoot, arguments),
                 null,
                 null);
 
         var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames);
         compiler.varCounter = 1;
 
-        for (var capture : scope.captures()) {
-            compiler.getOrAllocateVariable(capture);
-            visitor.visitParameter(capture.name(), 0);
-        }
-        if (capturesRoot) {
-            compiler.getOrAllocateRoot(scope.root());
-            visitor.visitParameter("$", 0);
-        }
+        compiler.allocateLambdaCaptures(scope, visitor, capturesRoot);
 
-        for (var argument : arguments) {
-            switch (argument.target()) {
-                case FunctionArgument.Target.Root root -> {
-                    compiler.getOrAllocateRoot(metadata.get(argument, VariableAnalyser.ROOT_REFERENCE).orElseThrow());
-                    visitor.visitParameter("$", 0);
-                }
-                case FunctionArgument.Target.Variable variable -> {
-                    compiler.getOrAllocateVariable(metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
-                    visitor.visitParameter(variable.name(), 0);
-                }
-            }
-        }
+        compiler.compileLambdaArgProcessing(metadata, arguments, visitor);
+
+        compiler.statementCompiler.compile(expression.body());
+        compiler.statementCompiler.compile(new ReturnStatement(Optional.empty()));
         
-        compiler.compileLambda(expression);
         visitor.visitMaxs(0, 0);
         visitor.visitEnd();
     }
-    
+
+    private static String getLambdaMethodDescriptor(FunctionScope scope, boolean capturesRoot, List<FunctionArgument> functionArgs) {
+        var args = new ArrayList<Type>();
+
+        for (int i = 0; i < scope.captures().size(); i++) {
+            args.add(Type.getType(Box.class));
+        }
+        if (capturesRoot) args.add(Type.getType(Value.ObjectValue.class));
+        for (int i = 0; i < functionArgs.size(); i++) {
+            args.add(Type.getType(Value.class));
+        }
+        return Type.getMethodDescriptor(Type.getType(Value.class), args.toArray(Type[]::new));
+    }
+
+    private void allocateLambdaCaptures(FunctionScope scope, MethodVisitor visitor, boolean capturesRoot) {
+        for (var capture : scope.captures()) {
+            getOrAllocateVariable(capture);
+            visitor.visitParameter(capture.name(), 0);
+        }
+        if (capturesRoot) {
+            getOrAllocateRoot(scope.root());
+            visitor.visitParameter("$", 0);
+        }
+    }
+
+    private void compileLambdaArgProcessing(TreeMetadata metadata, List<FunctionArgument> arguments, MethodVisitor visitor) {
+        for (var argument : arguments) {
+            int varIndex;
+            switch (argument.target()) {
+                case FunctionArgument.Target.Root root -> {
+                    varIndex = getOrAllocateRoot(metadata.get(argument, VariableAnalyser.ROOT_REFERENCE).orElseThrow());
+                    visitor.visitParameter("$", 0);
+                }
+                case FunctionArgument.Target.Variable variable -> {
+                    varIndex = getOrAllocateVariable(metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+                    visitor.visitParameter(variable.name(), 0);
+                }
+            }
+
+            if (argument.defaultValue().isPresent()) {
+                var jump = new Label();
+                this.visitor.visitVarInsn(Opcodes.ALOAD, varIndex);
+                this.visitor.visitJumpInsn(Opcodes.IFNONNULL, jump);
+                compileExpression(argument.defaultValue().get());
+                this.visitor.visitVarInsn(Opcodes.ASTORE, varIndex);
+                this.visitor.visitLabel(jump);
+            }
+        }
+    }
+
+    private void addGlobalMetadata(Program program, Scope scope, MethodVisitor visitor, Label startLabel, Label endLabel) {
+        for (var variable : scope.variables()) {
+            if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
+            visitor.visitLocalVariable(variable.name(), variable.isCaptured() ? Type.getDescriptor(Box.class) : Type.getDescriptor(Value.class), null, startLabel, endLabel, getOrAllocateVariable(variable));
+        }
+    }
+
+    private void compileGlobalLoading(Program program, Scope scope, MethodVisitor visitor) {
+        for (var variable : scope.variables()) {
+            if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
+            compileVariableCreation(variable, () -> {
+                visitor.visitVarInsn(Opcodes.ALOAD, GLOBALS_VAR_INDEX);
+                visitor.visitLdcInsn(variable.name());
+                visitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(Map.class), "get", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)), true);
+                visitor.visitTypeInsn(Opcodes.CHECKCAST, Types.VALUE);
+            });
+        }
+    }
+
     public String allocateRootName() {
         return "$" + rootNameCounter++;
     }
@@ -145,58 +197,15 @@ public class FunctionCompiler {
     public void compileVariableCreation(Variable variable, Runnable valueExpressionInserter) {
         var index = getOrAllocateVariable(variable);
         if (variable.isCaptured()) {
-            visitor.visitTypeInsn(Opcodes.NEW, Types.BOX);
-            visitor.visitInsn(Opcodes.DUP);
+            visitor.visitVarInsn(Opcodes.ALOAD, index);
             valueExpressionInserter.run();
-            visitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Types.BOX, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
-            visitor.visitVarInsn(Opcodes.ASTORE, index);
+            visitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Types.BOX, "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
         } else {
+            valueExpressionInserter.run();
             visitor.visitVarInsn(Opcodes.ASTORE, index);
         }
     }
 
-    public void compileProgram(Program program) {
-        var scope = metadata.get(program, VariableAnalyser.SCOPE).orElseThrow();
-        rootAllocations.put(scope.root(), GLOBAL_ROOT_VAR_INDEX);
-        var startLabel = new Label();
-        visitor.visitLabel(startLabel);
-        for (var variable : scope.variables()) {
-            if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
-            compileVariableCreation(variable, () -> {
-                visitor.visitVarInsn(Opcodes.ALOAD, GLOBALS_VAR_INDEX);
-                visitor.visitLdcInsn(variable.name());
-                visitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(Map.class), "get", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)), true);
-                visitor.visitTypeInsn(Opcodes.CHECKCAST, Types.VALUE);
-            });
-        }
-        statementCompiler.compile(program);
-        var endLabel = new Label();
-        visitor.visitLabel(endLabel);
-
-        for (var variable : scope.variables()) {
-            if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
-            visitor.visitLocalVariable(variable.name(), variable.isCaptured() ? Type.getDescriptor(Box.class) : Type.getDescriptor(Value.class), null, startLabel, endLabel, getOrAllocateVariable(variable));
-        }
-    }
-
-    private void compileLambda(FunctionExpression expression) {
-        var arguments = expression.args().arguments();
-        for (int i = 0; i < arguments.size(); i++) {
-            var argument = arguments.get(i);
-            if (argument.defaultValue().isPresent()) {
-                var jump = new Label();
-                visitor.visitVarInsn(Opcodes.ALOAD, i);
-                visitor.visitJumpInsn(Opcodes.IFNONNULL, jump);
-                compileExpression(argument.defaultValue().get());
-                visitor.visitVarInsn(Opcodes.ASTORE, i);
-                visitor.visitLabel(jump);
-            }
-        }
-
-        statementCompiler.compile(expression.body());
-        statementCompiler.compile(new ReturnStatement(Optional.empty()));
-    }
-    
     public void compileExpression(Expression expression) {
         expressionCompiler.compile(expression);
     }

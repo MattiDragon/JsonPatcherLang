@@ -65,9 +65,9 @@ public class ScriptCompiler {
         for (var error : errors) {
             var subException = switch (error) {
                 case VariableAnalyser.AnalysisError.DuplicateVariable duplicateVariable ->
-                        new CompilationException(config, "Variable %s would shadow other variable by the same name".formatted(duplicateVariable.getVariableName()), duplicateVariable.getPos());
+                        new CompilationException(config, "Variable '%s' would shadow another variable by the same name".formatted(duplicateVariable.getVariableName()), duplicateVariable.getPos());
                 case VariableAnalyser.AnalysisError.MissingVariable missingVariable ->
-                        new CompilationException(config, "Cannot find variable called %s".formatted(missingVariable.getVariableName()), missingVariable.getPos());
+                        new CompilationException(config, "Cannot find variable '%s'".formatted(missingVariable.getVariableName()), missingVariable.getPos());
             };
             if (e == null) {
                 e = subException;

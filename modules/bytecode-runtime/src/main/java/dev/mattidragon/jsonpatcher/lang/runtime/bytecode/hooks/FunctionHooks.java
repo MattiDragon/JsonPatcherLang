@@ -5,9 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.IncompatibleOperandsException;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.invoke.*;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -17,11 +15,15 @@ public class FunctionHooks {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final MethodHandle UNWRAP_OPTIONAL;
     private static final MethodHandle UNWRAP_VARARGS;
+    private static final MethodHandle CALL;
 
     static {
         try {
             UNWRAP_OPTIONAL = LOOKUP.findStatic(FunctionHooks.class, "unwrapOptional", MethodType.methodType(Value.class, Value[].class, int.class));
             UNWRAP_VARARGS = LOOKUP.findStatic(FunctionHooks.class, "unwrapVarargs", MethodType.methodType(Value.class, Value[].class, int.class));
+            var unwrapFunction = LOOKUP.findStatic(FunctionHooks.class, "unwrapFunction", MethodType.methodType(PatchFunction.class, Value.class));
+            var internalCall = LOOKUP.findStatic(FunctionHooks.class, "call", MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.class, Value[].class));
+            CALL = MethodHandles.filterArguments(internalCall, 1, unwrapFunction).asVarargsCollector(Value[].class);
 
             for (var clazz : FunctionBody.class.getClasses()) {
                 var i = Integer.parseInt(clazz.getSimpleName().substring(1));
@@ -72,13 +74,30 @@ public class FunctionHooks {
         return new Value.FunctionValue(new DefinedFunction(handle, requiredArgs, totalArgCount, varargs));
     }
     
-    public static Value call(PlatformContext context, Value function, Value... args) {
+    public static CallSite callHook(MethodHandles.Lookup caller,
+                                    String methodName,
+                                    MethodType methodType) {
+        if (methodType.returnType() != Value.class) throw new IllegalArgumentException("Return type must be Value");
+        if (methodType.parameterCount() == 0 || methodType.parameterType(0) != PlatformContext.class) throw new IllegalArgumentException("First argument must be EvaluationContext");
+        if (methodType.parameterCount() == 1 || methodType.parameterType(1) != Value.class) throw new IllegalArgumentException("Second argument must be Value");
+        if (Arrays.stream(methodType.parameterArray()).skip(1).anyMatch(argClass -> argClass != Value.class)) {
+            throw new IllegalArgumentException("Argument types must be Value");
+        }
+        
+        return new ConstantCallSite(CALL.asType(methodType));
+    }
+    
+    public static Value call(PlatformContext context, PatchFunction function, Value... args) {
         return switch (function) {
-            case Value.FunctionValue(PatchFunction.BuiltInPatchFunction builtIn) -> builtIn.execute(context, Arrays.asList(args));
-            case Value.FunctionValue(DefinedFunction definedFunction) -> definedFunction.call(args);
-            case Value.FunctionValue(PatchFunction.RuntimePatchFunction other) -> throw new IllegalStateException("Tried to call function from another runtime: " + other);
-            case Value other -> throw new IncompatibleOperandsException("%s is not callable".formatted(other));
+            case PatchFunction.BuiltInPatchFunction builtIn -> builtIn.execute(context, Arrays.asList(args));
+            case DefinedFunction definedFunction -> definedFunction.call(args);
+            case PatchFunction.RuntimePatchFunction other -> throw new IllegalStateException("Tried to call function from another runtime: " + other);
         };
+    }
+    
+    private static PatchFunction unwrapFunction(Value value) {
+        if (value instanceof Value.FunctionValue(var function)) return function;
+        throw new IncompatibleOperandsException("%s is not callable".formatted(value));
     }
     
     private static Value unwrapOptional(Value[] values, int index) {

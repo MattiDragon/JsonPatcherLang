@@ -10,4 +10,14 @@ sealed abstract class MutableScope implements Scope permits ApplyScope, BlockSco
             case null -> null;
         };
     }
+
+    public boolean has(String name) {
+        for (var variable : variables()) {
+            if (variable.name().equals(name)) return true;
+        }
+        return switch (parent()) {
+            case MutableScope scope -> scope.has(name);
+            case null -> false;
+        };
+    }
 }

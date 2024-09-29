@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
 import java.util.LinkedHashSet;
@@ -27,8 +28,7 @@ public record EvaluationContext(LangConfig config, LibraryLocator libraryLocator
 
     @Override
     public Value execute(PatchFunction function, List<Value> args) {
-        // TODO: impl
-        return null; 
+        return FunctionHooks.call(this, function, args.toArray(new Value[0]));
     }
 
     @Override

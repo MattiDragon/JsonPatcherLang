@@ -15,7 +15,10 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import org.objectweb.asm.*;
 
+import java.lang.invoke.CallSite;
 import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.Locale;
 
 public class ExpressionCompiler implements Opcodes {
@@ -53,6 +56,7 @@ public class ExpressionCompiler implements Opcodes {
             case AssignmentExpression e -> compileAssignment(e);
             case RootExpression e -> compileRoot(e);
             case FunctionExpression e -> compileFunction(e);
+            case FunctionCallExpression e -> compileFunctionCall(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
     }
@@ -414,6 +418,30 @@ public class ExpressionCompiler implements Opcodes {
                 "createFunction",
                 "(Ldev/mattidragon/jsonpatcher/lang/runtime/bytecode/hooks/FunctionBody;IIZ)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$FunctionValue;",
                 false);
+    }
+
+    private void compileFunctionCall(FunctionCallExpression expression) {
+        functionCompiler.loadContext();
+        compile(expression.function());
+        for (var argument : expression.arguments()) {
+            compile(argument);
+        }
+
+        var invokerType = new StringBuilder("(");
+        invokerType.append(Type.getDescriptor(PlatformContext.class));
+        invokerType.append(Type.getDescriptor(Value.class));
+        for (int i = 0; i < expression.arguments().size(); i++) {
+            invokerType.append(Type.getDescriptor(Value.class));
+        }
+        invokerType.append(")").append(Type.getDescriptor(Value.class));
+
+        visitor.visitInvokeDynamicInsn("function",
+                invokerType.toString(),
+                new Handle(H_INVOKESTATIC,
+                        Type.getInternalName(FunctionHooks.class),
+                        "callHook",
+                        Type.getMethodDescriptor(Type.getType(CallSite.class), Type.getType(MethodHandles.Lookup.class), Type.getType(String.class), Type.getType(MethodType.class)),
+                        false));
     }
 
     private void compileBinaryOp(BinaryExpression.Operator op) {

@@ -171,7 +171,7 @@ public class VariableAnalyser {
     }
     
     private void define(Variable variable, MutableScope scope, ProgramNode node) {
-        if (scope.find(variable.name()) != null) {
+        if (scope.has(variable.name())) {
             errors.add(new AnalysisError.DuplicateVariable(variable.name(), node, metadata.get(node, MetadataKey.MAIN_POS).orElse(null)));
         }
         scope.define(variable);

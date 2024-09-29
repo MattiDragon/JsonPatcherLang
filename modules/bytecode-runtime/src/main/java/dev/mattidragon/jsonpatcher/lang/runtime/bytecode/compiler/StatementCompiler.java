@@ -80,6 +80,15 @@ public class StatementCompiler implements Opcodes {
         
         var startLabel = new Label();
         visitor.visitLabel(startLabel);
+        for (var variable : scope.variables()) {
+            if (variable.isCaptured()) {
+                visitor.visitTypeInsn(NEW, Types.BOX);
+                visitor.visitInsn(DUP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX, "<init>", "()V", false);
+                visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
+            }
+        }
+        
         for (var child : statements){
             compile(child);
         }
