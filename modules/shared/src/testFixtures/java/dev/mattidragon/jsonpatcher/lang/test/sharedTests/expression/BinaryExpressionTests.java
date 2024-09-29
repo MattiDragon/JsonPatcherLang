@@ -1,15 +1,15 @@
-package dev.mattidragon.jsonpatcher.lang.test.runtime.expression;
+package dev.mattidragon.jsonpatcher.lang.test.sharedTests.expression;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
-import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
+import dev.mattidragon.jsonpatcher.lang.test.SharedTest;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
+import org.junit.jupiter.api.Test;
 
-public class BinaryExpressionTests {
+public interface BinaryExpressionTests extends SharedTest {
     // TODO: implement more tests. Not very high priority as these are unlikely to be broken
     // There's no real reason to test the actual expression as it's trivial. Instead, we test the operator implementations.
-    @RuntimeTest
-    public void testPlus(Runtime runtime) {
-        TestUtils.testCode(runtime, """
+    @Test
+    default void testPlus() {
+        TestUtils.testCode(runner(), """
                 val assert = debug.assert;
                 assert(1 + 2 == 3);
                 assert("1" + "2" == "12");

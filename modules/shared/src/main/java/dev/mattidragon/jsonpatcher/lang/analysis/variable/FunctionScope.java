@@ -3,20 +3,19 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public final class FunctionScope extends MutableScope {
     private final FunctionExpression function;
     private final RootVariable root = new RootVariable();
     private final List<Variable> variables;
-    private final List<Variable> captures;
+    private final Set<Variable> captures;
     private final MutableScope parent;
 
     FunctionScope(FunctionExpression function, MutableScope parent) {
         this.function = function;
         this.variables = new ArrayList<>();
-        this.captures = new ArrayList<>();
+        this.captures = new HashSet<>();
         this.parent = parent;
     }
 
@@ -59,7 +58,7 @@ public final class FunctionScope extends MutableScope {
         return variables;
     }
     
-    public List<Variable> captures() {
+    public Collection<Variable> captures() {
         return captures;
     }
 

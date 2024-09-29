@@ -1,11 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
-import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
@@ -27,12 +23,10 @@ public class ClassCompiler {
     private final Program program;
     private final TreeMetadata metadata;
 
-    public ClassCompiler(Program program, TreeMetadata metadata, Map<FunctionExpression, String> lambdaNames) {
+    public ClassCompiler(Program program, TreeMetadata metadata, Map<FunctionExpression, String> lambdaNames, String scriptName, String className) {
         classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        scriptName = metadata.get(program, MetadataKey.MAIN_POS).map(SourceSpan::from).map(SourcePos::file).map(SourceFile::name).orElse("unknown script");
-        
-        var matcher = PATTERN.matcher(scriptName);
-        className = "dev/mattidragon/jsonpatcher/lang/runtime/bytecode/generated/" + (matcher.find() ? matcher.group() : "script");
+        this.scriptName = scriptName;
+        this.className = className;
         this.program = program;
         this.metadata = metadata;
 

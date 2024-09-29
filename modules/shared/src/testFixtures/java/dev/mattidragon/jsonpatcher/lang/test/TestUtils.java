@@ -21,11 +21,12 @@ import org.junit.jupiter.api.Assertions;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class TestUtils {
     @SuppressWarnings("unused")
-    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy")/*, Runtime.RUNTIMES.get("bytecode")*/);
+    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy")/*, Runtime.RUNTIMES.get("jvm-bytecode")*/);
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
@@ -38,6 +39,35 @@ public class TestUtils {
         var program = result.program();
         
         Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata(), PREPARE_CONTEXT_BUILDER_CONSUMER).run(RUNTIME_CONTEXT_BUILDER_CONSUMER, CONFIG));
+    }
+    
+    public static void testCode(TestRunner runtime, String code) {
+        var result = parseFull(code);
+        var program = result.program();
+        
+        Assertions.assertDoesNotThrow(() -> runtime.executeCode(program, result.treeMetadata(), Map.of()), "Failed to run test code");
+    }
+    
+    public static void testCode(TestRunner runtime, String code, Map<String, Value.ObjectValue> libs) {
+        var result = parseFull(code);
+        var program = result.program();
+        
+        Assertions.assertDoesNotThrow(() -> runtime.executeCode(program, result.treeMetadata(), libs), "Failed to run test code");
+    }
+
+    
+    public static void runCode(TestRunner runtime, String code) {
+        var result = parseFull(code);
+        var program = result.program();
+        
+        runtime.executeCode(program, result.treeMetadata(), Map.of());
+    }
+    
+    public static void runCode(TestRunner runtime, String code, Map<String, Value.ObjectValue> libs) {
+        var result = parseFull(code);
+        var program = result.program();
+        
+        runtime.executeCode(program, result.treeMetadata(), libs);
     }
 
     public static void testCode(Runtime runtime, String code, Value expected) {

@@ -109,7 +109,7 @@ public class FunctionHooks {
     
     private static Value unwrapVarargs(Value[] values, int optionalCount) {
         if (values.length <= optionalCount) return new Value.ArrayValue(Collections.emptyList());
-        return new Value.ArrayValue(Arrays.asList(values).subList(optionalCount, values.length));
+        return new Value.ArrayValue(Arrays.asList(values).subList(optionalCount - 1, values.length));
     }
 
     private static MethodType makeType(int argCount) {

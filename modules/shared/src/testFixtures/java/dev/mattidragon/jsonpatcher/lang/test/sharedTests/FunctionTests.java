@@ -1,12 +1,12 @@
-package dev.mattidragon.jsonpatcher.lang.test.runtime;
+package dev.mattidragon.jsonpatcher.lang.test.sharedTests;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
-import dev.mattidragon.jsonpatcher.lang.test.RuntimeTest;
+import dev.mattidragon.jsonpatcher.lang.test.SharedTest;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
+import org.junit.jupiter.api.Test;
 
-public class FunctionTests {
-    @RuntimeTest
-    public void complexArgPassing(Runtime runtime) {
+public interface FunctionTests extends SharedTest {
+    @Test
+    default void complexArgPassing() {
         var code = """
                 function test(a, $ = {a: 3}, b = 1, c*) {
                     debug.assert(a == 3, "first");
@@ -16,11 +16,11 @@ public class FunctionTests {
                 }
                 test(3, {a: 4}, 10, 1, 2, 3);
                 """;
-        TestUtils.testCode(runtime, code);
+        TestUtils.testCode(runner(), code);
     }
     
-    @RuntimeTest
-    public void defaultValues(Runtime runtime) {
+    @Test
+    default void defaultValues() {
         var code = """
                 function test($ = {a: 3}, b = 1, c*) {
                     debug.assert($a == 3, "first");
@@ -29,11 +29,11 @@ public class FunctionTests {
                 }
                 test();
                 """;
-        TestUtils.testCode(runtime, code);
+        TestUtils.testCode(runner(), code);
     }
     
-    @RuntimeTest
-    public void simpleFunction(Runtime runtime) {
+    @Test
+    default void simpleFunction() {
         var code = """
                 function test(a, b, c) {
                     debug.assert(a == 1, "first");
@@ -42,6 +42,6 @@ public class FunctionTests {
                 }
                 test(1, 2, 3);
                 """;
-        TestUtils.testCode(runtime, code);
+        TestUtils.testCode(runner(), code);
     }
 }

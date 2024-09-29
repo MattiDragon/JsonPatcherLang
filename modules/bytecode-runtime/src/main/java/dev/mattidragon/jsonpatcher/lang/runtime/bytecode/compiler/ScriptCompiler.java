@@ -3,8 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;
-import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.*;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
@@ -17,7 +16,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class ScriptCompiler {
-    public static byte[] compile(Program program, TreeMetadata metadata, LangConfig config, Consumer<PreparationContextBuilder> contextBuilder) {
+    public static byte[] compile(Program program, TreeMetadata metadata, LangConfig config, Consumer<PreparationContextBuilder> contextBuilder, String scriptName, String className) {
         var globals = new HashSet<String>();
         contextBuilder.accept(new PreparationContextBuilder() {
             @Override
@@ -32,7 +31,7 @@ public class ScriptCompiler {
         var functions = new HashMap<FunctionExpression, String>();
         findLambdas(program, functions, "");
         
-        var compiler = new ClassCompiler(program, metadata, functions);
+        var compiler = new ClassCompiler(program, metadata, functions, scriptName, className);
         compiler.compileStart();
         compiler.compileMain();
         functions.keySet().forEach(compiler::compileLambda);

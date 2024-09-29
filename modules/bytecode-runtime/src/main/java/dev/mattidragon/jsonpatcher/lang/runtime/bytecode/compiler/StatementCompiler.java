@@ -82,6 +82,7 @@ public class StatementCompiler implements Opcodes {
         visitor.visitLabel(startLabel);
         for (var variable : scope.variables()) {
             if (variable.isCaptured()) {
+                if (variable.definition() instanceof Program) continue; // Globals are handled elsewhere
                 visitor.visitTypeInsn(NEW, Types.BOX);
                 visitor.visitInsn(DUP);
                 visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX, "<init>", "()V", false);

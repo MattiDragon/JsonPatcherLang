@@ -15,7 +15,7 @@ import org.objectweb.asm.*;
 
 import java.util.*;
 
-public class FunctionCompiler {
+public class FunctionCompiler implements Opcodes {
     private static final int GLOBAL_ROOT_VAR_INDEX = 1;
     private static final int GLOBALS_VAR_INDEX = 2;
     
@@ -42,7 +42,7 @@ public class FunctionCompiler {
     
     public static void compileMainMethod(TreeMetadata metadata, ClassVisitor classVisitor, String className, Program program, Map<FunctionExpression, String> lambdaNames) {
         // Method header
-        var visitor = classVisitor.visitMethod(Opcodes.ACC_PUBLIC,
+        var visitor = classVisitor.visitMethod(ACC_PUBLIC,
                 "run",
                 Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.ObjectValue.class), Type.getType(Map.class)),
                 null,
@@ -77,7 +77,7 @@ public class FunctionCompiler {
         var arguments = expression.args().arguments();
         var capturesRoot = arguments.stream().noneMatch(argument -> argument.target() == FunctionArgument.Target.Root.INSTANCE);
 
-        var visitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC,
+        var visitor = classVisitor.visitMethod(ACC_PRIVATE | ACC_SYNTHETIC,
                 name,
                 getLambdaMethodDescriptor(scope, capturesRoot, arguments),
                 null,
@@ -137,10 +137,10 @@ public class FunctionCompiler {
 
             if (argument.defaultValue().isPresent()) {
                 var jump = new Label();
-                this.visitor.visitVarInsn(Opcodes.ALOAD, varIndex);
-                this.visitor.visitJumpInsn(Opcodes.IFNONNULL, jump);
+                this.visitor.visitVarInsn(ALOAD, varIndex);
+                this.visitor.visitJumpInsn(IFNONNULL, jump);
                 compileExpression(argument.defaultValue().get());
-                this.visitor.visitVarInsn(Opcodes.ASTORE, varIndex);
+                this.visitor.visitVarInsn(ASTORE, varIndex);
                 this.visitor.visitLabel(jump);
             }
         }
@@ -156,11 +156,18 @@ public class FunctionCompiler {
     private void compileGlobalLoading(Program program, Scope scope, MethodVisitor visitor) {
         for (var variable : scope.variables()) {
             if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
+            if (variable.isCaptured()) {
+                visitor.visitTypeInsn(NEW, Types.BOX);
+                visitor.visitInsn(DUP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX, "<init>", "()V", false);
+                visitor.visitVarInsn(ASTORE, getOrAllocateVariable(variable));
+            }
+            
             compileVariableCreation(variable, () -> {
-                visitor.visitVarInsn(Opcodes.ALOAD, GLOBALS_VAR_INDEX);
+                visitor.visitVarInsn(ALOAD, GLOBALS_VAR_INDEX);
                 visitor.visitLdcInsn(variable.name());
-                visitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(Map.class), "get", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)), true);
-                visitor.visitTypeInsn(Opcodes.CHECKCAST, Types.VALUE);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(Map.class), "get", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)), true);
+                visitor.visitTypeInsn(CHECKCAST, Types.VALUE);
             });
         }
     }
@@ -182,8 +189,8 @@ public class FunctionCompiler {
     }
     
     public void loadContext() {
-        visitor.visitVarInsn(Opcodes.ALOAD, 0);
-        visitor.visitFieldInsn(Opcodes.GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
+        visitor.visitVarInsn(ALOAD, 0);
+        visitor.visitFieldInsn(GETFIELD, className, "context", Type.getDescriptor(EvaluationContext.class));
     }
     
     public void emitLineNumber(int line) {
@@ -197,12 +204,12 @@ public class FunctionCompiler {
     public void compileVariableCreation(Variable variable, Runnable valueExpressionInserter) {
         var index = getOrAllocateVariable(variable);
         if (variable.isCaptured()) {
-            visitor.visitVarInsn(Opcodes.ALOAD, index);
+            visitor.visitVarInsn(ALOAD, index);
             valueExpressionInserter.run();
-            visitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Types.BOX, "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX, "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
         } else {
             valueExpressionInserter.run();
-            visitor.visitVarInsn(Opcodes.ASTORE, index);
+            visitor.visitVarInsn(ASTORE, index);
         }
     }
 

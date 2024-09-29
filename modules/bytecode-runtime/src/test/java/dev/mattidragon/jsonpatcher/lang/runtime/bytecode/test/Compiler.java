@@ -41,7 +41,7 @@ public class Compiler {
             throw e;
         }
 
-        var bytes = ScriptCompiler.compile(parse.program(), parse.treeMetadata(), new LangConfig(LangConfig.StackTraceMode.JAVA), builder -> builder.declareVariables("my_global", "debug", "objects", "strings"));
+        var bytes = ScriptCompiler.compile(parse.program(), parse.treeMetadata(), new LangConfig(LangConfig.StackTraceMode.JAVA), builder -> builder.declareVariables("my_global", "debug", "objects", "strings"), "test script", "TestClass");
 
         var reader = new ClassReader(bytes);
         CheckClassAdapter.verify(reader, false, new PrintWriter(System.out));
