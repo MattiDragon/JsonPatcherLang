@@ -50,6 +50,7 @@ public class ExpressionCompiler implements Opcodes {
             case BinaryExpression e -> compileBinary(e);
             case ShortedBinaryExpression e -> compileShortedBinary(e);
             case UnaryExpression e -> compileUnary(e);
+            case UnaryModificationExpression e -> compileUnaryModification(e);
             case VariableAccessExpression e -> compileVariableAccess(e);
             case PropertyAccessExpression e -> compilePropertyAccess(e);
             case IndexExpression e -> compileIndex(e);
@@ -210,6 +211,60 @@ public class ExpressionCompiler implements Opcodes {
         visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
     }
 
+    private void compileUnaryModification(UnaryModificationExpression expression) {
+        var op = expression.operator();
+        switch (expression.target()) {
+            case VariableAccessExpression accessExpression -> {
+                var variable = metadata.get(accessExpression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+                
+                compile(accessExpression);
+                
+                if (expression.postfix()) visitor.visitInsn(DUP);
+                compileUnaryOp(op);
+                if (!expression.postfix()) visitor.visitInsn(DUP);
+                
+                if (variable.isCaptured()) {
+                    visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+                    visitor.visitInsn(SWAP);
+                    visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+                } else {
+                    visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
+                }
+            }
+            case PropertyAccessExpression e -> {
+                compile(e.parent());
+                visitor.visitLdcInsn(e.name());
+
+                visitor.visitInsn(DUP2);
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+                
+                if (expression.postfix()) visitor.visitInsn(DUP_X2);
+                compileUnaryOp(op);
+                if (!expression.postfix()) visitor.visitInsn(DUP_X2);
+
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+            }
+            case IndexExpression e -> {
+                compile(e.parent());
+                compile(e.index());
+                
+                visitor.visitInsn(DUP2);
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+
+                if (expression.postfix()) visitor.visitInsn(DUP_X2);
+                compileUnaryOp(op);
+                if (!expression.postfix()) visitor.visitInsn(DUP_X2);
+
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "set", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+            }
+            default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
+        }
+    }
+
     private void compileVariableAccess(VariableAccessExpression expression) {
         var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
@@ -247,6 +302,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(DUP);
                 if (variable.isCaptured()) {
                     visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
+                    visitor.visitInsn(SWAP);
                     visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
                 } else {
                     visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
@@ -315,37 +371,42 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
             }
             case MINUS -> {
-                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
-                visitor.visitInsn(DUP);
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
                 visitor.visitInsn(DNEG);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
+                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(POP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.DOUBLE_TYPE), false);
             }
             case BITWISE_NOT -> {
-                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
-                visitor.visitInsn(DUP);
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
                 visitor.visitInsn(D2I);
                 visitor.visitInsn(ICONST_M1);
                 visitor.visitInsn(IXOR);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
+                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(POP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.DOUBLE_TYPE), false);
             }
             case INCREMENT -> {
-                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
-                visitor.visitInsn(DUP);
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
                 visitor.visitInsn(D2I);
                 visitor.visitInsn(ICONST_1);
                 visitor.visitInsn(IADD);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
+                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(POP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.DOUBLE_TYPE), false);
             }
             case DECREMENT -> {
-                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
                 visitor.visitInsn(DUP);
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
@@ -353,7 +414,11 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(ICONST_1);
                 visitor.visitInsn(ISUB);
                 visitor.visitInsn(I2D);
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.getType(Value.NumberValue.class), Type.DOUBLE_TYPE), false);
+                visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(DUP_X2);
+                visitor.visitInsn(POP);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.DOUBLE_TYPE), false);
             }
         }
     }

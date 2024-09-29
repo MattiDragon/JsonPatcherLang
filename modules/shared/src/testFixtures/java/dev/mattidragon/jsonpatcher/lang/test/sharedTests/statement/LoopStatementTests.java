@@ -20,6 +20,24 @@ public interface LoopStatementTests extends SharedTest {
 
     @Test
     default void testForEach() {
-        
+        TestUtils.testCode(runner(), """
+                var inVals = [0, 1, 2];
+                var outVals = [];
+                
+                foreach (value in inVals) {
+                    outVals.push(value);
+                }
+                
+                debug.assert(outVals == inVals);
+                """);
+    }
+
+    @Test
+    default void testFor() {
+        TestUtils.testCode(runner(), """
+                var counter = 0;
+                for (var i = 0; i < 10; i++) counter++;
+                debug.assert(counter == 10);
+                """);
     }
 }

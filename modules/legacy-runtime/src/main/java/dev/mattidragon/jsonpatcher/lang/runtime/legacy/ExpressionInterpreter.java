@@ -34,7 +34,7 @@ public class ExpressionInterpreter {
 
     private static void assign(Reference target, Value value, EvaluationContext context) {
         switch (target) {
-            case VariableAccessExpression expression -> context.variables().getVariable(expression.name(), context.getPos(expression).orElse(null));
+            case VariableAccessExpression expression -> context.variables().setVariable(expression.name(), value, context.getPos(expression).orElse(null));
             case IndexExpression expression -> {
                 var parent = evaluate(expression.parent(), context);
                 var index = evaluate(expression.index(), context);

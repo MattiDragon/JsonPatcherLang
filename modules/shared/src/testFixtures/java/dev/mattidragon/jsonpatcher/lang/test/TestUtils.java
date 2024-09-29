@@ -154,24 +154,44 @@ public class TestUtils {
 
     public static Expression parseExpression(String code) {
         var lex = Lexer.lex(CONFIG, code, "test program");
-        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
+        if (!lex.errors().isEmpty()) {
+            AssertionFailureBuilder.assertionFailure()
+                    .message("Lexer errors")
+                    .cause(combineErrors(lex.errors()))
+                    .buildAndThrow();
+        }
         return Parser.parseExpression(CONFIG, lex.tokens());
     }
 
     public static Program parseProgram(String code) {
-        var lex = Lexer.lex(CONFIG, code, "test program");
-        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
-        var parse = Parser.parse(CONFIG, lex.tokens());
-        Assertions.assertIterableEquals(Collections.EMPTY_LIST, parse.errors(), "Failed to parse");
-        return parse.program();
+        return parseFull(code).program();
     }
 
     public static Parser.Result parseFull(String code) {
         var lex = Lexer.lex(CONFIG, code, "test program");
-        Assertions.assertIterableEquals(Collections.EMPTY_LIST, lex.errors(), "Failed to lex");
+        if (!lex.errors().isEmpty()) {
+            AssertionFailureBuilder.assertionFailure()
+                    .message("Lexer errors")
+                    .cause(combineErrors(lex.errors()))
+                    .buildAndThrow();
+        }
         var parse = Parser.parse(CONFIG, lex.tokens());
-        Assertions.assertIterableEquals(Collections.EMPTY_LIST, parse.errors(), "Failed to parse");
+        if (!parse.errors().isEmpty()) {
+            AssertionFailureBuilder.assertionFailure()
+                    .message("Parser errors")
+                    .cause(combineErrors(parse.errors()))
+                    .buildAndThrow();
+        }
         return parse;
+    }
+    
+    private static  <T extends Throwable> T combineErrors(Iterable<T> errors) {
+        T first = null;
+        for (T error : errors) {
+            if (first == null) first = error;
+            else first.addSuppressed(error);
+        }
+        return first;
     }
 
     public static PlatformContext createTestFunctionContext() {

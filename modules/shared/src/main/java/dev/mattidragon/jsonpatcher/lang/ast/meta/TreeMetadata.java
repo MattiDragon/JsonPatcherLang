@@ -5,7 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import java.util.*;
 
 public class TreeMetadata {
-    private final Map<ProgramNode, Map<MetadataKey<?>, Object>> values = new HashMap<>();
+    private final Map<ProgramNode, Map<MetadataKey<?>, Object>> values = new IdentityHashMap<>();
     
     public <T> void put(ProgramNode node, MetadataKey<T> key, T value) {
         Objects.requireNonNull(node, "node");

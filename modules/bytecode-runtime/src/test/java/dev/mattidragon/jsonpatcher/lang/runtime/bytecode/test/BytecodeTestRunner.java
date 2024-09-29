@@ -28,7 +28,7 @@ public class BytecodeTestRunner implements TestRunner {
     private static final TestClassLoader CLASS_LOADER = new TestClassLoader();
     private static final LangConfig LANG_CONFIG = new LangConfig(LangConfig.StackTraceMode.JAVA);
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final Path DUMP_PATH = Path.of(".", "build", "tmp", "test-class-dump");
+    private static final Path DUMP_PATH = Path.of("build", "tmp", "test-class-dump");
     
     static {
         try {
@@ -41,6 +41,7 @@ public class BytecodeTestRunner implements TestRunner {
                     }
                 });
             }
+            System.out.println("Dumping test classes to " + DUMP_PATH.toAbsolutePath());
         } catch (IOException e) {
             throw new RuntimeException("Failed to clean dump", e);
         }

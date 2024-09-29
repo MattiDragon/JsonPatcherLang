@@ -18,9 +18,9 @@ import java.util.*;
  * Generic variable analyser for jsonpatcher meant to serve both the language server and the bytecode compiler.
  */
 public class VariableAnalyser {
-    public static final MetadataKey<Variable> VARIABLE_REFERENCE = new MetadataKey<>();
-    public static final MetadataKey<RootVariable> ROOT_REFERENCE = new MetadataKey<>();
-    public static final MetadataKey<Scope> SCOPE = new MetadataKey<>();
+    public static final MetadataKey<Variable> VARIABLE_REFERENCE = new MetadataKey<>("VariableAnalyser/VARIABLE_REFERENCE");
+    public static final MetadataKey<RootVariable> ROOT_REFERENCE = new MetadataKey<>("VariableAnalyser/ROOT_REFERENCE");
+    public static final MetadataKey<Scope> SCOPE = new MetadataKey<>("VariableAnalyser/SCOPE");
     
     private final TreeMetadata metadata;
     private final Map<VariableAccessExpression, LazyRef> lazyRefs = new HashMap<>();

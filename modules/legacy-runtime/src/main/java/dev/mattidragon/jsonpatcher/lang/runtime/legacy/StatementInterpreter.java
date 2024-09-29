@@ -76,7 +76,7 @@ public class StatementInterpreter {
             var loopContext = context.newScope();
             loopContext.variables().createVariable(statement.variableName(), value, false, context.getPos(statement).orElse(null));
             try {
-                execute(statement, loopContext);
+                execute(statement.body(), loopContext);
             } catch (BreakStatement.BreakException e) {
                 break;
             } catch (ContinueStatement.ContinueException e) {
