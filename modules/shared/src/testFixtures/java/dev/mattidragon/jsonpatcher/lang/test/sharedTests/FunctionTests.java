@@ -44,4 +44,22 @@ public interface FunctionTests extends SharedTest {
                 """;
         TestUtils.testCode(runner(), code);
     }
+    
+    @Test
+    default void testShadowing() {
+        var code = """
+                var a = 5;
+                $b = 10;
+                function test() {
+                    debug.assert(a == 10);
+                    debug.assert($b == 20);
+                    val f = () -> a + $b;
+                    debug.assert(f() == 30);
+                }
+                a *= 2;
+                $b *= 2;
+                test();
+                """;
+        TestUtils.testCode(runner(), code);
+    }
 }

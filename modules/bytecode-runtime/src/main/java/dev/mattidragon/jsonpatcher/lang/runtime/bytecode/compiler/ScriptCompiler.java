@@ -67,6 +67,8 @@ public class ScriptCompiler {
                         new CompilationException(config, "Variable '%s' would shadow another variable by the same name".formatted(duplicateVariable.getVariableName()), duplicateVariable.getPos());
                 case VariableAnalyser.AnalysisError.MissingVariable missingVariable ->
                         new CompilationException(config, "Cannot find variable '%s'".formatted(missingVariable.getVariableName()), missingVariable.getPos());
+                case VariableAnalyser.AnalysisError.IllegalMutation illegalMutation ->
+                        new CompilationException(config, "Cannot modify '%s'".formatted(illegalMutation.getVariableName()), illegalMutation.getPos());
             };
             if (e == null) {
                 e = subException;

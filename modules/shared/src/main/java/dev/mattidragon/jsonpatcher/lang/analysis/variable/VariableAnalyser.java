@@ -3,9 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.RootExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -62,6 +60,7 @@ public class VariableAnalyser {
             variable.addUsage(access);
             metadata.put(access, VARIABLE_REFERENCE, variable);
         });
+        checkIllegalAccess(program);
     }
     
     private void analyseAll(Iterable<? extends ProgramNode> nodes, MutableScope current) {
@@ -170,6 +169,25 @@ public class VariableAnalyser {
         }
     }
     
+    private void checkIllegalAccess(ProgramNode node) {
+        switch (node) {
+            case AssignmentExpression(VariableAccessExpression accessExpression, var value, var op) -> checkMutation(accessExpression);
+            case UnaryModificationExpression(var postfix, VariableAccessExpression accessExpression, var op) -> checkMutation(accessExpression);
+            default -> {}
+        }
+        node.getChildren().forEach(this::checkIllegalAccess);
+    }
+
+    private void checkMutation(VariableAccessExpression accessExpression) {
+        var variable = metadata.get(accessExpression, VARIABLE_REFERENCE);
+        if (variable.isEmpty()) {
+            return;
+        }
+        if (!variable.get().mutable()) {
+            errors.add(new AnalysisError.IllegalMutation(variable.get().name(), accessExpression, metadata.get(accessExpression, MetadataKey.MAIN_POS).orElse(null)));
+        }
+    }
+
     private void define(Variable variable, MutableScope scope, ProgramNode node) {
         if (scope.has(variable.name())) {
             errors.add(new AnalysisError.DuplicateVariable(variable.name(), node, metadata.get(node, MetadataKey.MAIN_POS).orElse(null)));
@@ -208,6 +226,12 @@ public class VariableAnalyser {
         
         public static final class DuplicateVariable extends AnalysisError {
             private DuplicateVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
+                super(variableName, node, pos);
+            }
+        }
+        
+        public static final class IllegalMutation extends AnalysisError {
+            private IllegalMutation(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
                 super(variableName, node, pos);
             }
         }

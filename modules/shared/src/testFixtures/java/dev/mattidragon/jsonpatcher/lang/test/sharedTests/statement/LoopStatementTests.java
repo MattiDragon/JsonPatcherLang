@@ -19,6 +19,16 @@ public interface LoopStatementTests extends SharedTest {
     }
 
     @Test
+    default void testContinue() {
+        TestUtils.runCode(runner(), """
+                foreach (a in [0, 1, 2]) {
+                    continue;
+                    debug.assert(false);
+                }
+                """);
+    }
+    
+    @Test
     default void testForEach() {
         TestUtils.testCode(runner(), """
                 var inVals = [0, 1, 2];
@@ -39,5 +49,15 @@ public interface LoopStatementTests extends SharedTest {
                 for (var i = 0; i < 10; i++) counter++;
                 debug.assert(counter == 10);
                 """);
+    }
+    
+    @Test
+    default void testIllegalBreakContinue() {
+        Assertions.assertThrows(RuntimeException.class, () -> TestUtils.runCode(runner(), """
+                break;
+                """));
+        Assertions.assertThrows(RuntimeException.class, () -> TestUtils.runCode(runner(), """
+                continue;
+                """));
     }
 }
