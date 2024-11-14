@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.parse.parselet;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
@@ -110,22 +111,17 @@ public class PostfixParser {
         }
     }
 
-    private static IsInstanceExpression.@Nullable Type getIsInstanceType(Token typeToken) {
-        if (typeToken == Token.KeywordToken.NULL) {
-            return IsInstanceExpression.Type.NULL;
-        } else if (typeToken instanceof Token.WordToken word) {
-            return switch (word.value()) {
-                case "number" -> IsInstanceExpression.Type.NUMBER;
-                case "string" -> IsInstanceExpression.Type.STRING;
-                case "boolean" -> IsInstanceExpression.Type.BOOLEAN;
-                case "array" -> IsInstanceExpression.Type.ARRAY;
-                case "object" -> IsInstanceExpression.Type.OBJECT;
-                case "function" -> IsInstanceExpression.Type.FUNCTION;
-                default -> null;
-            };
-        } else {
-            return null;
-        }
+    private static @Nullable ValueType getIsInstanceType(Token typeToken) {
+        return switch (typeToken) {
+            case Token.KeywordToken.NULL -> ValueType.NULL;
+            case Token.KeywordToken.FUNCTION -> ValueType.FUNCTION;
+            case Token.WordToken(var word) when word.equals("number") -> ValueType.NUMBER;
+            case Token.WordToken(var word) when word.equals("string") -> ValueType.STRING;
+            case Token.WordToken(var word) when word.equals("boolean") -> ValueType.BOOLEAN;
+            case Token.WordToken(var word) when word.equals("array") -> ValueType.ARRAY;
+            case Token.WordToken(var word) when word.equals("object") -> ValueType.OBJECT;
+            default -> null;
+        };
     }
 
     private static Expression parseTernary(Parser parser, Expression left, PositionedToken token) {

@@ -1,0 +1,172 @@
+import "@internals" as internals;
+
+#| module arrays
+#| The arrays library contains functions for manipulating arrays.
+#| All of them can be used as methods on arrays.
+
+function fixInsertIndex(index, size) {
+    if (index > size || index < -size) debug.throw("Array index out of bounds (index: " + strings.asString(index) + ", size: " + strings.asString(size) + ")");
+    return index < 0 ? size + index - 1 : index;
+}
+
+#| value arrays.insert: (array: array, index: number, value: any) -> array
+#| Inserts the specified value at the specified index. The inserted value will be found that the index after the insertion.
+function insert(array, index, value) {
+    debug.assert(array is array, "arrays.insert() called with non-array as first argument");
+    debug.assert(array is number, "arrays.insert() called with non-number as second argument");
+    
+    internals.arrayInsert(array, fixInsertIndex(index, array.length), value);
+};
+
+#| value arrays.push: (array: array, value: any) -> array
+#| Appends the specified value to the end of the array. Returns the array.
+function push(array, value) {
+    debug.assert(array is array, "arrays.push() called with non-array as first argument");
+    
+    $insert(array, array.length, value);
+};
+
+#| value arrays.pop: (array: array) -> any
+#| Removes the last element from the array and returns it.
+function pop(array) {
+    debug.assert(array is array, "arrays.pop() called with non-array");
+    
+    val length = array.length;
+    debug.assert(length > 0, "Cannot pop from empty array");
+    val value = array[length - 1];
+    delete array[length - 1];
+    return value;
+};
+
+#| value arrays.remove: (array: array, value: any) -> array
+#| Removes the first occurrence of the specified value from the array. Returns the array.
+function remove(array, value) {
+    debug.assert(array is array, "arrays.remove() called with non-array as first argument");
+    
+    for (var i = 0; i < array.length; i++) {
+        if (array[i] == value) {
+            delete array[i];
+            break;
+        }
+    }
+    return array;
+};
+
+#| value arrays.removeAt: (array: array, index: number) -> array
+#| Removes the value at the specified index from the array. Returns the array.
+function removeAt(array, index) {
+    debug.assert(array is array, "arrays.removeAt() called with non-array as first argument");
+    debug.assert(index is number, "arrays.removeAt() called with non-number as second argument");
+    
+    delete array[index];
+    return array;
+};
+
+#| value arrays.map: (array: array, function: (value: any) -> any) -> array
+#| Applies the specified function to each element in the array, creating a new array and returns the result.
+function map(array, func) {
+    debug.assert(array is array, "arrays.map() called with non-array as first argument");
+    debug.assert(func is function, "arrays.map() called with non-function as second argument");
+    
+    val newArray = [];
+    foreach (value in array) {
+        $push(newArray, func(value));
+    }
+    return newArray;
+};
+
+#| value arrays.replace: (array: array, function: (value: any) -> any) -> array
+#| Applies the specified function to each element in the array modifying them in place
+function replace(array, func) {
+    debug.assert(array is array, "arrays.replace() called with non-array as first argument");
+    debug.assert(func is function, "arrays.replace() called with non-function as second argument");
+    
+    for (var i = 0; i < array.length; i++) {
+        array[i] = func(array[i]);
+    }
+    return array;
+};
+
+#| value arrays.filter: (array: array, function: (value: any) -> boolean) -> array
+#| Applies the specified function to each element in the array, creating a new array with only the elements that returned true.
+function filter(array, func) {
+    debug.assert(array is array, "arrays.filter() called with non-array as first argument");
+    debug.assert(func is function, "arrays.filter() called with non-function as second argument");
+    
+    val newArray = [];
+    foreach (value in array) {
+        if (func(value)) {
+            $push(newArray, value);
+        }
+    }
+    return newArray;
+};
+
+#| value arrays.removeIf: (array: array, function: (value: any) -> boolean) -> array
+#| Applies the specified function to each element in the array, removing the elements that returned false.
+function removeIf(array, func) {
+    debug.assert(array is array, "arrays.removeIf() called with non-array as first argument");
+    debug.assert(func is function, "arrays.removeIf() called with non-function as second argument");
+    
+    for (var i = 0; i < array.length; i++) {
+        if (!func(array[i])) {
+            delete array[i--];
+        }
+    }
+    return array;
+};
+
+#| value arrays.reduce: (array: array, function: (value: any, accumulator: any) -> any, initial: any) -> any
+#| Iterates through the array applying the specified function to each element and the current state, beginning with the initial value and being replaced by the returned value from the function. Returns the last state.
+function reduce(array, func, initial) {
+    debug.assert(array is array, "arrays.reduce() called with non-array as first argument");
+    debug.assert(func is function, "arrays.reduce() called with non-function as second argument");
+    
+    var accumulator = initial;
+    foreach (value in array) {
+        accumulator = func(value, accumulator);
+    }
+    return accumulator;
+};
+
+#| value arrays.slice: (array: array, from: number, to?: number) -> array
+#| Returns a slice of the array from the specified start index (inclusive) to the specified end index (exclusive)
+function slice(array, from, to = array.length) {
+    debug.assert(array is array, "arrays.slice() called with non-array as first argument");
+    debug.assert(from is number, "arrays.slice() called with non-number as second argument");
+    debug.assert(to is number, "arrays.slice() called with non-number as third argument");
+    
+    val slice = [];
+    for (var i = from; i < to; i++) {
+        $push(slice, array[i]);
+    }
+    return slice;
+};
+
+#| value arrays.indexOf: (array: array, value: any) -> number
+#| Returns the index of the index of the value in the array, or -1 if it isn't present
+function indexOf(array, value) {
+    debug.assert(array is array, "arrays.indexOf() called with non-array as first argument");
+    
+    for (var i = 0; i < array.length; i++) {
+        if (array[i] == value) {
+            return i;
+        }
+    }
+    return -1;
+};
+
+$insert = insert;
+$push = push;
+$pop = pop;
+$remove = remove;
+$removeAt = removeAt;
+$map = map;
+$replace = replace;
+$filter = filter;
+$removeIf = removeIf;
+$reduce = reduce;
+$slice = slice;
+$indexOf = indexOf;
+
+internals.defineMethods("array", $);

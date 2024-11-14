@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api(project(":shared"))
+    implementation(project(":parser"))
     implementation(libs.bundles.asm)
     testImplementation(testFixtures(project(":shared")))
 }

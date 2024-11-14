@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime;
 
+import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +28,8 @@ public sealed interface Value {
     }
 
     boolean asBoolean();
+    
+    ValueType type();
     
     default Value get(Value index, PlatformContext context) {
         throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
@@ -123,6 +126,11 @@ public sealed interface Value {
         }
 
         @Override
+        public ValueType type() {
+            return ValueType.OBJECT;
+        }
+
+        @Override
         public String toString() {
             if (TO_STRING_RECURSION_TRACKER.get().contains(this)) return "{...}";
             try {
@@ -187,6 +195,11 @@ public sealed interface Value {
         }
 
         @Override
+        public ValueType type() {
+            return ValueType.ARRAY;
+        }
+
+        @Override
         public String toString() {
             if (TO_STRING_RECURSION_TRACKER.get().contains(this)) return "[...]";
             try {
@@ -215,6 +228,11 @@ public sealed interface Value {
         }
 
         @Override
+        public ValueType type() {
+            return ValueType.FUNCTION;
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return this == obj;
         }
@@ -239,6 +257,11 @@ public sealed interface Value {
         }
 
         @Override
+        public ValueType type() {
+            return ValueType.STRING;
+        }
+
+        @Override
         public String toString() {
             return value;
         }
@@ -248,6 +271,11 @@ public sealed interface Value {
         @Override
         public boolean asBoolean() {
             return value != 0;
+        }
+
+        @Override
+        public ValueType type() {
+            return ValueType.NUMBER;
         }
 
         @Override
@@ -273,6 +301,11 @@ public sealed interface Value {
         }
 
         @Override
+        public ValueType type() {
+            return ValueType.BOOLEAN;
+        }
+
+        @Override
         public String toString() {
             return String.valueOf(value());
         }
@@ -284,6 +317,11 @@ public sealed interface Value {
         @Override
         public boolean asBoolean() {
             return false;
+        }
+
+        @Override
+        public ValueType type() {
+            return ValueType.NULL;
         }
 
         @Override

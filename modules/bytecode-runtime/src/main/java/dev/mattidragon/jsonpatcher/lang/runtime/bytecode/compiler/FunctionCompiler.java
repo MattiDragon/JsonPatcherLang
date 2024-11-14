@@ -123,26 +123,41 @@ public class FunctionCompiler implements Opcodes {
 
     private void compileLambdaArgProcessing(TreeMetadata metadata, List<FunctionArgument> arguments, MethodVisitor visitor) {
         for (var argument : arguments) {
+            boolean captured;
             int varIndex;
             switch (argument.target()) {
                 case FunctionArgument.Target.Root root -> {
                     varIndex = getOrAllocateRoot(metadata.get(argument, VariableAnalyser.ROOT_REFERENCE).orElseThrow());
+                    captured = false;
                     visitor.visitParameter("$", 0);
                 }
                 case FunctionArgument.Target.Variable variable -> {
-                    varIndex = getOrAllocateVariable(metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+                    var analysedVariable = metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+                    varIndex = getOrAllocateVariable(analysedVariable);
+                    captured = analysedVariable.isCaptured();
                     visitor.visitParameter(variable.name(), 0);
                 }
             }
 
+            if (captured) {
+                visitor.visitTypeInsn(NEW, Types.BOX);
+                visitor.visitInsn(DUP);
+            }
+
+            this.visitor.visitVarInsn(ALOAD, varIndex);
+            var jump = new Label();
+
             if (argument.defaultValue().isPresent()) {
-                var jump = new Label();
-                this.visitor.visitVarInsn(ALOAD, varIndex);
                 this.visitor.visitJumpInsn(IFNONNULL, jump);
                 compileExpression(argument.defaultValue().get());
-                this.visitor.visitVarInsn(ASTORE, varIndex);
-                this.visitor.visitLabel(jump);
             }
+
+            if (captured) {
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+            }
+
+            this.visitor.visitVarInsn(ASTORE, varIndex);
+            this.visitor.visitLabel(jump);
         }
     }
 

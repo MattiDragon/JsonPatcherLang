@@ -1,0 +1,17 @@
+#| module functions
+#| Provides utilities for working with functions. 
+#| Some of the can be used as methods on function objects.
+
+#| value functions.bind: (function: function, arg: any, index?: number) -> function
+#| Binds the specified argument to the function at the specified index or 0 if none is provided.
+#| *Can be used as a method*
+
+#| value functions.then: (function: function, then: function) -> function
+#| Creates a new function that calls the first function and then calls the second function on it's return value.
+#| *Can be used as a method*
+
+#| value functions.identity: () -> (value: any) -> any
+#| Returns a function that returns its single argument.
+
+#| value functions.constant: (value: any) -> () -> any
+#| Returns a function that always returns the specified value.

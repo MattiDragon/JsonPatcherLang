@@ -101,6 +101,8 @@ public class VariableAnalyser {
                     }
                     case FunctionArgument.Target.Root.INSTANCE -> metadata.put(argument, ROOT_REFERENCE, functionScope.root());
                 }
+
+                argument.defaultValue().ifPresent(defaultValue -> analyse(defaultValue, functionScope));
             }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), current);

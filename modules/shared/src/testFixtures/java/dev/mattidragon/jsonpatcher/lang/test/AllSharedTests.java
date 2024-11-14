@@ -7,6 +7,7 @@ import dev.mattidragon.jsonpatcher.lang.test.sharedTests.expression.BinaryExpres
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.expression.ModificationExpressionTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.expression.UnaryExpressionTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.ConditionalTests;
+import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.DeleteStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.ImportStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.LoopStatementTests;
 
@@ -18,5 +19,6 @@ public interface AllSharedTests extends FunctionTests,
         UnaryExpressionTests,
         RootTests,
         VariableTests,
-        ConditionalTests {
+        ConditionalTests,
+        DeleteStatementTests {
 }

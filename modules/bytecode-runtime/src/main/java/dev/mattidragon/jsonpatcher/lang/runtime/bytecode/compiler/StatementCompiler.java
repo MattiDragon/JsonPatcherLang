@@ -3,9 +3,13 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.IndexExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.PropertyAccessExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
@@ -56,6 +60,7 @@ public class StatementCompiler implements Opcodes {
             case ApplyStatement s -> compileApply(s);
             case FunctionDeclarationStatement s -> compileFuncDecl(s);
             case ImportStatement s -> compileImport(s);
+            case DeleteStatement s -> compileDelete(s);
             default -> throw new UnsupportedOperationException("Unsupported statement: %s".formatted(statement));
         }
     }
@@ -77,7 +82,7 @@ public class StatementCompiler implements Opcodes {
 
     private void compileBlock(ProgramNode node, List<Statement> statements) {
         var scope = metadata.get(node, VariableAnalyser.SCOPE).orElseThrow();
-        
+
         var startLabel = new Label();
         visitor.visitLabel(startLabel);
         for (var variable : scope.variables()) {
@@ -89,7 +94,7 @@ public class StatementCompiler implements Opcodes {
                 visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
             }
         }
-        
+
         for (var child : statements){
             compile(child);
         }
@@ -109,7 +114,7 @@ public class StatementCompiler implements Opcodes {
         var endLabel = new Label();
         continueLabel = incrementLabel;
         breakLabel = endLabel;
-        
+
         visitor.visitLabel(startLabel);
         functionCompiler.compileExpression(statement.condition());
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
@@ -119,7 +124,7 @@ public class StatementCompiler implements Opcodes {
         compile(statement.incrementer());
         visitor.visitJumpInsn(GOTO, startLabel);
         visitor.visitLabel(endLabel);
-        
+
         continueLabel = null;
         breakLabel = null;
     }
@@ -129,7 +134,7 @@ public class StatementCompiler implements Opcodes {
         var startLabel = new Label();
         continueLabel = startLabel;
         breakLabel = endLabel;
-        
+
         visitor.visitLabel(startLabel);
         functionCompiler.compileExpression(statement.condition());
         visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "asBoolean", "()Z", true);
@@ -137,7 +142,7 @@ public class StatementCompiler implements Opcodes {
         compile(statement.body());
         visitor.visitJumpInsn(GOTO, startLabel);
         visitor.visitLabel(endLabel);
-        
+
         continueLabel = null;
         breakLabel = null;
     }
@@ -146,7 +151,7 @@ public class StatementCompiler implements Opcodes {
         var startLabel = new Label();
         var endLabel = new Label();
         functionCompiler.compileExpression(statement.iterable());
-        
+
         visitor.visitLabel(startLabel);
         var iterIndex = functionCompiler.allocateAnonymous();
         var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
@@ -162,15 +167,15 @@ public class StatementCompiler implements Opcodes {
         visitor.visitVarInsn(ALOAD, iterIndex);
         visitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(Iterator.class), "next", Type.getMethodDescriptor(Type.getType(Object.class)), true);
         visitor.visitVarInsn(ASTORE, varIndex);
-        
+
         this.continueLabel = continueLabel;
         this.breakLabel = endLabel;
-        
+
         compile(statement.body());
 
         this.continueLabel = null;
         this.breakLabel = null;
-        
+
         visitor.visitJumpInsn(GOTO, continueLabel);
         visitor.visitLabel(endLabel);
         visitor.visitLocalVariable(statement.variableName(), Type.getDescriptor(Value.class), null, startLabel, endLabel, varIndex);
@@ -225,16 +230,51 @@ public class StatementCompiler implements Opcodes {
     }
 
     private void compileFuncDecl(FunctionDeclarationStatement statement) {
+        var variable = metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
         functionCompiler.compileExpression(statement.value());
-        visitor.visitVarInsn(ASTORE, varIndex);
+
+        if (variable.isCaptured()) {
+            visitor.visitVarInsn(ALOAD, varIndex);
+            visitor.visitInsn(SWAP);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+        } else {
+            visitor.visitVarInsn(ASTORE, varIndex);
+        }
     }
 
     private void compileImport(ImportStatement statement) {
-        var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
+        var variable = metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
+        var varIndex = functionCompiler.getOrAllocateVariable(variable);
         functionCompiler.loadContext();
         visitor.visitLdcInsn(statement.libraryName());
         visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(EvaluationContext.class), "findLibrary", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class)), false);
-        visitor.visitVarInsn(ASTORE, varIndex);
+
+        if (variable.isCaptured()) {
+            visitor.visitVarInsn(ALOAD, varIndex);
+            visitor.visitInsn(SWAP);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Box.class), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+        } else {
+            visitor.visitVarInsn(ASTORE, varIndex);
+        }
+    }
+
+    private void compileDelete(DeleteStatement statement) {
+        switch (statement.target()) {
+            case VariableAccessExpression e -> throw new UnsupportedOperationException("Variable deletion is no longer supported");
+            case PropertyAccessExpression(var parent, var name) -> {
+                functionCompiler.compileExpression(parent);
+                visitor.visitLdcInsn(name);
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "deleteProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+            }
+            case IndexExpression(var parent, var index) -> {
+                functionCompiler.compileExpression(parent);
+                functionCompiler.compileExpression(index);
+                functionCompiler.loadContext();
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE, "delete", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+            }
+            default -> throw new UnsupportedOperationException("Deleting " + statement.getClass().getSimpleName() + " is not supported");
+        }
     }
 }

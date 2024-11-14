@@ -108,7 +108,6 @@ public sealed interface Token {
         FALSE("false"),
         NULL("null"),
         APPLY("apply"),
-        THIS("this"),
         IF("if"),
         ELSE("else"),
         IN("in"),

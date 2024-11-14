@@ -407,7 +407,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.DOUBLE_TYPE), false);
             }
             case DECREMENT -> {
-                visitor.visitInsn(DUP);
+                //visitor.visitInsn(DUP);
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE); // TODO: custom cast logic?
                 visitor.visitMethodInsn(INVOKEVIRTUAL, Types.NUMBER_VALUE, "value", "()D", false);
                 visitor.visitInsn(D2I);

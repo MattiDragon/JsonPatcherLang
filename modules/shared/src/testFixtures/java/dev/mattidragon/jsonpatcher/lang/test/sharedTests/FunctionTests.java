@@ -31,6 +31,18 @@ public interface FunctionTests extends SharedTest {
                 """;
         TestUtils.testCode(runner(), code);
     }
+
+    @Test
+    default void complexDefaultValues() {
+        var code = """
+                function test($ = {a: 3}, b = $a, c = b + 1) {
+                    debug.assert(b == 3, "first");
+                    debug.assert(c == 4, "second");
+                }
+                test();
+                """;
+        TestUtils.testCode(runner(), code);
+    }
     
     @Test
     default void simpleFunction() {

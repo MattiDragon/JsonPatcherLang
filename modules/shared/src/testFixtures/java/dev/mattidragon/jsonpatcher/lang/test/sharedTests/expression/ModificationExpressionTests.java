@@ -11,6 +11,8 @@ public interface ModificationExpressionTests extends SharedTest {
                 var a = 0;
                 debug.assert(a++ == 0);
                 debug.assert(a == 1);
+                debug.assert(--a == 0);
+                debug.assert(a == 0);
                 
                 var b = [0];
                 debug.assert(b[0]++ == 0);
@@ -18,7 +20,12 @@ public interface ModificationExpressionTests extends SharedTest {
                 
                 var c = {a: 0};
                 debug.assert(c.a++ == 0);
-                debug.assert(c.a == 1);
+                debug.assert(c.a == 2);
+                
+                #a = 1;
+                #var d = [1];
+                #delete d[--a];
+                #debug.assert(d == []);
                 """;
         TestUtils.testCode(runner(), code);
     }

@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.lang.annotation.Annotation;
@@ -59,7 +59,7 @@ public class LibraryBuilder {
                     throw context.createException("No overload of %s with %s arguments".formatted(name, args.size()));
                 }
 
-                var hasContext = overload.getParameterTypes()[0] == PlatformContext.class;
+                var hasContext = overload.getParameterTypes().length > 0 && overload.getParameterTypes()[0] == PlatformContext.class;
 
                 for (int i = 0; i < args.size(); i++) {
                     var arg = args.get(i);
@@ -190,7 +190,10 @@ public class LibraryBuilder {
     }
 
     public Value.ObjectValue build() {
-        var object = new Value.ObjectValue();
+        return build(new Value.ObjectValue());
+    }
+
+    public Value.ObjectValue build(Value.ObjectValue object) {
         functions.forEach((name, function) -> object.value().put(name, new Value.FunctionValue(function)));
         constants.forEach(object.value()::put);
         return object;

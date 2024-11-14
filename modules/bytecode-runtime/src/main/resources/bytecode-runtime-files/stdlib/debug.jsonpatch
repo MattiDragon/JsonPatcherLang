@@ -1,0 +1,28 @@
+import "@internals" as internals;
+
+#| module debug
+#| Provides various functions for debugging code.
+
+#| value debug.log: (message: any) -> null
+#| Logs a message to console.
+function log(value) {
+    internals.log(value);
+}
+
+#| value debug.throw: (message: any) -> null
+#| Throws an error. Use this if your code gets in situations it shouldn't.
+function throw(value) {
+    internals._throw(value);
+}
+
+#| value debug.assert: (value: any, message?: string) -> null
+#| Checks if the value is truthy. If it is nothing happens. If it isn't, then an error is thrown.
+function assert(value, message = "Asserting failed") {
+    if (!value) {
+        throw(message);
+    }
+}
+
+$log = log;
+$throw = throw;
+$assert = assert;

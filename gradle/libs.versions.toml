@@ -3,7 +3,7 @@ junit = "5.11.0"
 annotations = "24.0.1"
 commonmark = "0.22.0"
 lsp4j = "0.23.1"
-asm = "9.6" # Fabric mixin uses this version, meaning that it will be available in minecraft without us having to bundle it
+asm = "9.7.1" # Fabric mixin uses this version, meaning that it will be available in minecraft without us having to bundle it
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

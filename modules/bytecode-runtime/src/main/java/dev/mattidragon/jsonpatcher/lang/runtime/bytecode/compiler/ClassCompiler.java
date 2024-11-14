@@ -62,7 +62,12 @@ public class ClassCompiler {
     }
 
     public void compileLambda(FunctionExpression expression) {
-        FunctionCompiler.compileLambda(metadata, classWriter, className, expression, lambdaNames.get(expression), lambdaNames);
+        var name = lambdaNames.get(expression);
+        try {
+            FunctionCompiler.compileLambda(metadata, classWriter, className, expression, name, lambdaNames);
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Error while compiling function '" + name + "'", e);
+        }
     }
 
     public byte[] getBytes() {

@@ -31,7 +31,7 @@ public record LegacyRuntimePatchFunction(Statement body, FunctionArguments args,
                 // Default arguments past the passed in values
                 value = ExpressionInterpreter.evaluate(argument.defaultValue()
                                 .orElseThrow(() -> new IllegalStateException("No value for non-default argument got past checks")),
-                        context);
+                        functionContext);
             } else if (i == argEntryCount - 1 && this.args.varargs()) {
                 // If we're on the last argument of a varargs function, grab 'em all
                 value = new Value.ArrayValue(args.stream().skip(i).toList());
