@@ -8,6 +8,8 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.IncompatibleOperandsExc
 import java.lang.invoke.*;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
 public class FunctionHooks {
     private static final Class<?>[] FUNCTION_BODY_CLASSES = new Class[65];
@@ -15,21 +17,33 @@ public class FunctionHooks {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final MethodHandle UNWRAP_OPTIONAL;
     private static final MethodHandle UNWRAP_VARARGS;
-    private static final MethodHandle CALL;
+
+    private static final MethodHandle INSTANCEOF_CHECK;
+    private static final MethodHandle CALL_BUILTIN_FUNCTION;
+    private static final MethodHandle ARRAY_AS_LIST;
+    private static final MethodHandle DEFINED_FUNCTION_HANDLE;
+    private static final MethodHandle GET_WRONG_RUNTIME_ERROR;
+    private static final MethodHandle UNWRAP_FUNCTION;
 
     static {
         try {
             UNWRAP_OPTIONAL = LOOKUP.findStatic(FunctionHooks.class, "unwrapOptional", MethodType.methodType(Value.class, Value[].class, int.class));
             UNWRAP_VARARGS = LOOKUP.findStatic(FunctionHooks.class, "unwrapVarargs", MethodType.methodType(Value.class, Value[].class, int.class));
-            var unwrapFunction = LOOKUP.findStatic(FunctionHooks.class, "unwrapFunction", MethodType.methodType(PatchFunction.class, Value.class));
-            var internalCall = LOOKUP.findStatic(FunctionHooks.class, "call", MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.class, Value[].class));
-            CALL = MethodHandles.filterArguments(internalCall, 1, unwrapFunction).asVarargsCollector(Value[].class);
+            UNWRAP_FUNCTION = LOOKUP.findStatic(FunctionHooks.class, "unwrapFunction", MethodType.methodType(PatchFunction.class, Value.class));
 
             for (var clazz : FunctionBody.class.getClasses()) {
                 var i = Integer.parseInt(clazz.getSimpleName().substring(1));
                 FUNCTION_BODY_CLASSES[i] = clazz;
                 FUNCTION_INVOKERS[i] = LOOKUP.findVirtual(clazz, "call", makeType(i));
             }
+
+            INSTANCEOF_CHECK = MethodHandles.permuteArguments(LOOKUP.findVirtual(Class.class, "isInstance",
+                            MethodType.methodType(boolean.class, Object.class)),
+                    MethodType.methodType(boolean.class, Object.class, Class.class), 1, 0);
+            CALL_BUILTIN_FUNCTION = LOOKUP.findVirtual(PatchFunction.BuiltInPatchFunction.class, "execute", MethodType.methodType(Value.class, PlatformContext.class, List.class));
+            ARRAY_AS_LIST = LOOKUP.findStatic(Arrays.class, "asList", MethodType.methodType(List.class, Object[].class));
+            DEFINED_FUNCTION_HANDLE = LOOKUP.findVirtual(DefinedFunction.class, "handle", MethodType.methodType(MethodHandle.class));
+            GET_WRONG_RUNTIME_ERROR = LOOKUP.findStatic(FunctionHooks.class, "getWrongRuntimeError", MethodType.methodType(IllegalStateException.class, PatchFunction.class));
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot resolve method", e);
         }
@@ -83,15 +97,79 @@ public class FunctionHooks {
         if (Arrays.stream(methodType.parameterArray()).skip(1).anyMatch(argClass -> argClass != Value.class)) {
             throw new IllegalArgumentException("Argument types must be Value");
         }
-        
-        return new ConstantCallSite(CALL.asType(methodType));
+
+        // TODO: The massive method handle only needs the arg count of the call, we can probably cache this
+
+        // Helper types for the big method handle
+        // The type of the function implementation handles
+        var targetType = MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.class, Value[].class);
+        // The type of the instanceof handles
+        var testType = MethodType.methodType(boolean.class, PlatformContext.class, PatchFunction.class, Value[].class);
+
+        // We build this spaghetti method handle instead of using a normal method because this doesn't show up on stacktraces
+        // It's a lot nicer for end users when it looks like their functions are directly calling each other
+        /*
+        This code roughly corresponds to:
+        (context, function, args) -> {
+            if (function instanceof PatchFunction.BuiltInPatchFunction) {
+                return ((PatchFunction.BuiltInPatchFunction)functions).execute(context, Arrays.asList(args));
+            } else {
+                if (function instanceof DefinedFunction) {
+                    return ((DefinedFunction)function).handle().invokeWithArguments(args);
+                } else {
+                    throw getWrongRuntimeError(function);
+                }
+            }
+        }
+         */
+        var handler = MethodHandles.guardWithTest(
+                // Check for builtin functions
+                MethodHandles.permuteArguments(MethodHandles.insertArguments(INSTANCEOF_CHECK, 1, PatchFunction.BuiltInPatchFunction.class).asType(MethodType.methodType(boolean.class, PatchFunction.class)), testType, 1),
+                // If builtin, first wrap args array into a list
+                MethodHandles.filterArguments(
+                        // Then call the execute method, shuffling some args around
+                        MethodHandles.permuteArguments(CALL_BUILTIN_FUNCTION, MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.BuiltInPatchFunction.class, List.class), 1, 0, 2),
+                        2,
+                        ARRAY_AS_LIST
+                ).asType(targetType),
+                // If not builtin
+                MethodHandles.guardWithTest(
+                        // Check for function from this runtime
+                        MethodHandles.permuteArguments(MethodHandles.insertArguments(INSTANCEOF_CHECK, 1, DefinedFunction.class).asType(MethodType.methodType(boolean.class, PatchFunction.class)), testType, 1),
+                        // If function from this runtime
+                        MethodHandles.dropArguments( // Drop platform context as user functions don't need it
+                                MethodHandles.filterArguments( // Extract function method handle
+                                        // Actual function caller, some weird tricks involving the exact arg count used for the call
+                                        MethodHandles.spreadInvoker(MethodType.methodType(Value.class, Stream.generate(() -> Value.class).limit(methodType.parameterCount() - 2).toArray(Class[]::new)), 0),
+                                        0,
+                                        DEFINED_FUNCTION_HANDLE
+                                ),
+                                0,
+                                PlatformContext.class
+                        ).asType(targetType),
+                        // Else we have someone else's function -> throw informative error
+                        MethodHandles.permuteArguments( // Drop all args except function
+                                // Throw, but first wrap turn the function into an exception
+                                MethodHandles.filterArguments(MethodHandles.throwException(Value.class, IllegalStateException.class), 0, GET_WRONG_RUNTIME_ERROR),
+                                targetType,
+                                1
+                        )
+                )
+        );
+
+        // Finally we wrap all that in another method handle that unwraps the function from a value, and then apply varargs correctly
+        return new ConstantCallSite(MethodHandles.filterArguments(handler, 1, UNWRAP_FUNCTION).asVarargsCollector(Value[].class).asType(methodType));
+    }
+
+    private static IllegalStateException getWrongRuntimeError(PatchFunction function) {
+        return new IllegalStateException("Tried to call function from another runtime: " + function);
     }
     
     public static Value call(PlatformContext context, PatchFunction function, Value... args) {
         return switch (function) {
             case PatchFunction.BuiltInPatchFunction builtIn -> builtIn.execute(context, Arrays.asList(args));
             case DefinedFunction definedFunction -> definedFunction.call(args);
-            case PatchFunction.RuntimePatchFunction other -> throw new IllegalStateException("Tried to call function from another runtime: " + other);
+            case PatchFunction.RuntimePatchFunction other -> throw  getWrongRuntimeError(other);
         };
     }
     
