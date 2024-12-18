@@ -10,15 +10,19 @@ import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.ConditionalTe
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.DeleteStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.ImportStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.LoopStatementTests;
+import dev.mattidragon.jsonpatcher.lang.test.sharedTests.stdlib.ArraysLibTests;
 
-public interface AllSharedTests extends FunctionTests, 
-        ImportStatementTests, 
-        LoopStatementTests, 
-        BinaryExpressionTests, 
-        ModificationExpressionTests, 
+public interface AllSharedTests extends
+        FunctionTests,
+        ImportStatementTests,
+        LoopStatementTests,
+        BinaryExpressionTests,
+        ModificationExpressionTests,
         UnaryExpressionTests,
         RootTests,
         VariableTests,
         ConditionalTests,
-        DeleteStatementTests {
+        DeleteStatementTests,
+        ArraysLibTests
+{
 }

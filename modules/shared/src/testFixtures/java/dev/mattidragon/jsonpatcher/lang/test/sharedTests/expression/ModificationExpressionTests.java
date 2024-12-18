@@ -20,7 +20,7 @@ public interface ModificationExpressionTests extends SharedTest {
                 
                 var c = {a: 0};
                 debug.assert(c.a++ == 0);
-                debug.assert(c.a == 2);
+                debug.assert(c.a == 1);
                 
                 #a = 1;
                 #var d = [1];

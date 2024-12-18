@@ -6,13 +6,16 @@ import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.SequencedSet;
 
-public record EvaluationContext(LangConfig config, LibraryLocator libraryLocator) implements PlatformContext {
+public record EvaluationContext(LangConfig config,
+                                PropertyLookup propertyLookup,
+                                LibraryLocator libraryLocator) implements PlatformContext {
     private static final ThreadLocal<SequencedSet<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(LinkedHashSet::new);
 
     // TODO: custom exception
@@ -34,6 +37,11 @@ public record EvaluationContext(LangConfig config, LibraryLocator libraryLocator
     @Override
     public void log(Value value) {
         // TODO: impl
+    }
+
+    @Override
+    public Value getLibraryProperty(Value value, String property) {
+        return propertyLookup.getProperty(value, property);
     }
 
     @SuppressWarnings("unused")

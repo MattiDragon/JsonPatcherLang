@@ -7,9 +7,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class PropertyHolder {
+public final class PropertyHolder implements PropertyLookup {
     private final Map<ValueType, Map<String, Value>> methods = new HashMap<>();
 
+    @Override
     public @Nullable Value getProperty(Value value, String name) {
         if (value instanceof Value.ArrayValue array && name.equals("length")) {
             return new Value.NumberValue(array.value().size());

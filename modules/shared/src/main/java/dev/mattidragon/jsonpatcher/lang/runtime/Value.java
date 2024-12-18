@@ -2,7 +2,6 @@ package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,7 +43,7 @@ public sealed interface Value {
     }
     
     default Value getProperty(String property, PlatformContext context) {
-        var libProp = Libraries.getProperty(this, property);
+        var libProp = context.getLibraryProperty(this, property);
         if (libProp != null) return libProp;
         
         throw context.createException("Tried to read invalid property %s of %s.".formatted(property, this));

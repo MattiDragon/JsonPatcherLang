@@ -7,6 +7,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.DummyPropertyLookup;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.CheckClassAdapter;
@@ -54,7 +55,7 @@ public class Compiler {
 //            var constructor = definedLookup.findConstructor(definedLookup.lookupClass(), MethodType.methodType(void.class, EvaluationContext.class));
             var clazz = GeneratedProgram.PACKAGE_ACCESS.defineClass(bytes);
             var constructor = GeneratedProgram.PACKAGE_ACCESS.findConstructor(clazz, MethodType.methodType(void.class, EvaluationContext.class));
-            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA), (libraryName, libraryObject, context) -> {
+            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(new LangConfig(LangConfig.StackTraceMode.JAVA), DummyPropertyLookup.INSTANCE, (libraryName, libraryObject, context) -> {
                 libraryObject.setProperty("test", new Value.NumberValue(10), context);
                 libraryObject.setProperty("name", new Value.StringValue(libraryName), context);
             }));

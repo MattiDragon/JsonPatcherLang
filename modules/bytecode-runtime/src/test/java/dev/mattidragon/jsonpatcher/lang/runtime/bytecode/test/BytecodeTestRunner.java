@@ -8,6 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.DummyPropertyLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import dev.mattidragon.jsonpatcher.lang.test.TestRunner;
 import org.objectweb.asm.ClassReader;
@@ -79,7 +80,7 @@ public class BytecodeTestRunner implements TestRunner {
         try {
             LOOKUP.ensureInitialized(scriptClass);
             var constructor = LOOKUP.findConstructor(scriptClass, MethodType.methodType(void.class, EvaluationContext.class));
-            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(LANG_CONFIG, (name, object, context) -> object.value().putAll(libraries.get(name).value())));
+            var instance = (GeneratedProgram) constructor.invoke(new EvaluationContext(LANG_CONFIG, DummyPropertyLookup.INSTANCE, (name, object, context) -> object.value().putAll(libraries.get(name).value())));
             var globals = new HashMap<String, Value>();
             Libraries.BUILTIN.forEach((name, supplier) -> globals.put(name, supplier.get()));
             instance.run(new Value.ObjectValue(), globals);

@@ -175,7 +175,7 @@ public class EvaluationEnvironment {
             var clazz = defineClass(null, bytes, 0, bytes.length);
             try {
                 var constructor = LOOKUP.findConstructor(clazz, MethodType.methodType(void.class, EvaluationContext.class));
-                var instance = constructor.invoke(new EvaluationContext(config, EvaluationEnvironment.this::locateLibrary));
+                var instance = constructor.invoke(new EvaluationContext(config, propertyHolder, EvaluationEnvironment.this::locateLibrary));
                 return (GeneratedProgram) instance;
             } catch (Throwable e) {
                 throw new IllegalStateException("Failed to instantiate script", e);

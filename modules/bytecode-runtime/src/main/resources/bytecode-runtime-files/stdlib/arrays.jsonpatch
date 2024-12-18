@@ -13,9 +13,10 @@ function fixInsertIndex(index, size) {
 #| Inserts the specified value at the specified index. The inserted value will be found that the index after the insertion.
 function insert(array, index, value) {
     debug.assert(array is array, "arrays.insert() called with non-array as first argument");
-    debug.assert(array is number, "arrays.insert() called with non-number as second argument");
+    debug.assert(index is number, "arrays.insert() called with non-number as second argument");
     
     internals.arrayInsert(array, fixInsertIndex(index, array.length), value);
+    return array;
 };
 
 #| value arrays.push: (array: array, value: any) -> array
@@ -24,6 +25,7 @@ function push(array, value) {
     debug.assert(array is array, "arrays.push() called with non-array as first argument");
     
     $insert(array, array.length, value);
+    return array;
 };
 
 #| value arrays.pop: (array: array) -> any
@@ -52,14 +54,15 @@ function remove(array, value) {
     return array;
 };
 
-#| value arrays.removeAt: (array: array, index: number) -> array
-#| Removes the value at the specified index from the array. Returns the array.
+#| value arrays.removeAt: (array: array, index: number) -> any
+#| Removes the value at the specified index from the array. Returns the removed element.
 function removeAt(array, index) {
     debug.assert(array is array, "arrays.removeAt() called with non-array as first argument");
     debug.assert(index is number, "arrays.removeAt() called with non-number as second argument");
-    
+
+    val element = array[index];
     delete array[index];
-    return array;
+    return element;
 };
 
 #| value arrays.map: (array: array, function: (value: any) -> any) -> array
@@ -103,13 +106,13 @@ function filter(array, func) {
 };
 
 #| value arrays.removeIf: (array: array, function: (value: any) -> boolean) -> array
-#| Applies the specified function to each element in the array, removing the elements that returned false.
+#| Applies the specified function to each element in the array, removing the elements that returned true.
 function removeIf(array, func) {
     debug.assert(array is array, "arrays.removeIf() called with non-array as first argument");
     debug.assert(func is function, "arrays.removeIf() called with non-function as second argument");
     
     for (var i = 0; i < array.length; i++) {
-        if (!func(array[i])) {
+        if (func(array[i])) {
             delete array[i--];
         }
     }

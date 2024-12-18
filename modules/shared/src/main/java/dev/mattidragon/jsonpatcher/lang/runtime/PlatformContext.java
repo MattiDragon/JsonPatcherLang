@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 
 import java.util.List;
 
@@ -15,4 +16,8 @@ public interface PlatformContext {
     Value execute(PatchFunction function, List<Value> args);
 
     void log(Value value);
+
+    default Value getLibraryProperty(Value value, String property) {
+        return Libraries.getProperty(value, property);
+    }
 }
