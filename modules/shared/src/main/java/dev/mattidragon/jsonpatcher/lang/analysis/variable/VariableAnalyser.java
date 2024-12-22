@@ -21,7 +21,7 @@ public class VariableAnalyser {
     public static final MetadataKey<Scope> SCOPE = new MetadataKey<>("VariableAnalyser/SCOPE");
     
     private final TreeMetadata metadata;
-    private final Map<VariableAccessExpression, LazyRef> lazyRefs = new HashMap<>();
+    private final Map<VariableAccessExpression, LazyRef> lazyRefs = new IdentityHashMap<>();
     private final List<Scope> scopes = new ArrayList<>();
     private final List<AnalysisError> errors = new ArrayList<>();
 

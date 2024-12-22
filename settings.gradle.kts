@@ -2,6 +2,8 @@ rootProject.name = "JsonPatcherLang"
 
 include(":shared")
 project(":shared").projectDir = file("modules/shared")
+include(":benchmark")
+project(":benchmark").projectDir = file("modules/benchmark")
 include(":parser")
 project(":parser").projectDir = file("modules/parser")
 include(":legacy-runtime")
