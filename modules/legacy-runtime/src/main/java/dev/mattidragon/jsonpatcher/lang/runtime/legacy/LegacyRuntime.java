@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.function.Consumer;
 
