@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.ast.expression;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 
 import java.util.List;
 
@@ -16,7 +15,7 @@ public record ObjectInitializerExpression(List<Entry> contents) implements Expre
     }
 
     // TODO: Move name pos to metadata
-    public record Entry(String name, SourceSpan namePos, Expression value) implements ProgramNode {
+    public record Entry(String name, Expression value) implements ProgramNode {
         @Override
         public Iterable<? extends ProgramNode> getChildren() {
             return List.of(value);

@@ -185,7 +185,7 @@ public class TestUtils {
         return parse;
     }
     
-    private static  <T extends Throwable> T combineErrors(Iterable<T> errors) {
+    private static <T extends Throwable> T combineErrors(Iterable<T> errors) {
         T first = null;
         for (T error : errors) {
             if (first == null) first = error;

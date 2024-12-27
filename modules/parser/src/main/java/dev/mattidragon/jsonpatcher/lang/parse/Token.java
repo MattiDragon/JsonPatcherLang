@@ -97,6 +97,10 @@ public sealed interface Token {
             this.value = value;
         }
 
+        public String getValue() {
+            return value;
+        }
+
         @Override
         public String explain() {
             return "'" + value + "'";

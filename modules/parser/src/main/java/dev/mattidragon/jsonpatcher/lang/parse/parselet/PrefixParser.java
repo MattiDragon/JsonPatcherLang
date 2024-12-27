@@ -92,7 +92,10 @@ public class PrefixParser {
             var key = parser.expectWordOrString(); // TODO: This is stupid, deprecate string keys, we already have quoted words
             var keyPos = parser.previous().pos();
             parser.expect(Token.SimpleToken.COLON);
-            children.add(new ObjectInitializerExpression.Entry(key, keyPos, parser.expression()));
+
+            var entry = new ObjectInitializerExpression.Entry(key, parser.expression());
+            parser.setMetadata(entry, MetadataKey.FULL_POS, keyPos);
+            children.add(entry);
             
             if (parser.peek().token() == Token.SimpleToken.END_CURLY) {
                 break;

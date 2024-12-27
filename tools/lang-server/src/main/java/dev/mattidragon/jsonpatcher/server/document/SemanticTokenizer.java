@@ -182,7 +182,7 @@ public class SemanticTokenizer {
             }
             case ObjectInitializerExpression expression -> {
                 for (var entry : expression.contents()) {
-                    builder.addToken(entry.namePos(), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
+                    builder.addToken(metadata.get(entry, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
                     tokenize(entry.value());
                 }
             }
