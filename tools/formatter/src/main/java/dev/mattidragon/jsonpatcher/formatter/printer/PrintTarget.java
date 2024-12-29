@@ -1,18 +1,24 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public abstract class PrintTarget {
     private static final Pattern SIMPLE_WORD = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_$]*");
     private static final Pattern WEIRD_CHARACTER = Pattern.compile("\\p{C}");
 
-    public abstract PrintTarget pushIndent();
+    protected final PrettyPrintOptions options;
+    protected final TreeMetadata treeMetadata;
 
-    public abstract PrintTarget popIndent();
-
-    public abstract PrintTarget newLine();
+    public PrintTarget(PrettyPrintOptions options, TreeMetadata treeMetadata) {
+        this.options = options;
+        this.treeMetadata = treeMetadata;
+    }
 
     /**
      * Returns {@code true} if this target will ignore any future inputs.
@@ -22,11 +28,21 @@ public abstract class PrintTarget {
         return false;
     }
 
+    protected abstract boolean failOnError();
+
+    public final  <T> Optional<T> getMetadata(ProgramNode node, MetadataKey<T> key) {
+        return treeMetadata.get(node, key);
+    }
+
     public abstract CharCounter newCharCounter();
 
-    protected abstract void writeText(String text);
+    public abstract PrintTarget pushIndent();
 
-    protected abstract boolean failOnError();
+    public abstract PrintTarget popIndent();
+
+    public abstract PrintTarget newLine();
+
+    protected abstract void writeText(String text);
 
     public final PrintTarget space() {
         writeText(" ");
@@ -50,9 +66,9 @@ public abstract class PrintTarget {
                 if (failOnError()) {
                     throw new IllegalStateException("Tried to pretty print error token: " + error);
                 }
-                writeText("\\error_token: ");
+                writeText("\\error: ");
                 printString(error, '\'');
-                writeText(" \\");
+                writeText("\\");
             }
         }
         return this;

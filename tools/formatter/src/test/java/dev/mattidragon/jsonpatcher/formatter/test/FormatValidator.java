@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.formatter.printer.ExpressionPrinter;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrintOptions;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrinter;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 
@@ -13,7 +14,7 @@ public class FormatValidator {
     private FormatValidator() {}
 
     public static void validate(Expression expression) {
-        var printer = new PrettyPrinter(OPTIONS);
+        var printer = new PrettyPrinter(OPTIONS, new TreeMetadata());
         ExpressionPrinter.prettyPrint(expression, printer);
         var code = printer.getOutput();
 

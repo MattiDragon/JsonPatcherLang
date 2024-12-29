@@ -17,7 +17,7 @@ function insert(array, index, value) {
     
     internals.arrayInsert(array, fixInsertIndex(index, array.length), value);
     return array;
-};
+}
 
 #| value arrays.push: (array: array, value: any) -> array
 #| Appends the specified value to the end of the array. Returns the array.
@@ -26,7 +26,7 @@ function push(array, value) {
     
     $insert(array, array.length, value);
     return array;
-};
+}
 
 #| value arrays.pop: (array: array) -> any
 #| Removes the last element from the array and returns it.
@@ -38,7 +38,7 @@ function pop(array) {
     val value = array[length - 1];
     delete array[length - 1];
     return value;
-};
+}
 
 #| value arrays.remove: (array: array, value: any) -> array
 #| Removes the first occurrence of the specified value from the array. Returns the array.
@@ -52,7 +52,7 @@ function remove(array, value) {
         }
     }
     return array;
-};
+}
 
 #| value arrays.removeAt: (array: array, index: number) -> any
 #| Removes the value at the specified index from the array. Returns the removed element.
@@ -63,7 +63,7 @@ function removeAt(array, index) {
     val element = array[index];
     delete array[index];
     return element;
-};
+}
 
 #| value arrays.map: (array: array, function: (value: any) -> any) -> array
 #| Applies the specified function to each element in the array, creating a new array and returns the result.
@@ -76,7 +76,7 @@ function map(array, func) {
         $push(newArray, func(value));
     }
     return newArray;
-};
+}
 
 #| value arrays.replace: (array: array, function: (value: any) -> any) -> array
 #| Applies the specified function to each element in the array modifying them in place
@@ -88,7 +88,7 @@ function replace(array, func) {
         array[i] = func(array[i]);
     }
     return array;
-};
+}
 
 #| value arrays.filter: (array: array, function: (value: any) -> boolean) -> array
 #| Applies the specified function to each element in the array, creating a new array with only the elements that returned true.
@@ -103,7 +103,7 @@ function filter(array, func) {
         }
     }
     return newArray;
-};
+}
 
 #| value arrays.removeIf: (array: array, function: (value: any) -> boolean) -> array
 #| Applies the specified function to each element in the array, removing the elements that returned true.
@@ -117,7 +117,7 @@ function removeIf(array, func) {
         }
     }
     return array;
-};
+}
 
 #| value arrays.reduce: (array: array, function: (value: any, accumulator: any) -> any, initial: any) -> any
 #| Iterates through the array applying the specified function to each element and the current state, beginning with the initial value and being replaced by the returned value from the function. Returns the last state.
@@ -130,7 +130,7 @@ function reduce(array, func, initial) {
         accumulator = func(value, accumulator);
     }
     return accumulator;
-};
+}
 
 #| value arrays.slice: (array: array, from: number, to?: number) -> array
 #| Returns a slice of the array from the specified start index (inclusive) to the specified end index (exclusive)
@@ -144,7 +144,7 @@ function slice(array, from, to = array.length) {
         $push(slice, array[i]);
     }
     return slice;
-};
+}
 
 #| value arrays.indexOf: (array: array, value: any) -> number
 #| Returns the index of the index of the value in the array, or -1 if it isn't present
@@ -157,7 +157,7 @@ function indexOf(array, value) {
         }
     }
     return -1;
-};
+}
 
 $insert = insert;
 $push = push;

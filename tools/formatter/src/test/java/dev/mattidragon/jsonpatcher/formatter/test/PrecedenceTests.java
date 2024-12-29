@@ -1,6 +1,8 @@
 package dev.mattidragon.jsonpatcher.formatter.test;
 
+import dev.mattidragon.jsonpatcher.lang.ast.expression.AssignmentExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +26,23 @@ public class PrecedenceTests {
                 ),
                 TestUtils.numberExpression(3),
                 BinaryExpression.Operator.MULTIPLY
+        ));
+    }
+
+    @Test
+    public void testAssignmentPrecedence() {
+        FormatValidator.validate(new AssignmentExpression(
+                new VariableAccessExpression("a"),
+                new AssignmentExpression(
+                        new VariableAccessExpression("b"),
+                        new BinaryExpression(
+                                TestUtils.falseExpression(),
+                                TestUtils.trueExpression(),
+                                BinaryExpression.Operator.AND
+                        ),
+                        BinaryExpression.Operator.OR
+                ),
+                BinaryExpression.Operator.ASSIGN
         ));
     }
 }

@@ -1,19 +1,17 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
-import java.util.ArrayList;
-import java.util.List;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 
 public class PrettyPrinter extends PrintTarget {
     private static final String INDENT = "    ";
 
-    private final PrettyPrintOptions options;
     private final StringBuilder out = new StringBuilder();
 
     private int indent = 0;
     private int columnLength;
 
-    public PrettyPrinter(PrettyPrintOptions options) {
-        this.options = options;
+    public PrettyPrinter(PrettyPrintOptions options, TreeMetadata treeMetadata) {
+        super(options, treeMetadata);
     }
 
     @Override
@@ -37,7 +35,7 @@ public class PrettyPrinter extends PrintTarget {
 
     @Override
     public CharCounter newCharCounter() {
-        return new CharCounter(options, indent, columnLength);
+        return new CharCounter(options, treeMetadata, indent, columnLength);
     }
 
     @Override

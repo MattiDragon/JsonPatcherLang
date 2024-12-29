@@ -9,7 +9,7 @@ dependencies {
 }
 
 tasks.jar {
-    manifest.attributes["Main-Class"] = "io.github.mattidragon.jsonpatcher.formatter.Main"
+    manifest.attributes["Main-Class"] = "dev.mattidragon.jsonpatcher.formatter.Main"
 }
 
 tasks.assemble {

@@ -172,7 +172,8 @@ public class StatementParser {
 
         var statement = new WhileLoopStatement(condition, body);
         parser.setMetadata(statement, MetadataKey.KEYWORD_POS, keywordPos);
-        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.MAIN_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), parser.previous().to()));
         return statement;
     }
 
@@ -213,7 +214,8 @@ public class StatementParser {
         var body = parse(parser);
         var statement = new ForLoopStatement(initializer, condition, incrementer, body);
         parser.setMetadata(statement, MetadataKey.KEYWORD_POS, keywordPos);
-        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.MAIN_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), parser.previous().to()));
         return statement;
     }
 
@@ -234,7 +236,8 @@ public class StatementParser {
         parser.setMetadata(statement, MetadataKey.KEYWORD_POS, keywordPos);
         parser.setMetadata(statement, MetadataKey.SECONDARY_KEYWORD_POS, inPos);
         parser.setMetadata(statement, MetadataKey.NAME_POS, variablePos);
-        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.MAIN_POS, new SourceSpan(keywordPos.from(), endPos));
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), parser.previous().to()));
         return statement;
     }
 

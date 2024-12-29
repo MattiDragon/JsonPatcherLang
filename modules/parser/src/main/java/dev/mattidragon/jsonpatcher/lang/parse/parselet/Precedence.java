@@ -24,5 +24,6 @@ public enum Precedence {
     PRODUCT,
     EXPONENT,
     PREFIX,
-    POSTFIX
+    POSTFIX,
+    ATOM
 }

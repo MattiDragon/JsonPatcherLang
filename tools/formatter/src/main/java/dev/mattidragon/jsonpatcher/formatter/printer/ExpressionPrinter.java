@@ -2,10 +2,7 @@ package dev.mattidragon.jsonpatcher.formatter.printer;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
-import dev.mattidragon.jsonpatcher.lang.parse.Token.KeywordToken;
-import dev.mattidragon.jsonpatcher.lang.parse.Token.NumberToken;
-import dev.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
-import dev.mattidragon.jsonpatcher.lang.parse.Token.StringToken;
+import dev.mattidragon.jsonpatcher.lang.parse.Token.*;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.Precedence;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
@@ -20,11 +17,7 @@ public class ExpressionPrinter {
                     target.write(value.value() ? KeywordToken.TRUE : KeywordToken.FALSE);
             case ValueExpression(Value.NullValue value) -> target.write(KeywordToken.NULL);
             case BinaryExpression(var first, var second, var op) -> {
-                var firstParens = precedence(first) < precedence(expression);
-                if (firstParens) target.write(SimpleToken.BEGIN_PAREN);
-                prettyPrint(first, target);
-                if (firstParens) target.write(SimpleToken.END_PAREN);
-                target.space().write(switch (op) {
+                var token = switch (op) {
                     case PLUS -> SimpleToken.PLUS;
                     case MINUS -> SimpleToken.MINUS;
                     case MULTIPLY -> SimpleToken.STAR;
@@ -42,87 +35,114 @@ public class ExpressionPrinter {
                     case GREATER_THAN_EQUAL -> SimpleToken.GREATER_THAN_EQUAL;
                     case IN -> KeywordToken.IN;
                     case ASSIGN -> SimpleToken.ASSIGN;
-                }).space();
-                var secondParens = precedence(second) < precedence(expression);
-                if (secondParens) target.write(SimpleToken.BEGIN_PAREN);
-                prettyPrint(second, target);
-                if (secondParens) target.write(SimpleToken.END_PAREN);
+                };
+                printBinaryOp(expression, first, second, token, target);
+            }
+            case ShortedBinaryExpression(var first, var second, var op) -> {
+                var token = switch (op) {
+                    case AND -> SimpleToken.DOUBLE_AND;
+                    case OR -> SimpleToken.DOUBLE_OR;
+                };
+                printBinaryOp(expression, first, second, token, target);
+            }
+            case UnaryExpression(var input, var op) -> {
+                var token = switch (op) {
+                    case NOT -> SimpleToken.BANG;
+                    case MINUS -> SimpleToken.MINUS;
+                    case BITWISE_NOT -> SimpleToken.TILDE;
+                    default -> new ErrorToken("Unary modification with unsupported op: " + op);
+                };
+                target.write(token);
+                var needsParens = precedence(input) < precedence(expression);
+                if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
+                prettyPrint(input, target);
+                if (needsParens) target.write(SimpleToken.END_PAREN);
+            }
+            case UnaryModificationExpression(var postfix, var ref, var op) -> {
+                var token = switch (op) {
+                    case NOT -> SimpleToken.DOUBLE_BANG;
+                    case INCREMENT -> SimpleToken.DOUBLE_MINUS;
+                    case DECREMENT -> SimpleToken.DOUBLE_PLUS;
+                    default -> new ErrorToken("Unary modification with unsupported op: " + op);
+                };
+                if (!postfix) target.write(token);
+                if (!postfix) target.write(token);
+            }
+            case AssignmentExpression(var ref, var value, var op) -> {
+                var token = switch (op) {
+                    case PLUS -> SimpleToken.PLUS_ASSIGN;
+                    case MINUS -> SimpleToken.MINUS_ASSIGN;
+                    case MULTIPLY -> SimpleToken.STAR_ASSIGN;
+                    case DIVIDE -> SimpleToken.SLASH_ASSIGN;
+                    case MODULO -> SimpleToken.PERCENT_ASSIGN;
+                    case AND -> SimpleToken.AND_ASSIGN;
+                    case OR -> SimpleToken.OR_ASSIGN;
+                    case XOR -> SimpleToken.XOR_ASSIGN;
+                    case ASSIGN -> SimpleToken.ASSIGN;
+                    default -> new ErrorToken("Assignment with unsupported op: " + op);
+                };
+                printBinaryOp(expression, ref, value, token, target);
             }
             case PropertyAccessExpression(RootExpression root, var name) ->
-                    target.write(SimpleToken.DOLLAR).write(new Token.WordToken(name));
+                    target.write(SimpleToken.DOLLAR).write(new WordToken(name));
             case PropertyAccessExpression(var parent, var name) ->
-                    prettyPrint(parent, target).write(SimpleToken.DOT).write(new Token.WordToken(name));
+                    prettyPrint(parent, target).write(SimpleToken.DOT).write(new WordToken(name));
             case IndexExpression(var parent, var index) -> {
                 prettyPrint(parent, target).write(SimpleToken.BEGIN_SQUARE);
                 prettyPrint(index, target).write(SimpleToken.END_SQUARE);
             }
-            case VariableAccessExpression(var name) -> target.write(new StringToken(name));
+            case VariableAccessExpression(var name) -> target.write(new WordToken(name));
             case RootExpression() -> target.write(SimpleToken.DOLLAR);
-            case ArrayInitializerExpression(var contents) -> PrintUtils.printWithMultilineOption(
+            case ArrayInitializerExpression(var contents) -> PrintUtils.printCommaList(
                     target,
-                    inlineTarget -> {
-                        inlineTarget.write(SimpleToken.BEGIN_SQUARE);
-                        for (int i = 0; i < contents.size(); i++) {
-                            if (i != 0) {
-                                inlineTarget.write(SimpleToken.COMMA);
-                            }
-                            prettyPrint(contents.get(i), inlineTarget);
-                        }
-                        inlineTarget.write(SimpleToken.END_SQUARE);
-                    },
-                    multilineTarget -> {
-                        multilineTarget.write(SimpleToken.BEGIN_SQUARE);
-                        multilineTarget.pushIndent().newLine();
-                        for (int i = 0; i < contents.size(); i++) {
-                            if (i != 0) {
-                                multilineTarget.write(SimpleToken.COMMA);
-                                multilineTarget.newLine();
-                            }
-                            prettyPrint(contents.get(i), multilineTarget);
-                        }
-                        multilineTarget.popIndent().newLine();
-                        multilineTarget.write(SimpleToken.END_SQUARE);
-                    });
-            case ObjectInitializerExpression(var contents) -> PrintUtils.printWithMultilineOption(
+                    contents,
+                    target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
+                    ExpressionPrinter::prettyPrint,
+                    target1 -> target1.write(SimpleToken.END_SQUARE)
+            );
+            case ObjectInitializerExpression(var contents) -> PrintUtils.printCommaList(
                     target,
-                    inlineTarget -> {
-                        inlineTarget.write(SimpleToken.BEGIN_CURLY);
-                        for (int i = 0; i < contents.size(); i++) {
-                            if (i != 0) {
-                                inlineTarget.write(SimpleToken.COMMA);
-                            }
-                            var entry = contents.get(i);
-                            inlineTarget.write(new Token.WordToken(entry.name()))
-                                    .write(SimpleToken.COLON).space();
-                            prettyPrint(entry.value(), inlineTarget);
-                        }
-                        inlineTarget.write(SimpleToken.END_CURLY);
+                    contents,
+                    target1 -> target1.write(SimpleToken.BEGIN_CURLY),
+                    (entry, target1) -> {
+                        target1.write(new StringToken(entry.name()));
+                        target1.write(SimpleToken.COLON).space();
+                        prettyPrint(entry.value(), target1);
                     },
-                    multilineTarget -> {
-                        multilineTarget.write(SimpleToken.BEGIN_CURLY);
-                        multilineTarget.pushIndent().newLine();
-                        for (int i = 0; i < contents.size(); i++) {
-                            if (i != 0) {
-                                multilineTarget.write(SimpleToken.COMMA);
-                                multilineTarget.newLine();
-                            }
-                            var entry = contents.get(i);
-                            multilineTarget.write(new Token.WordToken(entry.name()))
-                                    .write(SimpleToken.COLON).space();
-                            prettyPrint(entry.value(), multilineTarget);
-                        }
-                        multilineTarget.popIndent().newLine();
-                        multilineTarget.write(SimpleToken.END_CURLY);
-                    });
-            default -> target.writeText("('no impl')");
+                    target1 -> target1.write(SimpleToken.END_CURLY)
+            );
+            case FunctionCallExpression(var function, var arguments) -> PrintUtils.printCommaList(
+                    target,
+                    arguments,
+                    target1 -> prettyPrint(function, target1).write(SimpleToken.BEGIN_PAREN),
+                    ExpressionPrinter::prettyPrint,
+                    target1 -> target1.write(SimpleToken.END_PAREN)
+            );
+            default -> target.write(new ErrorToken("Unsupported expression: " + expression.getClass().getSimpleName()));
         }
         return target;
     }
 
+    private static void printBinaryOp(Expression expression, Expression first, Expression second, Token token, PrintTarget target) {
+        var firstParens = precedence(first) < precedence(expression);
+        if (firstParens) target.write(SimpleToken.BEGIN_PAREN);
+        prettyPrint(first, target);
+        if (firstParens) target.write(SimpleToken.END_PAREN);
+        target.space().write(token).space();
+        var secondParens = precedence(second) < precedence(expression);
+        if (secondParens) target.write(SimpleToken.BEGIN_PAREN);
+        prettyPrint(second, target);
+        if (secondParens) target.write(SimpleToken.END_PAREN);
+    }
+
     private static int precedence(Expression expression) {
         return (switch (expression) {
-            case UnaryModificationExpression(var postfix, var target, var op) ->
-                    postfix ? Precedence.POSTFIX : Precedence.PREFIX;
+            case AssignmentExpression e -> Precedence.ASSIGNMENT;
+            case TernaryExpression e -> Precedence.ASSIGNMENT;
+            case ShortedBinaryExpression(var first, var second, var op) -> switch (op) {
+                case AND -> Precedence.AND;
+                case OR -> Precedence.OR;
+            };
             case BinaryExpression(var first, var second, var op) -> switch (op) {
                 case PLUS, MINUS -> Precedence.SUM;
                 case MULTIPLY, MODULO, DIVIDE -> Precedence.PRODUCT;
@@ -133,7 +153,20 @@ public class ExpressionPrinter {
                 case EQUALS, NOT_EQUALS -> Precedence.EQUALITY;
                 case LESS_THAN, ASSIGN, IN, GREATER_THAN_EQUAL, LESS_THAN_EQUAL, GREATER_THAN -> Precedence.COMPARISON;
             };
-            default -> Precedence.ROOT;
+            case IsInstanceExpression e -> Precedence.COMPARISON;
+            case UnaryExpression e -> Precedence.PREFIX;
+            case UnaryModificationExpression(var postfix, var target, var op) ->
+                    postfix ? Precedence.POSTFIX : Precedence.PREFIX;
+            case PropertyAccessExpression e -> Precedence.POSTFIX;
+            case IndexExpression e -> Precedence.POSTFIX;
+            case FunctionCallExpression e -> Precedence.POSTFIX;
+            case ValueExpression e -> Precedence.ATOM;
+            case VariableAccessExpression e -> Precedence.ATOM;
+            case ObjectInitializerExpression e -> Precedence.ATOM;
+            case ArrayInitializerExpression e -> Precedence.ATOM;
+            case RootExpression e -> Precedence.ATOM;
+            case ErrorExpression e -> Precedence.ATOM;
+            default -> throw new UnsupportedOperationException("Don't know precedence of " + expression);
         }).ordinal();
     }
 }
