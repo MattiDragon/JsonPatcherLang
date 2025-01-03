@@ -25,22 +25,24 @@ public class FunctionCompiler implements Opcodes {
     private final MethodVisitor visitor;
     private final TreeMetadata metadata;
     private final String className;
+    private final CompilerOptions options;
     private int varCounter;
     private int rootNameCounter = 1;
     private int currentLine = 0;
     private final Map<Variable, Integer> variableAllocations = new HashMap<>();
     private final Map<RootVariable, Integer> rootAllocations = new HashMap<>();
     
-    public FunctionCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, Map<FunctionExpression, String> lambdaNames) {
+    public FunctionCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, Map<FunctionExpression, String> lambdaNames, CompilerOptions options) {
         statementCompiler = new StatementCompiler(metadata, visitor, className, this);
         expressionCompiler = new ExpressionCompiler(metadata, visitor, className, this);
         this.visitor = visitor;
         this.metadata = metadata;
         this.className = className;
         this.lambdaNames = lambdaNames;
+        this.options = options;
     }
     
-    public static void compileMainMethod(TreeMetadata metadata, ClassVisitor classVisitor, String className, Program program, Map<FunctionExpression, String> lambdaNames) {
+    public static void compileMainMethod(TreeMetadata metadata, ClassVisitor classVisitor, String className, Program program, Map<FunctionExpression, String> lambdaNames, CompilerOptions options) {
         // Method header
         var visitor = classVisitor.visitMethod(ACC_PUBLIC,
                 "run",
@@ -51,7 +53,7 @@ public class FunctionCompiler implements Opcodes {
         visitor.visitParameter("globals", 0);
         visitor.visitCode();
         
-        var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames);
+        var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames, options);
         compiler.varCounter = 3; // This, root and the global map take up the first three local slots
 
         // Set the variable index of the top level root value to the passed in parameter
@@ -72,7 +74,7 @@ public class FunctionCompiler implements Opcodes {
         visitor.visitEnd();
     }
 
-    public static void compileLambda(TreeMetadata metadata, ClassVisitor classVisitor, String className, FunctionExpression expression, String name, Map<FunctionExpression, String> lambdaNames) {
+    public static void compileLambda(TreeMetadata metadata, ClassVisitor classVisitor, String className, FunctionExpression expression, String name, Map<FunctionExpression, String> lambdaNames, CompilerOptions options) {
         var scope = (FunctionScope) metadata.get(expression,  VariableAnalyser.SCOPE).orElseThrow();
         var arguments = expression.args().arguments();
         var capturesRoot = arguments.stream().noneMatch(argument -> argument.target() == FunctionArgument.Target.Root.INSTANCE);
@@ -83,7 +85,7 @@ public class FunctionCompiler implements Opcodes {
                 null,
                 null);
 
-        var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames);
+        var compiler = new FunctionCompiler(metadata, visitor, className, lambdaNames, options);
         compiler.varCounter = 1;
 
         compiler.allocateLambdaCaptures(scope, visitor, capturesRoot);
@@ -159,6 +161,10 @@ public class FunctionCompiler implements Opcodes {
             this.visitor.visitVarInsn(ASTORE, varIndex);
             this.visitor.visitLabel(jump);
         }
+    }
+
+    public CompilerOptions options() {
+        return options;
     }
 
     private void addGlobalMetadata(Program program, Scope scope, MethodVisitor visitor, Label startLabel, Label endLabel) {

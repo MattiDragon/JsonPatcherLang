@@ -6,11 +6,11 @@ import java.lang.invoke.MethodHandles;
 
 @SuppressWarnings("unused")
 public class ConstantHooks {
-    public Value.NumberValue number(MethodHandles.Lookup caller, String name, double value) {
+    public static Value.NumberValue number(MethodHandles.Lookup caller, String name, Class<?> clazz, double value) {
         return new Value.NumberValue(value);
     }
     
-    public Value.StringValue string(MethodHandles.Lookup caller, String name, String value) {
+    public static Value.StringValue string(MethodHandles.Lookup caller, String name, Class<?> clazz, String value) {
         return new Value.StringValue(value);
     }
 }

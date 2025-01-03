@@ -8,6 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
@@ -34,13 +35,15 @@ public class EvaluationEnvironment {
     private final Map<String, Consumer<Value.ObjectValue>> libraries = new HashMap<>();
     private final PropertyHolder propertyHolder = new PropertyHolder();
     private final ScriptClassLoader classLoader = new ScriptClassLoader();
+    private final CompilerOptions compilerOptions;
     private final LangConfig config;
 
     @Nullable
     private String dumpPath = null;
 
-    public EvaluationEnvironment(LangConfig config) {
-        this.config = config;
+    public EvaluationEnvironment(CompilerOptions compilerOptions) {
+        this.compilerOptions = compilerOptions;
+        this.config = compilerOptions.langConfig();
     }
 
     public void bootstrap() {
@@ -75,7 +78,7 @@ public class EvaluationEnvironment {
                 throw e;
             }
 
-            var instance = classLoader.addScript(parse.program(), parse.treeMetadata(), config,
+            var instance = classLoader.addScript(parse.program(), parse.treeMetadata(), compilerOptions,
                     "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name);
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
@@ -116,7 +119,7 @@ public class EvaluationEnvironment {
     }
 
     public AddedProgram addProgram(Program program, TreeMetadata metadata, String scriptName, String className) {
-        var instance = classLoader.addScript(program, metadata, config,
+        var instance = classLoader.addScript(program, metadata, compilerOptions,
                 scriptName, className);
 
         return new AddedProgram(instance);
@@ -152,10 +155,10 @@ public class EvaluationEnvironment {
     }
     
     private class ScriptClassLoader extends ClassLoader {
-        public GeneratedProgram addScript(Program program, TreeMetadata metadata, LangConfig langConfig, String scriptName, String className) {
+        public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className) {
             byte[] bytes;
             try {
-                bytes = ScriptCompiler.compile(program, metadata, langConfig, EvaluationEnvironment.this::configureCompiler, scriptName, className);
+                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, EvaluationEnvironment.this::configureCompiler, scriptName, className);
             } catch (CompilationException e) {
                 throw e;
             } catch (RuntimeException e) {

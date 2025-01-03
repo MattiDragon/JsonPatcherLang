@@ -12,23 +12,23 @@ import org.objectweb.asm.Type;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public class ClassCompiler {
-    private static final Pattern PATTERN = Pattern.compile("[^:/]+$");
     private final Map<FunctionExpression, String> lambdaNames;
     private final ClassWriter classWriter;
     private final String scriptName;
     private final String className;
     private final Program program;
     private final TreeMetadata metadata;
+    private final CompilerOptions options;
 
-    public ClassCompiler(Program program, TreeMetadata metadata, Map<FunctionExpression, String> lambdaNames, String scriptName, String className) {
+    public ClassCompiler(Program program, TreeMetadata metadata, Map<FunctionExpression, String> lambdaNames, String scriptName, String className, CompilerOptions options) {
         classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         this.scriptName = scriptName;
         this.className = className;
         this.program = program;
         this.metadata = metadata;
+        this.options = options;
 
         lambdaNames = new HashMap<>(lambdaNames);
         var usedLambdaNames = new HashSet<String>();
@@ -58,13 +58,13 @@ public class ClassCompiler {
     }
 
     public void compileMain() {
-        FunctionCompiler.compileMainMethod(metadata, classWriter, className, program, lambdaNames);
+        FunctionCompiler.compileMainMethod(metadata, classWriter, className, program, lambdaNames, options);
     }
 
     public void compileLambda(FunctionExpression expression) {
         var name = lambdaNames.get(expression);
         try {
-            FunctionCompiler.compileLambda(metadata, classWriter, className, expression, name, lambdaNames);
+            FunctionCompiler.compileLambda(metadata, classWriter, className, expression, name, lambdaNames, options);
         } catch (RuntimeException e) {
             throw new RuntimeException("Error while compiling function '" + name + "'", e);
         }

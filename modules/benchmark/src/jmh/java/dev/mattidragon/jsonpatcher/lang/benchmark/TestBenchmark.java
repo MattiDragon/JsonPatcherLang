@@ -7,6 +7,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationEnvironment;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.legacy.LegacyRuntime;
 import org.openjdk.jmh.annotations.*;
 
@@ -25,6 +26,7 @@ public class TestBenchmark {
     public int index;
 
     private EvaluationEnvironment.AddedProgram bytecodeProgram;
+    private EvaluationEnvironment.AddedProgram bytecodeProgramWithoutCondy;
     private PreparedProgram legacyProgram;
 
     @Setup
@@ -53,8 +55,13 @@ public class TestBenchmark {
             throw e;
         }
 
-        var env = new EvaluationEnvironment(config);
+        var env = new EvaluationEnvironment(CompilerOptions.builder().build());
+        env.enableDumping("dump-with-condy");
         bytecodeProgram = env.addProgram(parse.program(), parse.treeMetadata(), "fib", "CompiledFib");
+        var env2 = new EvaluationEnvironment(CompilerOptions.builder().disableDynamicConstants().build());
+        env2.enableDumping("dump-without-condy");
+        bytecodeProgramWithoutCondy = env2.addProgram(parse.program(), parse.treeMetadata(), "fib2", "CompiledFib2");
+
         legacyProgram = new LegacyRuntime().prepare(parse.program(), parse.treeMetadata(), PreparationContextBuilder::declareStdlib);
     }
 
@@ -88,6 +95,13 @@ public class TestBenchmark {
         var root = new Value.ObjectValue();
         root.value().put("index", new Value.NumberValue(index));
         return bytecodeProgram.run(root);
+    }
+
+    @Benchmark
+    public Value fibonacciBytecodeWithoutCondy() {
+        var root = new Value.ObjectValue();
+        root.value().put("index", new Value.NumberValue(index));
+        return bytecodeProgramWithoutCondy.run(root);
     }
 
     @Benchmark

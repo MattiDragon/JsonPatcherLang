@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.DummyPropertyLookup;
@@ -18,7 +19,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.nio.file.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,7 +62,7 @@ public class BytecodeTestRunner implements TestRunner {
         var className = "dev/mattidragon/jsonpatcher/lang/test/TestScript" + CLASS_COUNTER.getAndIncrement();
         var bytes = ScriptCompiler.compile(program,
                 metadata,
-                LANG_CONFIG,
+                CompilerOptions.DEFAULT,
                 PreparationContextBuilder::declareStdlib,
                 "test script",
                 className);
