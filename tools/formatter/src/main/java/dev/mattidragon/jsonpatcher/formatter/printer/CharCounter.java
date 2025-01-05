@@ -15,13 +15,13 @@ public class CharCounter extends PrintTarget {
 
     @Override
     public PrintTarget pushIndent() {
-        indent += 4;
+        indent += options.indentColumns;
         return this;
     }
 
     @Override
     public PrintTarget popIndent() {
-        indent -= 4;
+        indent -= options.indentColumns;
         return this;
     }
 

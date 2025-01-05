@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
@@ -31,6 +32,8 @@ public class ScriptCompiler {
         checkErrors(options.langConfig, variableAnalysis);
         var functions = new HashMap<FunctionExpression, String>();
         findLambdas(program, functions, "");
+
+        ConstantAnalyser.analyse(program, metadata);
         
         var compiler = new ClassCompiler(program, metadata, functions, scriptName, className, options);
         compiler.compileStart();

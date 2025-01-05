@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
 public class PrettyPrintOptions {
-    // TODO: Use indent in pretty-printer
     public final String indent;
     public final int indentColumns;
     public final int maxColumns;

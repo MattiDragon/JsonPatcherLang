@@ -20,7 +20,6 @@ public class ConstantAnalyser {
         this.metadata = metadata;
     }
 
-    // TODO: Actually use this
     public static void analyse(Program program, TreeMetadata metadata) {
         new ConstantAnalyser(metadata).analyse(program);
     }

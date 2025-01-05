@@ -3,8 +3,6 @@ package dev.mattidragon.jsonpatcher.formatter.printer;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 
 public class PrettyPrinter extends PrintTarget {
-    private static final String INDENT = "    ";
-
     private final StringBuilder out = new StringBuilder();
 
     private int indent = 0;
@@ -28,7 +26,7 @@ public class PrettyPrinter extends PrintTarget {
 
     @Override
     public PrettyPrinter newLine() {
-        out.append('\n').append(INDENT.repeat(indent));
+        out.append('\n').append(options.indent.repeat(indent));
         columnLength = 0;
         return this;
     }

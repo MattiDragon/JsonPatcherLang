@@ -35,13 +35,18 @@ public class PrefixParser {
     }
 
     private static Expression root(Parser parser, PositionedToken token) {
-        // TODO: set metadata
+        var rootExpression = parser.setMetadata(new RootExpression(), MetadataKey.FULL_POS, token.pos());
+
         if (parser.hasNext() && parser.peek() instanceof PositionedToken(var pos, Token.WordToken word)) {
             parser.next();
-            return new PropertyAccessExpression(new RootExpression(), word.value());
+            return parser.setMetadata(
+                    new PropertyAccessExpression(rootExpression, word.value()),
+                    MetadataKey.NAME_POS,
+                    pos
+            );
         }
 
-        return new RootExpression();
+        return rootExpression;
     }
 
     private static ValueExpression constant(Parser parser, PositionedToken token, Value.Primitive value) {
