@@ -3,9 +3,10 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import org.jspecify.annotations.Nullable;
 
 public class BinaryOperatorInterpreter {
-    public static Value evaluate(BinaryExpression.Operator operator, Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    public static Value evaluate(BinaryExpression.Operator operator, Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
         var pair = new Pair(first, second);
 
         return switch (operator) {
@@ -29,7 +30,7 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value plus(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value plus(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         return switch (pair) {
             case Pair(Value.NumberValue(var first), Value.NumberValue(var second)) -> new Value.NumberValue(first + second);
             case Pair(Value.StringValue(var first), Value.StringValue(var second)) -> new Value.StringValue(first + second);
@@ -49,14 +50,14 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value minus(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value minus(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         if (pair instanceof Pair(Value.NumberValue first, Value.NumberValue second)) {
             return new Value.NumberValue(first.value() - second.value());
         }
         throw new EvaluationException(context.config(), "Can't subtract %s from %s".formatted(pair.first, pair.second), pos);
     }
 
-    private static Value multiply(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value multiply(Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
         if (!(second instanceof Value.NumberValue(var multiplier))) {
             throw new EvaluationException(context.config(), "Can't multiply by %s".formatted(second), pos);
         }
@@ -74,28 +75,28 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value divide(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value divide(Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(number1 / number2);
         }
         throw new EvaluationException(context.config(), "Can't divide %s by %s".formatted(first, second), pos);
     }
 
-    private static Value modulo(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value modulo(Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(number1 % number2);
         }
         throw new EvaluationException(context.config(), "Can't take %s modulo %s".formatted(first, second), pos);
     }
 
-    private static Value exponent(Value first, Value second, SourceSpan pos, EvaluationContext context) {
+    private static Value exponent(Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
         if (first instanceof Value.NumberValue(var number1) && second instanceof Value.NumberValue(var number2)) {
             return new Value.NumberValue(Math.pow(number1, number2));
         }
         throw new EvaluationException(context.config(), "Can't take %s to the %s".formatted(first, second), pos);
     }
 
-    private static Value and(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value and(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 & (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() && boolean2.value());
@@ -103,7 +104,7 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value or(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value or(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 | (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() || boolean2.value());
@@ -111,7 +112,7 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value xor(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static Value xor(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         return switch (pair) {
             case Pair(Value.NumberValue(var number1), Value.NumberValue(var number2)) -> new Value.NumberValue((int) number1 ^ (int) number2);
             case Pair(Value.BooleanValue boolean1, Value.BooleanValue boolean2) -> Value.BooleanValue.of(boolean1.value() ^ boolean2.value());
@@ -119,17 +120,17 @@ public class BinaryOperatorInterpreter {
         };
     }
 
-    private static Value in(Value first, Value second, SourceSpan pos, EvaluationContext context) {
-        if (second instanceof Value.ArrayValue arrayValue) {
-            return Value.BooleanValue.of(arrayValue.value().contains(first));
+    private static Value in(Value first, Value second, @Nullable SourceSpan pos, EvaluationContext context) {
+        if (second instanceof Value.ArrayValue(var array)) {
+            return Value.BooleanValue.of(array.contains(first));
         }
-        if (first instanceof Value.StringValue string && second instanceof Value.ObjectValue objectValue) {
-            return Value.BooleanValue.of(objectValue.value().containsKey(string.value()));
+        if (first instanceof Value.StringValue(var key) && second instanceof Value.ObjectValue(var object)) {
+            return Value.BooleanValue.of(object.containsKey(key));
         }
         throw new EvaluationException(context.config(), "Can't check if %s is in %s".formatted(first, second), pos);
     }
 
-    private static int compare(Pair pair, SourceSpan pos, EvaluationContext context) {
+    private static int compare(Pair pair, @Nullable SourceSpan pos, EvaluationContext context) {
         if (pair instanceof Pair(Value.NumberValue(var first), Value.NumberValue(var second))) {
             return Double.compare(first, second);
         }

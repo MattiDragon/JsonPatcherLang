@@ -8,9 +8,10 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -136,8 +137,8 @@ public class PrefixParser {
             var namePos = parser.previous().pos();
 
             if (targets.contains(target)) {
-                if (target instanceof FunctionArgument.Target.Variable variable) {
-                    parser.addError(parser.new ParseException("Duplicate parameter name: '%s'".formatted(variable.name()), parser.previous().pos()));
+                if (target instanceof FunctionArgument.Target.Variable(var paramName)) {
+                    parser.addError(parser.new ParseException("Duplicate parameter name: '%s'".formatted(paramName), parser.previous().pos()));
                 } else {
                     parser.addError(parser.new ParseException("Duplicate root parameter", parser.previous().pos()));
                 }

@@ -1,10 +1,13 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public final class Box {
-    private Value value;
+    private @Nullable Value value;
 
     public Box() {
     }
@@ -19,7 +22,7 @@ public final class Box {
     }
 
     public void setValue(Value value) {
-        if (value == null) throw new IllegalArgumentException("value may not be null");
+        Objects.requireNonNull(value, "value may not be null");
         this.value = value;
     }
 }

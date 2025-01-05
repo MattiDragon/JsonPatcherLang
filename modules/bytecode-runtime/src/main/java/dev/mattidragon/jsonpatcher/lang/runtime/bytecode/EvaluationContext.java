@@ -8,6 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
+import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,7 +41,7 @@ public record EvaluationContext(LangConfig config,
     }
 
     @Override
-    public Value getLibraryProperty(Value value, String property) {
+    public @Nullable Value getLibraryProperty(Value value, String property) {
         return propertyLookup.getProperty(value, property);
     }
 

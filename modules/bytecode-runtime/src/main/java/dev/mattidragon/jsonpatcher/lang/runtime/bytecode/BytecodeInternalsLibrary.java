@@ -15,10 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class BytecodeInternalsLibrary {
     private final PropertyHolder propertyHolder;
 
-    public BytecodeInternalsLibrary(PropertyHolder propertyHolder) {
+    BytecodeInternalsLibrary(PropertyHolder propertyHolder) {
         this.propertyHolder = propertyHolder;
     }
 

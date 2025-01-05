@@ -11,15 +11,14 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PostfixParser;
-import dev.mattidragon.jsonpatcher.lang.parse.parselet.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PrefixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.StatementParser;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class Parser {
@@ -56,7 +55,7 @@ public class Parser {
             errors.forEach(error::addSuppressed);
             throw error;
         }
-        return expression;
+        return Objects.requireNonNull(expression, "Something went wrong, the expression is null without error");
     }
 
     public Result program() {
@@ -120,10 +119,6 @@ public class Parser {
         return left;
     }
 
-    public LangConfig getConfig() {
-        return config;
-    }
-    
     public <N extends ProgramNode, T> N setMetadata(N node, MetadataKey<T> key, T value) {
         treeMetadata.put(node, key, value);
         return node;
@@ -158,8 +153,8 @@ public class Parser {
 
     public String expectWordOrString() {
         var token = next().token();
-        if (token instanceof Token.WordToken wordToken) return wordToken.value();
-        if (token instanceof Token.StringToken stringToken) return stringToken.value();
+        if (token instanceof Token.WordToken(String word)) return word;
+        if (token instanceof Token.StringToken(String string)) return string;
         return expectFail("word or string");
     }
 
@@ -262,7 +257,6 @@ public class Parser {
         }
 
         @Override
-        @Nullable
         public SourceSpan getPos() {
             return pos;
         }

@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.IncompatibleOperandsException;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.invoke.*;
 import java.util.Arrays;
@@ -178,7 +179,7 @@ public class FunctionHooks {
         throw new IncompatibleOperandsException("%s is not callable".formatted(value));
     }
     
-    private static Value unwrapOptional(Value[] values, int index) {
+    private static @Nullable Value unwrapOptional(Value[] values, int index) {
         if (index < values.length) {
             return values[index];
         }

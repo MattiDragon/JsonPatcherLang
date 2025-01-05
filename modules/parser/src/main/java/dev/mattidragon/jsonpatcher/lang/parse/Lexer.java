@@ -5,7 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -228,8 +228,8 @@ public class Lexer {
         var from = new SourcePos(file, currentLine, currentColumn - length);
         var to = new SourcePos(file, currentLine, currentColumn - 1);
         SourceSpan pos = new SourceSpan(from, to);
-        if (token instanceof Token.ErrorToken errorToken) {
-            errors.add(new LexException(config, errorToken.error(), pos.from()));
+        if (token instanceof Token.ErrorToken(var error)) {
+            errors.add(new LexException(config, error, pos.from()));
         } else {
             tokens.add(new PositionedToken(pos, token));
         }

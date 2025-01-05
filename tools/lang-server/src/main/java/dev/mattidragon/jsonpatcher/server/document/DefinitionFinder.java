@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.PropertyAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
@@ -27,9 +28,11 @@ import java.util.function.Supplier;
 import static dev.mattidragon.jsonpatcher.server.document.DocumentState.spanToRange;
 
 public class DefinitionFinder {
+    private static final SourceFile LOOKUP_FAKE_FILE = new SourceFile("lookup fake file", "");
+
     private final Renderer renderer = MarkdownRenderer.builder().extensions(DocWriter.DEFAULT_EXTENSIONS).build();
     private final DocWriter docWriter = new DocWriter(List.of());
-    
+
     private final Supplier<CompletableFuture<TreeAnalysis>> analysis;
     private final Supplier<CompletableFuture<List<DocEntry>>> docs;
     private final WorkspaceManager workspace;
@@ -46,7 +49,7 @@ public class DefinitionFinder {
     }
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {
-        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
+        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
         return analysis.get().thenCombineAsync(docs.get(), (analysis, docs) -> {
             var list = new ArrayList<Location>();
             addVariableDefinitions(analysis, pos, list);
@@ -99,7 +102,7 @@ public class DefinitionFinder {
     }
 
     public CompletableFuture<List<? extends Location>> getReferences(Position position) {
-        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
+        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
         return analysis.get().thenApplyAsync(analysis -> {
             var variableReferences = analysis.getVariableReferences();
             return variableReferences
@@ -114,7 +117,7 @@ public class DefinitionFinder {
     }
 
     public CompletableFuture<Hover> getHover(Position position) {
-        var pos = new SourcePos(null, position.getLine() + 1, position.getCharacter() + 1);
+        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
         return analysis.get().thenCombineAsync(docs.get(), (analysis, localDocs) ->
                 getVariableDocs(analysis, pos)
                         .or(() -> getPropertyDocs(analysis, pos))
@@ -250,9 +253,9 @@ public class DefinitionFinder {
 
             if (definition != null) {
                 walkDocTypes(definition, docType -> {
-                    if (!(docType instanceof DocType.Name nameType)) return;
-                    if (nameType.pos() == null || !nameType.pos().contains(pos)) return;
-                    docHolder.getTypeData(nameType.name())
+                    if (!(docType instanceof DocType.Name(var name, var nameSpan))) return;
+                    if (nameSpan == null || !nameSpan.contains(pos)) return;
+                    docHolder.getTypeData(name)
                             .ifPresent(consumer);
                 });
             }

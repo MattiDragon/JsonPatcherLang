@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.HashMap;
@@ -24,7 +24,7 @@ public final class VariableStack {
         this.parent = parent;
     }
 
-    public Value getVariable(String name, SourceSpan pos) {
+    public Value getVariable(String name, @Nullable SourceSpan pos) {
         if (mutable.containsKey(name)) {
             return mutable.get(name);
         }
@@ -45,7 +45,7 @@ public final class VariableStack {
         return false;
     }
 
-    public void setVariable(String name, Value value, SourceSpan pos) {
+    public void setVariable(String name, Value value, @Nullable SourceSpan pos) {
         if (parent != null && parent.hasVariable(name)) {
             parent.setVariable(name, value, pos);
         } else if (mutable.containsKey(name)) {
@@ -57,7 +57,7 @@ public final class VariableStack {
         }
     }
 
-    public void createVariable(String name, Value value, boolean mutable, SourceSpan pos) {
+    public void createVariable(String name, Value value, boolean mutable, @Nullable SourceSpan pos) {
         if (hasVariable(name)) throw new EvaluationException(config, "Cannot create variable with duplicate name: %s".formatted(name), pos);
         if (mutable) this.mutable.put(name, value);
         else this.immutable.put(name, value);
@@ -71,7 +71,7 @@ public final class VariableStack {
         else this.immutable.put(name, value);
     }
 
-    public void deleteVariable(String name, SourceSpan pos) {
+    public void deleteVariable(String name, @Nullable SourceSpan pos) {
         if (immutable.containsKey(name)) {
             immutable.remove(name);
             return;

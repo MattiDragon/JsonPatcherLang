@@ -2,8 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -57,7 +56,6 @@ public sealed interface Value {
         throw context.createException("%s does not have mutable properties (tried to set %s)".formatted(this, property));
     }
 
-    @NotNull
     static Value convertNull(@Nullable Value value) {
         return value == null ? NullValue.NULL : value;
     }

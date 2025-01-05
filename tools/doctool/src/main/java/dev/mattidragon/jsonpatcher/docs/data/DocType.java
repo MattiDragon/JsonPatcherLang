@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.docs.data;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
@@ -22,7 +23,7 @@ public sealed interface DocType {
         return this instanceof Special(var kind, var pos) && kind == SpecialKind.FUNCTION || this instanceof Function;
     }
     
-    record Special(SpecialKind kind, SourceSpan pos) implements DocType {
+    record Special(SpecialKind kind, @Nullable SourceSpan pos) implements DocType {
         @Override
         public String format() {
             return kind.name().toLowerCase(Locale.ROOT);
@@ -64,7 +65,7 @@ public sealed interface DocType {
     /**
      * A function with specific argument and return types. 
      */
-    record Function(DocType returnType, List<Argument> args, List<SourceSpan> operatorPoses) implements DocType {
+    record Function(DocType returnType, List<Argument> args, List<@Nullable SourceSpan> operatorPoses) implements DocType {
         public Function {
             args = List.copyOf(args);
         }
@@ -124,7 +125,7 @@ public sealed interface DocType {
     /**
      * A named type created using a {@code type} doc entry.
      */
-    record Name(String name, SourceSpan pos) implements DocType {
+    record Name(String name, @Nullable SourceSpan pos) implements DocType {
         @Override
         public String format() {
             return name;

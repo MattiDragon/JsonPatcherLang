@@ -7,7 +7,7 @@ import org.commonmark.node.Document;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.renderer.markdown.MarkdownRenderer;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -136,7 +136,7 @@ public class DocTool {
         }
     }
     
-    private static Args parseArgs(String[] args) {
+    private static @Nullable Args parseArgs(String[] args) {
         if (args.length == 0) printHelp();
         
         List<String> outFiles = new ArrayList<>();

@@ -101,21 +101,21 @@ public class TestUtils {
     public static boolean areEqual(Value v1, Value v2) {
         if (v1.equals(v2)) return true;
 
-        if (v1 instanceof Value.ObjectValue o1 && v2 instanceof Value.ObjectValue o2) {
-            if (o1.value().size() != o2.value().size()) return false;
+        if (v1 instanceof Value.ObjectValue(var o1) && v2 instanceof Value.ObjectValue(var o2)) {
+            if (o1.size() != o2.size()) return false;
 
-            for (var entry : o1.value().entrySet()) {
-                if (!o2.value().containsKey(entry.getKey())) return false;
-                if (!areEqual(entry.getValue(), o2.value().get(entry.getKey()))) return false;
+            for (var entry : o1.entrySet()) {
+                if (!o2.containsKey(entry.getKey())) return false;
+                if (!areEqual(entry.getValue(), o2.get(entry.getKey()))) return false;
             }
             return true;
         }
 
-        if (v1 instanceof Value.ArrayValue a1 && v2 instanceof Value.ArrayValue a2) {
-            if (a1.value().size() != a2.value().size()) return false;
+        if (v1 instanceof Value.ArrayValue(var a1) && v2 instanceof Value.ArrayValue(var a2)) {
+            if (a1.size() != a2.size()) return false;
 
-            for (int i = 0; i < a1.value().size(); i++) {
-                if (!areEqual(a1.value().get(i), a2.value().get(i))) return false;
+            for (int i = 0; i < a1.size(); i++) {
+                if (!areEqual(a1.get(i), a2.get(i))) return false;
             }
             return true;
         }
@@ -185,10 +185,12 @@ public class TestUtils {
     }
     
     private static <T extends Throwable> T combineErrors(Iterable<T> errors) {
-        T first = null;
-        for (T error : errors) {
-            if (first == null) first = error;
-            else first.addSuppressed(error);
+        var iter = errors.iterator();
+        if (!iter.hasNext()) throw new IllegalStateException("No errors provided");
+
+        T first = iter.next();
+        while (iter.hasNext()) {
+            first.addSuppressed(iter.next());
         }
         return first;
     }

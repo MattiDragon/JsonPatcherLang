@@ -6,7 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A simple analyser that finds and marks constant expressions in the AST.
@@ -20,6 +20,7 @@ public class ConstantAnalyser {
         this.metadata = metadata;
     }
 
+    // TODO: Actually use this
     public static void analyse(Program program, TreeMetadata metadata) {
         new ConstantAnalyser(metadata).analyse(program);
     }
@@ -32,8 +33,7 @@ public class ConstantAnalyser {
         }
     }
 
-    @Nullable
-    private Value.Primitive analyseExpression(Expression expr) {
+    private Value.@Nullable Primitive analyseExpression(Expression expr) {
         var value = switch (expr) {
             case ValueExpression(var exprValue) -> exprValue;
             case UnaryExpression(var input, var op) -> {
@@ -74,8 +74,7 @@ public class ConstantAnalyser {
         return value;
     }
 
-    @Nullable
-    private Value.Primitive computeBinary(BinaryExpression.Operator op, Value.Primitive first, Value.Primitive second) {
+    private Value.@Nullable Primitive computeBinary(BinaryExpression.Operator op, Value.Primitive first, Value.Primitive second) {
         record Pair(Value.Primitive first, Value.Primitive second) {}
         var pair = new Pair(first, second);
 
@@ -127,8 +126,7 @@ public class ConstantAnalyser {
         };
     }
 
-    @Nullable
-    private static Value.Primitive computeUnary(UnaryExpression.Operator op, Value.Primitive value) {
+    private static Value.@Nullable Primitive computeUnary(UnaryExpression.Operator op, Value.Primitive value) {
         return switch (op) {
             case NOT -> value instanceof Value.BooleanValue booleanValue
                     ? Value.BooleanValue.of(!booleanValue.value()) : null;

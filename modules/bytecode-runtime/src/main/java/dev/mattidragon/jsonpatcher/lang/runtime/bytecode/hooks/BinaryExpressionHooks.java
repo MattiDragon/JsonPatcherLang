@@ -162,11 +162,11 @@ public class BinaryExpressionHooks {
     }
 
     private static Value in(Value first, Value second) {
-        if (second instanceof Value.ArrayValue arrayValue) {
-            return Value.BooleanValue.of(arrayValue.value().contains(first));
+        if (second instanceof Value.ArrayValue(var array)) {
+            return Value.BooleanValue.of(array.contains(first));
         }
-        if (first instanceof Value.StringValue string && second instanceof Value.ObjectValue objectValue) {
-            return Value.BooleanValue.of(objectValue.value().containsKey(string.value()));
+        if (first instanceof Value.StringValue(var key) && second instanceof Value.ObjectValue(var object)) {
+            return Value.BooleanValue.of(object.containsKey(key));
         }
         throw new IncompatibleOperandsException("Can't check if %s is in %s".formatted(first, second));
     }

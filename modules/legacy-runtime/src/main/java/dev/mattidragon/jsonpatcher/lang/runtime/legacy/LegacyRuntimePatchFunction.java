@@ -6,11 +6,12 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
 public record LegacyRuntimePatchFunction(Statement body, FunctionArguments args, EvaluationContext context) implements PatchFunction.RuntimePatchFunction {
-    public Value execute(EvaluationContext context, List<Value> args, SourceSpan callPos) {
+    public Value execute(EvaluationContext context, List<Value> args, @Nullable SourceSpan callPos) {
         if (args.size() < this.args.requiredArguments()) {
             throw new EvaluationException(context.config(), "Incorrect function argument count: expected at least %s but found %s".formatted(this.args.requiredArguments(), args.size()), callPos);
         }

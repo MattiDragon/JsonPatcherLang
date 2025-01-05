@@ -1,0 +1,12 @@
+// lang server cannot become a module until lsp4j becomes one, which will only happen after the next update
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+module jsonpatcher.tools.langserver {
+    requires jsonpatcher.tools.doctool;
+    requires org.commonmark;
+    requires org.eclipse.lsp4j;
+    requires org.eclipse.lsp4j.jsonrpc;
+    requires jsonpatcher.lang.parser;
+    requires org.jspecify;
+}

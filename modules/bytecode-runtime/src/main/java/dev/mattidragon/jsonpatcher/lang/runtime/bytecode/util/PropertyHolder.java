@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,8 +12,8 @@ public final class PropertyHolder implements PropertyLookup {
 
     @Override
     public @Nullable Value getProperty(Value value, String name) {
-        if (value instanceof Value.ArrayValue array && name.equals("length")) {
-            return new Value.NumberValue(array.value().size());
+        if (value instanceof Value.ArrayValue(var values) && name.equals("length")) {
+            return new Value.NumberValue(values.size());
         }
 
         if (!methods.containsKey(value.type())) return null;

@@ -33,7 +33,7 @@ public class FunctionCompiler implements Opcodes {
     private final Map<RootVariable, Integer> rootAllocations = new HashMap<>();
     
     public FunctionCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, Map<FunctionExpression, String> lambdaNames, CompilerOptions options) {
-        statementCompiler = new StatementCompiler(metadata, visitor, className, this);
+        statementCompiler = new StatementCompiler(metadata, visitor, this);
         expressionCompiler = new ExpressionCompiler(metadata, visitor, className, this);
         this.visitor = visitor;
         this.metadata = metadata;

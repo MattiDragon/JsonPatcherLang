@@ -13,8 +13,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -87,11 +86,6 @@ public class EvaluationEnvironment {
     
     public void addLibrary(String name, Value.ObjectValue value) {
         libraries.put(name, root -> root.value().putAll(value.value()));
-    }
-    
-    @VisibleForTesting
-    public void clearLibraries() {
-        libraries.clear();
     }
 
     public void enableDumping(String path) {

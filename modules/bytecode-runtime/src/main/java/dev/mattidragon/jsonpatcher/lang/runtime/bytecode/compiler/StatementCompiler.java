@@ -14,6 +14,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.Box;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -26,15 +27,13 @@ import java.util.Optional;
 public class StatementCompiler implements Opcodes {
     private final TreeMetadata metadata;
     private final MethodVisitor visitor;
-    private final String className;
     private final FunctionCompiler functionCompiler;
-    private Label continueLabel = null;
-    private Label breakLabel = null;
+    private @Nullable Label continueLabel = null;
+    private @Nullable Label breakLabel = null;
 
-    public StatementCompiler(TreeMetadata metadata, MethodVisitor visitor, String className, FunctionCompiler functionCompiler) {
+    public StatementCompiler(TreeMetadata metadata, MethodVisitor visitor, FunctionCompiler functionCompiler) {
         this.metadata = metadata;
         this.visitor = visitor;
-        this.className = className;
         this.functionCompiler = functionCompiler;
     }
     

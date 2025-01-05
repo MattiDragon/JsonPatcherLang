@@ -100,8 +100,8 @@ public class DocWriter {
     }
 
     private static void addLocationData(Node document, DocEntry.Module entry) {
-        if (entry.location() == null) return;
-        
+        if (entry.name().equals(entry.location())) return;
+
         var location = new Paragraph();
         var emp = new Emphasis();
         emp.appendChild(new Text("Available at "));

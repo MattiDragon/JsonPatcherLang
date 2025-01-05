@@ -5,6 +5,7 @@ plugins {
 
 dependencies { 
     testFixturesImplementation(libs.junit.jupiter)
+    testFixturesImplementation(libs.jspecify)
     testFixturesApi(project(":parser"))
     testFixturesApi(project(":legacy-runtime"))
 }

@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -17,13 +18,13 @@ public class LibraryBuilder {
     private final Object instance;
     private final HashMap<String, PatchFunction.BuiltInPatchFunction> functions = new HashMap<>();
     private final HashMap<String, Value> constants = new HashMap<>();
-    private final Class<? extends Annotation> filterAnnotation;
+    private final @Nullable Class<? extends Annotation> filterAnnotation;
 
     public LibraryBuilder(Class<?> libraryClass) {
         this(libraryClass, (Class<? extends Annotation>) null);
     }
 
-    public LibraryBuilder(Class<?> libraryClass, Class<? extends Annotation> filterAnnotation) {
+    public LibraryBuilder(Class<?> libraryClass, @Nullable Class<? extends Annotation> filterAnnotation) {
         this.libraryClass = libraryClass;
         this.filterAnnotation = filterAnnotation;
         try {
@@ -39,7 +40,7 @@ public class LibraryBuilder {
         this(libraryClass, instance, null);
     }
 
-    public <T> LibraryBuilder(Class<T> libraryClass, T instance, Class<? extends Annotation> filterAnnotation) {
+    public <T> LibraryBuilder(Class<T> libraryClass, T instance, @Nullable Class<? extends Annotation> filterAnnotation) {
         this.libraryClass = libraryClass;
         this.filterAnnotation = filterAnnotation;
         this.instance = instance;

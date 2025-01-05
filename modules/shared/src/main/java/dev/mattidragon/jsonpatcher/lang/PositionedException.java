@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public abstract class PositionedException extends RuntimeException {
     private final LangConfig config;
@@ -17,15 +17,15 @@ public abstract class PositionedException extends RuntimeException {
     }
 
     protected abstract String getBaseMessage();
-    @Nullable
-    public abstract SourceSpan getPos();
+
+    public abstract @Nullable SourceSpan getPos();
     
     public final String getInternalMessage() {
         return super.getMessage();
     }
 
     @Override
-    public synchronized Throwable getCause() {
+    public synchronized @Nullable Throwable getCause() {
         if (config.stackTraceMode() == LangConfig.StackTraceMode.JAVA) return super.getCause();
 
         var original = super.getCause();
@@ -102,7 +102,7 @@ public abstract class PositionedException extends RuntimeException {
         }
     }
 
-    private static FormattedLocation formatLocation(SourceSpan pos) {
+    private static FormattedLocation formatLocation(@Nullable SourceSpan pos) {
         if (pos == null) {
             return new FormattedLocation("unknown", false);
         }

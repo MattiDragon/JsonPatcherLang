@@ -11,7 +11,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -68,15 +68,14 @@ public class TreeAnalysis {
             case ImportStatement statement -> {
                 var variable = VariableDefinition.ofImport(statement.variableName(), statement, metadata);
                 addVariable(currentScope, variable);
-                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
-                    imports.add(pos, statement.libraryName());
-                });
+                metadata.get(statement, MetadataKey.NAME_POS)
+                        .ifPresent(pos -> imports.add(pos, statement.libraryName()));
             }
             case VariableCreationStatement statement -> {
                 analyse(statement.initializer(), currentScope);
-                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
-                    addVariable(currentScope, VariableDefinition.ofLocal(statement.name(), statement.mutable(), pos));
-                });
+                metadata.get(statement, MetadataKey.NAME_POS)
+                        .ifPresent(pos ->
+                                addVariable(currentScope, VariableDefinition.ofLocal(statement.name(), statement.mutable(), pos)));
             }
             case FunctionDeclarationStatement statement -> {
                 analyse(statement.getChildren(), currentScope);
@@ -84,8 +83,8 @@ public class TreeAnalysis {
             }
             case FunctionArgument argument -> {
                 argument.defaultValue().ifPresent(expression -> analyse(expression, currentScope));
-                if (argument.target() instanceof FunctionArgument.Target.Variable variable) {
-                    addVariable(currentScope, VariableDefinition.ofParameter(variable.name(), argument, metadata));
+                if (argument.target() instanceof FunctionArgument.Target.Variable(var variableName)) {
+                    addVariable(currentScope, VariableDefinition.ofParameter(variableName, argument, metadata));
                 }
             }
             
@@ -107,9 +106,9 @@ public class TreeAnalysis {
             case ForEachLoopStatement statement -> {
                 var scope = currentScope.child();
 
-                metadata.get(statement, MetadataKey.NAME_POS).ifPresent(pos -> {
-                    addVariable(scope, VariableDefinition.ofLocal(statement.variableName(), false, pos));
-                });
+                metadata.get(statement, MetadataKey.NAME_POS)
+                        .ifPresent(pos ->
+                                addVariable(scope, VariableDefinition.ofLocal(statement.variableName(), false, pos)));
                 analyse(statement.getChildren(), scope);
             }
             case ForLoopStatement statement -> {
@@ -129,9 +128,8 @@ public class TreeAnalysis {
                 }
             }
             case PropertyAccessExpression expression -> {
-                metadata.get(expression, MetadataKey.NAME_POS).ifPresent(pos -> {
-                    propertyAccesses.add(pos, expression);
-                });
+                metadata.get(expression, MetadataKey.NAME_POS)
+                        .ifPresent(pos -> propertyAccesses.add(pos, expression));
                 analyse(expression.parent(), currentScope);
             }
 
@@ -181,9 +179,8 @@ public class TreeAnalysis {
                         .findFirst();
                 if (variable.isPresent()) {
                     variableMappings.put(key, variable.get());
-                    metadata.get(key, MetadataKey.MAIN_POS).ifPresent(pos -> {
-                        variableReferences.add(pos, variable.get());
-                    });
+                    metadata.get(key, MetadataKey.MAIN_POS)
+                            .ifPresent(pos -> variableReferences.add(pos, variable.get()));
                     unusedVariables.remove(variable.get());
                     iterator.remove();
                     break;

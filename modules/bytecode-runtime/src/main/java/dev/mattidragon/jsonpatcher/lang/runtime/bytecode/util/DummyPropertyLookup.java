@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class DummyPropertyLookup implements PropertyLookup {
     public static final DummyPropertyLookup INSTANCE = new DummyPropertyLookup();

@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
@@ -12,7 +11,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EnvironmentTestRunner implements TestRunner {
-    private static final LangConfig LANG_CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger();
 
     private final EvaluationEnvironment environment;

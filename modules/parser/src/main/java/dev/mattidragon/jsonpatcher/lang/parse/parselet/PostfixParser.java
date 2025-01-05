@@ -7,8 +7,9 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
+import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 
@@ -142,7 +143,7 @@ public class PostfixParser {
                 .orElseGet(() -> parser.previous().from());
     }
 
-    public static Expression get(Parser parser, Precedence precedence, Expression left) {
+    public static @Nullable Expression get(Parser parser, Precedence precedence, Expression left) {
         var token = parser.peek();
         if (token instanceof PositionedToken(var pos, Token.KeywordToken keywordToken) && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
             if (keywordToken == Token.KeywordToken.IS) {

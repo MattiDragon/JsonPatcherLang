@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,10 +105,10 @@ public class Libraries {
 
         private static Value.FunctionValue numberUnary(DoubleUnaryOperator operator) {
             return new Value.FunctionValue(((PatchFunction.BuiltInPatchFunction) (context, args) -> {
-                if (!(args.getFirst() instanceof Value.NumberValue value)) {
+                if (!(args.getFirst() instanceof Value.NumberValue(var value))) {
                     throw context.createException("Expected argument to be number, was %s".formatted(args.getFirst()));
                 }
-                return new Value.NumberValue(operator.applyAsDouble(value.value()));
+                return new Value.NumberValue(operator.applyAsDouble(value));
             }).argCount(1));
         }
     }
@@ -367,41 +367,35 @@ public class Libraries {
         }
 
         public Value asString(PlatformContext context, Value value) {
-            if (value instanceof Value.StringValue string) {
-                return string;
-            }
-            if (value instanceof Value.NumberValue number) {
-                return new Value.StringValue(String.valueOf(number.value()));
-            }
-            if (value instanceof Value.BooleanValue bool) {
-                return new Value.StringValue(String.valueOf(bool.value()));
-            }
-            if (value instanceof Value.NullValue) {
-                return new Value.StringValue("null");
-            }
-            if (value instanceof Value.ArrayValue array) {
-                var builder = new StringBuilder();
-                builder.append('[');
-                for (int i = 0; i < array.value().size(); i++) {
-                    if (i != 0) builder.append(", ");
-                    builder.append(asString(context, array.value().get(i)));
+            return switch (value) {
+                case Value.StringValue string -> string;
+                case Value.NumberValue number -> new Value.StringValue(String.valueOf(number.value()));
+                case Value.BooleanValue bool -> new Value.StringValue(String.valueOf(bool.value()));
+                case Value.NullValue nullValue -> new Value.StringValue("null");
+                case Value.ArrayValue array -> {
+                    var builder = new StringBuilder();
+                    builder.append('[');
+                    for (int i = 0; i < array.value().size(); i++) {
+                        if (i != 0) builder.append(", ");
+                        builder.append(asString(context, array.value().get(i)));
+                    }
+                    builder.append(']');
+                    yield new Value.StringValue(builder.toString());
                 }
-                builder.append(']');
-                return new Value.StringValue(builder.toString());
-            }
-            if (value instanceof Value.ObjectValue object) {
-                var builder = new StringBuilder();
-                builder.append('{');
-                var first = true;
-                for (var entry : object.value().entrySet()) {
-                    if (!first) builder.append(", ");
-                    first = false;
-                    builder.append(entry.getKey()).append(": ").append(asString(context, entry.getValue()));
+                case Value.ObjectValue object -> {
+                    var builder = new StringBuilder();
+                    builder.append('{');
+                    var first = true;
+                    for (var entry : object.value().entrySet()) {
+                        if (!first) builder.append(", ");
+                        first = false;
+                        builder.append(entry.getKey()).append(": ").append(asString(context, entry.getValue()));
+                    }
+                    builder.append('}');
+                    yield new Value.StringValue(builder.toString());
                 }
-                builder.append('}');
-                return new Value.StringValue(builder.toString());
-            }
-            throw context.createException("Can't convert %s to string".formatted(value));
+                default -> throw context.createException("Can't convert %s to string".formatted(value));
+            };
         }
     }
 

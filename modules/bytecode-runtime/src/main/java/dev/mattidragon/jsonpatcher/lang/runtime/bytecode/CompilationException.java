@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class CompilationException extends PositionedException {
     private final @Nullable SourceSpan pos;

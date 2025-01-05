@@ -1,7 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.ast;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.Comparator;
 
 public record SourcePos(SourceFile file, int row, int column) implements Comparable<SourcePos> {
@@ -14,7 +12,7 @@ public record SourcePos(SourceFile file, int row, int column) implements Compara
     }
 
     @Override
-    public int compareTo(@NotNull SourcePos other) {
+    public int compareTo(SourcePos other) {
         if (other.file != this.file) return 0;
         return Comparator.comparing(SourcePos::row).thenComparing(SourcePos::column).compare(this, other);
     }

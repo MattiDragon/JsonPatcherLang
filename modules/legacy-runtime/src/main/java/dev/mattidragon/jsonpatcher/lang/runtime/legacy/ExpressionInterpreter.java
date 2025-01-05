@@ -42,8 +42,8 @@ public class ExpressionInterpreter {
             }
             case PropertyAccessExpression expression -> {
                 var parent = evaluate(expression.parent(), context);
-                if (parent instanceof Value.ObjectValue objectValue) {
-                    objectValue.value().put(expression.name(), value);
+                if (parent instanceof Value.ObjectValue(var object)) {
+                    object.put(expression.name(), value);
                 } else {
                     String message = "Tried to write property %s of %s. Only objects have writable properties.".formatted(expression.name(), parent);
                     throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
@@ -67,7 +67,7 @@ public class ExpressionInterpreter {
     }
 
     private static Value evaluateAssignment(EvaluationContext context, AssignmentExpression expression) {
-        var original = expression.operator() == BinaryExpression.Operator.ASSIGN ? null : evaluate(expression.target(), context);
+        var original = expression.operator() == BinaryExpression.Operator.ASSIGN ? Value.NullValue.NULL : evaluate(expression.target(), context);
         var value = evaluate(expression.value(), context);
         assign(expression.target(), BinaryOperatorInterpreter.evaluate(expression.operator(), original, value, context.getPos(expression).orElse(null), context), context);
         return value;
@@ -99,12 +99,12 @@ public class ExpressionInterpreter {
 
     private static Value evaluateFunctionCall(EvaluationContext context, FunctionCallExpression expression) {
         var value = evaluate(expression.function(), context);
-        if (!(value instanceof Value.FunctionValue functionValue)) {
+        if (!(value instanceof Value.FunctionValue(PatchFunction patchFunction))) {
             throw new EvaluationException(context.config(), "Tried to call %s, not a function".formatted(value), context.getPos(expression).orElse(null));
         }
         var args = expression.arguments().stream().map(argument -> evaluate(argument, context)).toList();
         
-        return switch (functionValue.function()) {
+        return switch (patchFunction) {
             case LegacyRuntimePatchFunction function -> function.execute(context, args, context.getPos(expression).orElse(null));
             case PatchFunction.RuntimePatchFunction other -> throw new IllegalStateException("Unsupported function from foreign runtime: " + other);
             case PatchFunction.BuiltInPatchFunction function -> function.execute(context.createFunctionContext(context.getPos(expression).orElse(null)), args);

@@ -13,9 +13,9 @@ public class JsonParser {
         var token = parser.next();
         if (token.token() == Token.SimpleToken.BEGIN_CURLY) return parseObject();
         if (token.token() == Token.SimpleToken.BEGIN_SQUARE) return parseArray();
-        if (token.token() instanceof Token.StringToken stringToken) return new Value.StringValue(stringToken.value());
+        if (token.token() instanceof Token.StringToken(var value)) return new Value.StringValue(value);
         if (token.token() == Token.SimpleToken.MINUS) return new Value.NumberValue(-parser.expectNumber().value());
-        if (token.token() instanceof Token.NumberToken numberToken) return new Value.NumberValue(numberToken.value());
+        if (token.token() instanceof Token.NumberToken(var value)) return new Value.NumberValue(value);
         if (token.token() == Token.KeywordToken.TRUE) return Value.BooleanValue.TRUE;
         if (token.token() == Token.KeywordToken.FALSE) return Value.BooleanValue.FALSE;
         if (token.token() == Token.KeywordToken.NULL) return Value.NullValue.NULL;

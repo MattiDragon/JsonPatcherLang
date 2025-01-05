@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.formatter.printer.ProgramPrinter;
 import dev.mattidragon.jsonpatcher.lang.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,9 +22,9 @@ public class Main {
     public static void main(String[] args) {
         var exitCode = 0;
         var ioOptions = new Object() {
-            String outfile = null;
+            @Nullable String outfile = null;
             boolean stdout = false;
-            String infile = null;
+            @Nullable String infile = null;
         };
         var printOptions = PrettyPrintOptions.builder();
 
