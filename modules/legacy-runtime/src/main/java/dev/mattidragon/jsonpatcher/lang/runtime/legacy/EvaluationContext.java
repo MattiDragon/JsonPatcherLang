@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;

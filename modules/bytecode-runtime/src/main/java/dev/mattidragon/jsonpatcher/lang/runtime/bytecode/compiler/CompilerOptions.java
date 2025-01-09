@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 
 public final class CompilerOptions {
     public static final CompilerOptions DEFAULT = builder().build();

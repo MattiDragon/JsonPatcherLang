@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
 

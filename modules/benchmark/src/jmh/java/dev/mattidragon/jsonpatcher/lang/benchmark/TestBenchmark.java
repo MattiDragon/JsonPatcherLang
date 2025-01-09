@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.benchmark;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;

@@ -1,14 +1,13 @@
 package dev.mattidragon.jsonpatcher.lang.parse.parselet;
 
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.BooleanExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Reference;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.PrimitiveExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.ArrayList;
 import java.util.Optional;
@@ -195,7 +194,7 @@ public class StatementParser {
 
         Expression condition;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
-            condition = parser.setMetadata(new PrimitiveExpression(Value.BooleanValue.TRUE), MetadataKey.FULL_POS, parser.peek().pos());
+            condition = parser.setMetadata(new BooleanExpression(true), MetadataKey.FULL_POS, parser.peek().pos());
         } else {
             condition = parser.expression();
         }

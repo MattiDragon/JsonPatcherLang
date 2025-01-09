@@ -3,7 +3,6 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module jsonpatcher.tools.doctool {
     requires jsonpatcher.lang.parser;
-    requires jsonpatcher.lang.shared;
     requires org.commonmark;
     requires org.commonmark.ext.gfm.strikethrough;
     requires org.commonmark.ext.gfm.tables;

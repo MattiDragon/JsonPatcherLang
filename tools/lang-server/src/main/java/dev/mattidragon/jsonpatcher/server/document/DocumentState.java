@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParseException;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;

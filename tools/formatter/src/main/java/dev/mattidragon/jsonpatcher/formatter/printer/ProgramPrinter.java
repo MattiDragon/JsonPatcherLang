@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.parse.PatchMetadata;
+import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.KeywordToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
@@ -23,17 +23,17 @@ public class ProgramPrinter {
         StatementPrinter.writeStatementsWithSpacing(target, program.statements());
     }
 
-    private static void writeValueJson(Value value, PrintTarget target) {
+    private static void writeValueJson(MetadataElement value, PrintTarget target) {
         if (target.isClosed()) return;
         switch (value) {
-            case Value.ArrayValue(var children) -> PrintUtils.printCommaList(
+            case MetadataArray(var children) -> PrintUtils.printCommaList(
                     target,
                     children,
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
                     ProgramPrinter::writeValueJson,
                     target1 -> target1.write(SimpleToken.END_SQUARE)
             );
-            case Value.ObjectValue(var entries) -> PrintUtils.printCommaList(
+            case MetadataObject(var entries) -> PrintUtils.printCommaList(
                     target,
                     entries.entrySet(),
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
@@ -44,10 +44,10 @@ public class ProgramPrinter {
                     },
                     target1 -> target1.write(SimpleToken.END_SQUARE)
             );
-            case Value.NumberValue(var number) -> target.write(new Token.NumberToken(number));
-            case Value.StringValue(var string) -> target.write(new Token.StringToken(string));
-            case Value.BooleanValue booleanValue -> target.write(booleanValue.value() ? KeywordToken.TRUE : KeywordToken.FALSE);
-            case Value.NullValue nullValue -> target.write(KeywordToken.NULL);
+            case MetadataNumber(var number) -> target.write(new Token.NumberToken(number));
+            case MetadataString(var string) -> target.write(new Token.StringToken(string));
+            case MetadataBoolean(boolean bool) -> target.write(bool ? KeywordToken.TRUE : KeywordToken.FALSE);
+            case MetadataNull.INSTANCE -> target.write(KeywordToken.NULL);
             default -> throw new IllegalStateException("Illegal value in metadata: " + value);
         }
     }

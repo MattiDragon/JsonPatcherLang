@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;

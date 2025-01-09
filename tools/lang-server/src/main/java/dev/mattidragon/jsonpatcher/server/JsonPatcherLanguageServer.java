@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.server.document.DocumentManager;
 import dev.mattidragon.jsonpatcher.server.document.SemanticTokenizer;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;

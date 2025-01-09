@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    api(project(":shared"))
-    testImplementation(testFixtures(project(":shared")))
+    api(project(":ast"))
+    testImplementation(testFixtures(project(":shared-runtime")))
 }

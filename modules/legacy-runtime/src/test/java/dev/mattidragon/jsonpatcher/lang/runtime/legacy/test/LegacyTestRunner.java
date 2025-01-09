@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy.test;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;

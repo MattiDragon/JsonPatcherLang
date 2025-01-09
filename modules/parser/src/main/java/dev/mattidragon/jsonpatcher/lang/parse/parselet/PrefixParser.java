@@ -10,7 +10,6 @@ import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -23,13 +22,13 @@ public class PrefixParser {
     }
 
     private static Expression string(Parser parser, SourceSpan pos, Token.StringToken token) {
-        var expression = new PrimitiveExpression(new Value.StringValue(token.value()));
+        var expression = new StringExpression(token.value());
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         return expression;
     }
 
     private static Expression number(Parser parser, SourceSpan pos, Token.NumberToken token) {
-        var expression = new PrimitiveExpression(new Value.NumberValue(token.value()));
+        var expression = new NumberExpression(token.value());
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         return expression;
     }
@@ -49,8 +48,14 @@ public class PrefixParser {
         return rootExpression;
     }
 
-    private static PrimitiveExpression constant(Parser parser, PositionedToken token, Value.Primitive value) {
-        var expression = new PrimitiveExpression(value);
+    private static Expression bool(Parser parser, PositionedToken token) {
+        var expression = new BooleanExpression(token.token() == Token.KeywordToken.TRUE);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, token.pos());
+        return expression;
+    }
+
+    private static Expression nullExpression(Parser parser, PositionedToken token) {
+        var expression = new NullExpression();
         parser.setMetadata(expression, MetadataKey.FULL_POS, token.pos());
         return expression;
     }
@@ -102,7 +107,7 @@ public class PrefixParser {
             var entry = new ObjectInitializerExpression.Entry(key, parser.expression());
             parser.setMetadata(entry, MetadataKey.FULL_POS, keyPos);
             children.add(entry);
-            
+
             if (parser.peek().token() == Token.SimpleToken.END_CURLY) {
                 break;
             }
@@ -116,21 +121,21 @@ public class PrefixParser {
 
     static FunctionArguments parseArgumentList(Parser parser) {
         var fromPos = parser.previous().from();
-        
+
         var targets = new HashSet<FunctionArgument.Target>();
         var arguments = new ArrayList<FunctionArgument>();
         // Position of the last varargs argument. Used in the error if there are more arguments.
         SourceSpan varargsPos = null;
         var varargs = false;
         var optionalArg = false;
-        
+
         while (parser.peek().token() != Token.SimpleToken.END_PAREN) {
             // If we end up here with the varargs flag set we are trying to parse an argument after the varargs argument
             if (varargs) {
                 parser.addError(parser.new ParseException("Varargs parameter must be last in list", varargsPos));
                 varargs = false;
             }
-            
+
             FunctionArgument.Target target;
             if (parser.hasNext(Token.SimpleToken.DOLLAR)) {
                 parser.next();
@@ -149,7 +154,7 @@ public class PrefixParser {
                 }
             }
             targets.add(target);
-            
+
             var defaultValue = Optional.<Expression>empty();
             if (parser.peek().token() == Token.SimpleToken.STAR) {
                 varargsPos = parser.next().pos();
@@ -160,13 +165,13 @@ public class PrefixParser {
                     parser.addError(parser.new ParseException("Varargs parameter cannot have default value", parser.peek().pos()));
                 }
             }
-            // We parse default values after varargs to avoid garbage errors. 
+            // We parse default values after varargs to avoid garbage errors.
             // This won't ever actually be used because we add an error above.
             if (parser.peek().token() == Token.SimpleToken.ASSIGN) {
                 parser.next();
                 defaultValue = Optional.of(parser.expression());
                 optionalArg = true;
-            } 
+            }
             if (defaultValue.isEmpty() && optionalArg) {
                 parser.addError(parser.new ParseException("All required arguments must appear before optional arguments", parser.previous().pos()));
             }
@@ -227,9 +232,9 @@ public class PrefixParser {
             case Token.NumberToken numberToken -> number(parser, pos, numberToken);
             case Token.WordToken wordToken -> variable(parser, pos, wordToken);
 
-            case Token.KeywordToken.TRUE -> constant(parser, token, Value.BooleanValue.TRUE);
-            case Token.KeywordToken.FALSE -> constant(parser, token, Value.BooleanValue.FALSE);
-            case Token.KeywordToken.NULL -> constant(parser, token, Value.NullValue.NULL);
+            case Token.KeywordToken.TRUE -> bool(parser, token);
+            case Token.KeywordToken.FALSE -> bool(parser, token);
+            case Token.KeywordToken.NULL -> nullExpression(parser, token);
             case Token.SimpleToken.DOLLAR -> root(parser, token);
             case Token.SimpleToken.MINUS -> unary(parser, token, UnaryExpression.Operator.MINUS);
             case Token.SimpleToken.BANG -> unary(parser, token, UnaryExpression.Operator.NOT);
@@ -240,7 +245,7 @@ public class PrefixParser {
             case Token.SimpleToken.BEGIN_SQUARE -> arrayInit(parser, token);
             case Token.SimpleToken.BEGIN_CURLY -> objectInit(parser, token);
             case Token.SimpleToken.BEGIN_PAREN -> parenthesis(parser);
-            
+
             case Token other -> throw parser.new ParseException("Unexpected token at start of expression: %s".formatted(other.explain()), pos);
         };
     }

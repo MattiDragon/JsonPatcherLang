@@ -3,8 +3,10 @@ plugins {
 }
 
 dependencies {
-    api(project(":shared"))
+    implementation(project(":analysis"))
     implementation(project(":parser"))
+    api(project(":shared-runtime"))
     implementation(libs.bundles.asm)
-    testImplementation(testFixtures(project(":shared")))
+
+    testImplementation(testFixtures(project(":shared-runtime")))
 }

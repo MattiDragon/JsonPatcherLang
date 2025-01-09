@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.formatter;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrintOptions;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrinter;
 import dev.mattidragon.jsonpatcher.formatter.printer.ProgramPrinter;
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import org.jspecify.annotations.Nullable;

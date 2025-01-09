@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.parse;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.PositionedException;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -10,6 +10,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PostfixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PrefixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.StatementParser;

@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.docs.parse;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 

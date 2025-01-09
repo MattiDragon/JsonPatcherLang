@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class ExpressionInterpreter {
@@ -15,8 +15,11 @@ public class ExpressionInterpreter {
             case ShortedBinaryExpression e -> evaluateShortedBinary(context, e);
             case UnaryExpression e -> UnaryExpressionInterpreter.evaluate(e.op(), evaluate(e.input(), context), context.getPos(e).orElse(null), context);
             case UnaryModificationExpression e -> evaluateUnaryModification(context, e);
-            case PrimitiveExpression e -> e.value();
-            
+            case NumberExpression e -> new Value.NumberValue(e.value());
+            case StringExpression e -> new Value.StringValue(e.value());
+            case BooleanExpression e -> Value.BooleanValue.of(e.value());
+            case NullExpression() -> Value.NullValue.NULL;
+
             case FunctionCallExpression e -> evaluateFunctionCall(context, e);
             case FunctionExpression e -> evaluateFunctionCreation(context, e);
             case TernaryExpression e -> evaluate(e.condition(), context).asBoolean() ? evaluate(e.ifTrue(), context) : evaluate(e.ifFalse(), context);

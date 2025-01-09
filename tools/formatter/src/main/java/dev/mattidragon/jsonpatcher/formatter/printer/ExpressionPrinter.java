@@ -11,11 +11,11 @@ public class ExpressionPrinter {
         if (target.isClosed()) return target;
 
         switch (expression) {
-            case PrimitiveExpression(Value.StringValue(var value)) -> target.write(new StringToken(value));
-            case PrimitiveExpression(Value.NumberValue(var value)) -> target.write(new NumberToken(value));
-            case PrimitiveExpression(Value.BooleanValue value) ->
-                    target.write(value.value() ? KeywordToken.TRUE : KeywordToken.FALSE);
-            case PrimitiveExpression(Value.NullValue value) -> target.write(KeywordToken.NULL);
+            case StringExpression(var value) -> target.write(new StringToken(value));
+            case NumberExpression(var value) -> target.write(new NumberToken(value));
+            case BooleanExpression(var value) ->
+                    target.write(value ? KeywordToken.TRUE : KeywordToken.FALSE);
+            case NullExpression() -> target.write(KeywordToken.NULL);
             case BinaryExpression(var first, var second, var op) -> {
                 var token = switch (op) {
                     case PLUS -> SimpleToken.PLUS;
@@ -160,7 +160,10 @@ public class ExpressionPrinter {
             case PropertyAccessExpression e -> Precedence.POSTFIX;
             case IndexExpression e -> Precedence.POSTFIX;
             case FunctionCallExpression e -> Precedence.POSTFIX;
-            case PrimitiveExpression e -> Precedence.ATOM;
+            case BooleanExpression e -> Precedence.ATOM;
+            case NumberExpression e -> Precedence.ATOM;
+            case StringExpression e -> Precedence.ATOM;
+            case NullExpression e -> Precedence.ATOM;
             case VariableAccessExpression e -> Precedence.ATOM;
             case ObjectInitializerExpression e -> Precedence.ATOM;
             case ArrayInitializerExpression e -> Precedence.ATOM;

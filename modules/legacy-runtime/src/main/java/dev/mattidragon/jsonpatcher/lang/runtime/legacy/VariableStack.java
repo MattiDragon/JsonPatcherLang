@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jspecify.annotations.Nullable;

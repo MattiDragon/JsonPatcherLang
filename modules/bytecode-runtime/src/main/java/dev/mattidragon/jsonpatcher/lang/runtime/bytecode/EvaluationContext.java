@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;

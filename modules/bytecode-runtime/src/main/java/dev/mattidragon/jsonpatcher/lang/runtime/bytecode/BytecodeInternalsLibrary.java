@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.DontBind;

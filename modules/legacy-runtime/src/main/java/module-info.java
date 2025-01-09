@@ -3,7 +3,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.lang.runtime.legacy {
-    requires jsonpatcher.lang.shared;
+    requires transitive jsonpatcher.lang.runtime.shared;
     requires org.jetbrains.annotations;
     requires org.jspecify;
 

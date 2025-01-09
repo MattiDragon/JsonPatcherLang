@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.ast.expression.BooleanExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.PrimitiveExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -47,7 +47,7 @@ public class StatementPrinter {
             case ForLoopStatement(var initializer, var condition, var incrementer, var body) -> {
                 target.write(KeywordToken.FOR).space().write(SimpleToken.BEGIN_PAREN);
                 prettyPrint(initializer, target);
-                if (condition instanceof PrimitiveExpression(Value.BooleanValue value) && value == Value.BooleanValue.TRUE) {
+                if (condition instanceof BooleanExpression(var value) && value) {
                     target.write(SimpleToken.SEMICOLON);
                 } else {
                     ExpressionPrinter.prettyPrint(condition, target).write(SimpleToken.SEMICOLON);

@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks;
 
-import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.IncompatibleOperandsException;

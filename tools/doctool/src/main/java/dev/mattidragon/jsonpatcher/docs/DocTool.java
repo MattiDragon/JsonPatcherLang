@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.docs;
 
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
-import dev.mattidragon.jsonpatcher.lang.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import org.commonmark.node.Document;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.html.HtmlRenderer;

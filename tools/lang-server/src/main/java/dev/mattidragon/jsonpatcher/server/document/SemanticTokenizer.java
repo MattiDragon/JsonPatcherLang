@@ -12,7 +12,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokens;
@@ -138,10 +137,8 @@ public class SemanticTokenizer {
     private void tokenize(ProgramNode node) {
         switch (node) {
             case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Keyword);
-            case PrimitiveExpression expression when expression.value() instanceof Value.StringValue
-                    -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.String);
-            case PrimitiveExpression expression when expression.value() instanceof Value.NumberValue
-                    -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Number);
+            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.String);
+            case NumberExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Number);
             case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());
                 builder.addToken(metadata.get(function, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Function);

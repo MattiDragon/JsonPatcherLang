@@ -3,6 +3,6 @@ module jsonpatcher.lang.benchmark {
     requires jsonpatcher.lang.runtime.bytecode;
     requires jsonpatcher.lang.runtime.legacy;
     requires jsonpatcher.lang.parser;
-    requires jsonpatcher.lang.shared;
+    requires jsonpatcher.lang.runtime.shared;
     requires org.jspecify;
 }

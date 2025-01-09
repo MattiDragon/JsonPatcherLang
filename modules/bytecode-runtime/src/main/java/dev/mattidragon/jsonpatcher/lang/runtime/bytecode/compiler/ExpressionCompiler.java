@@ -44,7 +44,10 @@ public class ExpressionCompiler implements Opcodes {
         }
 
         switch (expression) {
-            case PrimitiveExpression e -> compileValue(e.value());
+            case NumberExpression(var num) -> compileNumber(num);
+            case StringExpression(var s) -> compileString(s);
+            case BooleanExpression(var bl) -> compileBoolean(bl);
+            case NullExpression() -> compileNull();
             case IsInstanceExpression e -> compileIsInstance(e);
             case TernaryExpression e -> compileTernary(e);
             case ArrayInitializerExpression e -> compileArrayInit(e);
@@ -66,49 +69,61 @@ public class ExpressionCompiler implements Opcodes {
 
     private void compileValue(Value.Primitive value) {
         switch (value) {
-            case Value.BooleanValue booleanValue -> visitor.visitFieldInsn(GETSTATIC,
-                    Types.BOOLEAN_VALUE,
-                    booleanValue.value() ? "TRUE" : "FALSE",
-                    "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$BooleanValue;");
-            case Value.NullValue.NULL -> visitor.visitFieldInsn(GETSTATIC,
-                    Types.NULL_VALUE,
-                    "NULL",
-                    "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NullValue;");
-            case Value.NumberValue(var number) -> {
-                if (functionCompiler.options().useDynamicConstants) {
-                    visitor.visitLdcInsn(new ConstantDynamic("number", 
-                            Type.getDescriptor(Value.NumberValue.class),
-                            new Handle(H_INVOKESTATIC,
-                                    Types.CONSTANT_HOOKS,
-                                    "number",
-                                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;D)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NumberValue;",
-                                    false),
-                            number));
-                } else {
-                    visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
-                    visitor.visitInsn(DUP);
-                    visitor.visitLdcInsn(number);
-                    visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", "(D)V", false);
-                }
-            }
-            case Value.StringValue(var string) -> {
-                if (functionCompiler.options().useDynamicConstants) {
-                    visitor.visitLdcInsn(new ConstantDynamic("string",
-                            Type.getDescriptor(Value.StringValue.class),
-                            new Handle(H_INVOKESTATIC,
-                                    Types.CONSTANT_HOOKS,
-                                    "string",
-                                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/String;)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$StringValue;",
-                                    false),
-                            string));
-                } else {
-                    visitor.visitTypeInsn(NEW, Types.STRING_VALUE);
-                    visitor.visitInsn(DUP);
-                    visitor.visitLdcInsn(string);
-                    visitor.visitMethodInsn(INVOKESPECIAL, Types.STRING_VALUE, "<init>", "(Ljava/lang/String;)V", false);
-                }
-            }
+            case Value.BooleanValue booleanValue -> compileBoolean(booleanValue.value());
+            case Value.NullValue.NULL -> compileNull();
+            case Value.NumberValue(var number) -> compileNumber(number);
+            case Value.StringValue(var string) -> compileString(string);
         }
+    }
+
+    private void compileString(String string) {
+        if (functionCompiler.options().useDynamicConstants) {
+            visitor.visitLdcInsn(new ConstantDynamic("string",
+                    Type.getDescriptor(Value.StringValue.class),
+                    new Handle(H_INVOKESTATIC,
+                            Types.CONSTANT_HOOKS,
+                            "string",
+                            "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/String;)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$StringValue;",
+                            false),
+                    string));
+        } else {
+            visitor.visitTypeInsn(NEW, Types.STRING_VALUE);
+            visitor.visitInsn(DUP);
+            visitor.visitLdcInsn(string);
+            visitor.visitMethodInsn(INVOKESPECIAL, Types.STRING_VALUE, "<init>", "(Ljava/lang/String;)V", false);
+        }
+    }
+
+    private void compileNumber(double number) {
+        if (functionCompiler.options().useDynamicConstants) {
+            visitor.visitLdcInsn(new ConstantDynamic("number",
+                    Type.getDescriptor(Value.NumberValue.class),
+                    new Handle(H_INVOKESTATIC,
+                            Types.CONSTANT_HOOKS,
+                            "number",
+                            "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;D)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NumberValue;",
+                            false),
+                    number));
+        } else {
+            visitor.visitTypeInsn(NEW, Types.NUMBER_VALUE);
+            visitor.visitInsn(DUP);
+            visitor.visitLdcInsn(number);
+            visitor.visitMethodInsn(INVOKESPECIAL, Types.NUMBER_VALUE, "<init>", "(D)V", false);
+        }
+    }
+
+    private void compileNull() {
+        visitor.visitFieldInsn(GETSTATIC,
+                Types.NULL_VALUE,
+                "NULL",
+                "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$NullValue;");
+    }
+
+    private void compileBoolean(boolean value) {
+        visitor.visitFieldInsn(GETSTATIC,
+                Types.BOOLEAN_VALUE,
+                value ? "TRUE" : "FALSE",
+                "Ldev/mattidragon/jsonpatcher/lang/runtime/Value$BooleanValue;");
     }
 
     private void compileIsInstance(IsInstanceExpression expression) {
