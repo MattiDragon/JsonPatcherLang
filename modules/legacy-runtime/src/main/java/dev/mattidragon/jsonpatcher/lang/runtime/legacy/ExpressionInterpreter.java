@@ -15,7 +15,7 @@ public class ExpressionInterpreter {
             case ShortedBinaryExpression e -> evaluateShortedBinary(context, e);
             case UnaryExpression e -> UnaryExpressionInterpreter.evaluate(e.op(), evaluate(e.input(), context), context.getPos(e).orElse(null), context);
             case UnaryModificationExpression e -> evaluateUnaryModification(context, e);
-            case ValueExpression e -> e.value();
+            case PrimitiveExpression e -> e.value();
             
             case FunctionCallExpression e -> evaluateFunctionCall(context, e);
             case FunctionExpression e -> evaluateFunctionCreation(context, e);

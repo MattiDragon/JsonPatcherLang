@@ -138,9 +138,9 @@ public class SemanticTokenizer {
     private void tokenize(ProgramNode node) {
         switch (node) {
             case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Keyword);
-            case ValueExpression expression when expression.value() instanceof Value.StringValue 
+            case PrimitiveExpression expression when expression.value() instanceof Value.StringValue
                     -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.String);
-            case ValueExpression expression when expression.value() instanceof Value.NumberValue 
+            case PrimitiveExpression expression when expression.value() instanceof Value.NumberValue
                     -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Number);
             case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());

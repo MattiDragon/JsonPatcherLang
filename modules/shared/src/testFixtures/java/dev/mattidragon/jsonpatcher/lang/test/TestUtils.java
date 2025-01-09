@@ -6,7 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.PrimitiveExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.function.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
@@ -124,23 +124,23 @@ public class TestUtils {
     }
 
     public static Expression trueExpression() {
-        return new ValueExpression(Value.BooleanValue.of(true));
+        return new PrimitiveExpression(Value.BooleanValue.of(true));
     }
 
     public static Expression falseExpression() {
-        return new ValueExpression(Value.BooleanValue.of(false));
+        return new PrimitiveExpression(Value.BooleanValue.of(false));
     }
 
     public static Expression nullExpression() {
-        return new ValueExpression(Value.NullValue.NULL);
+        return new PrimitiveExpression(Value.NullValue.NULL);
     }
 
     public static Expression stringExpression(String value) {
-        return new ValueExpression(new Value.StringValue(value));
+        return new PrimitiveExpression(new Value.StringValue(value));
     }
 
     public static Expression numberExpression(double value) {
-        return new ValueExpression(new Value.NumberValue(value));
+        return new PrimitiveExpression(new Value.NumberValue(value));
     }
 
     public static Statement emptyStatement() {

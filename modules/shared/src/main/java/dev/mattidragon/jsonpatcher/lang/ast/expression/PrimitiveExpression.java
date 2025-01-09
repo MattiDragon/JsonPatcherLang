@@ -5,7 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.List;
 
-public record ValueExpression(Value.Primitive value) implements Expression {
+public record PrimitiveExpression(Value.Primitive value) implements Expression {
     @Override
     public Iterable<? extends ProgramNode> getChildren() {
         return List.of();

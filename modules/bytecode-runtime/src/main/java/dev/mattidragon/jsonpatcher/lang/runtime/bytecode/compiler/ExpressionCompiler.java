@@ -44,7 +44,7 @@ public class ExpressionCompiler implements Opcodes {
         }
 
         switch (expression) {
-            case ValueExpression e -> compileValue(e.value());
+            case PrimitiveExpression e -> compileValue(e.value());
             case IsInstanceExpression e -> compileIsInstance(e);
             case TernaryExpression e -> compileTernary(e);
             case ArrayInitializerExpression e -> compileArrayInit(e);

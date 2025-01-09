@@ -23,13 +23,13 @@ public class PrefixParser {
     }
 
     private static Expression string(Parser parser, SourceSpan pos, Token.StringToken token) {
-        var expression = new ValueExpression(new Value.StringValue(token.value()));
+        var expression = new PrimitiveExpression(new Value.StringValue(token.value()));
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         return expression;
     }
 
     private static Expression number(Parser parser, SourceSpan pos, Token.NumberToken token) {
-        var expression = new ValueExpression(new Value.NumberValue(token.value()));
+        var expression = new PrimitiveExpression(new Value.NumberValue(token.value()));
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         return expression;
     }
@@ -49,8 +49,8 @@ public class PrefixParser {
         return rootExpression;
     }
 
-    private static ValueExpression constant(Parser parser, PositionedToken token, Value.Primitive value) {
-        var expression = new ValueExpression(value);
+    private static PrimitiveExpression constant(Parser parser, PositionedToken token, Value.Primitive value) {
+        var expression = new PrimitiveExpression(value);
         parser.setMetadata(expression, MetadataKey.FULL_POS, token.pos());
         return expression;
     }

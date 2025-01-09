@@ -34,7 +34,7 @@ public class ConstantAnalyser {
 
     private Value.@Nullable Primitive analyseExpression(Expression expr) {
         var value = switch (expr) {
-            case ValueExpression(var exprValue) -> exprValue;
+            case PrimitiveExpression(var exprValue) -> exprValue;
             case UnaryExpression(var input, var op) -> {
                 var inputValue = analyseExpression(input);
                 if (inputValue == null) yield null;

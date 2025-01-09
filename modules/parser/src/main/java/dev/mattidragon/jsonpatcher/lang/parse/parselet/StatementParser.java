@@ -4,7 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Reference;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.ValueExpression;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.PrimitiveExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
@@ -195,7 +195,7 @@ public class StatementParser {
 
         Expression condition;
         if (parser.hasNext(SimpleToken.SEMICOLON)) {
-            condition = parser.setMetadata(new ValueExpression(Value.BooleanValue.TRUE), MetadataKey.FULL_POS, parser.peek().pos());
+            condition = parser.setMetadata(new PrimitiveExpression(Value.BooleanValue.TRUE), MetadataKey.FULL_POS, parser.peek().pos());
         } else {
             condition = parser.expression();
         }
