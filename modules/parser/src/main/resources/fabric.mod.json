@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-parser",
+  "name": "JsonPatcherLang Parser",
+  "description": "Part of the JsonPatcher language libraries. Contains the parser, lexer and related code.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}

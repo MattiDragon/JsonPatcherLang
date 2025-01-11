@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-ast",
+  "name": "JsonPatcherLang AST",
+  "description": "Part of the JsonPatcher language libraries. Contains AST code and basic utilities.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}

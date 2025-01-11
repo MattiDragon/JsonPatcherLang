@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-analysis",
+  "name": "JsonPatcherLang Analysis",
+  "description": "Part of the JsonPatcher language libraries. Responsive for analysis passes over the AST.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}

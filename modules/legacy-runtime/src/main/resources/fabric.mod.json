@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-legacy-runtime",
+  "name": "JsonPatcherLang Legacy Runtime",
+  "description": "Part of the JsonPatcher language libraries. Contains an interpreter from before the compiler was added.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}
