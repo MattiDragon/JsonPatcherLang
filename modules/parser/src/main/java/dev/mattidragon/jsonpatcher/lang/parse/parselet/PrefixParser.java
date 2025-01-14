@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
@@ -38,11 +39,10 @@ public class PrefixParser {
 
         if (parser.hasNext() && parser.peek() instanceof PositionedToken(var pos, Token.WordToken word)) {
             parser.next();
-            return parser.setMetadata(
-                    new PropertyAccessExpression(rootExpression, word.value()),
-                    MetadataKey.NAME_POS,
-                    pos
-            );
+            var expression = new PropertyAccessExpression(rootExpression, word.value());
+            parser.setMetadata(expression, MetadataKey.NAME_POS, pos);
+            parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(token.from(), pos.to()));
+            return expression;
         }
 
         return rootExpression;
@@ -68,7 +68,8 @@ public class PrefixParser {
 
     private static UnaryExpression unary(Parser parser, PositionedToken token, UnaryExpression.Operator operator) {
         var expression = new UnaryExpression(parser.expression(Precedence.PREFIX), operator);
-        parser.setMetadata(expression, MetadataKey.FULL_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.MAIN_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(token.from(), parser.previous().to()));
         return expression;
     }
 
@@ -77,7 +78,8 @@ public class PrefixParser {
         if (!(inside instanceof Reference ref)) throw parser.new ParseException("Can't modify to %s".formatted(inside), token.pos());
 
         var expression = new UnaryModificationExpression(false, ref, operator);
-        parser.setMetadata(expression, MetadataKey.FULL_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.MAIN_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(token.from(), parser.previous().to()));
         return expression;
     }
 
@@ -105,7 +107,8 @@ public class PrefixParser {
             parser.expect(Token.SimpleToken.COLON);
 
             var entry = new ObjectInitializerExpression.Entry(key, parser.expression());
-            parser.setMetadata(entry, MetadataKey.FULL_POS, keyPos);
+            parser.setMetadata(entry, MetadataKey.MAIN_POS, keyPos);
+            parser.setMetadata(entry, MetadataKey.FULL_POS, new SourceSpan(keyPos.from(), parser.previous().to()));
             children.add(entry);
 
             if (parser.peek().token() == Token.SimpleToken.END_CURLY) {
@@ -159,7 +162,7 @@ public class PrefixParser {
             if (parser.peek().token() == Token.SimpleToken.STAR) {
                 varargsPos = parser.next().pos();
                 varargs = true;
-                defaultValue = Optional.of(new ArrayInitializerExpression(List.of()));
+                defaultValue = Optional.of(parser.setMetadata(new ArrayInitializerExpression(List.of()), MetadataKey.FULL_POS, varargsPos));
                 optionalArg = true;
                 if (parser.peek().token() == Token.SimpleToken.ASSIGN) {
                     parser.addError(parser.new ParseException("Varargs parameter cannot have default value", parser.peek().pos()));
@@ -200,9 +203,14 @@ public class PrefixParser {
             parser.expect(Token.SimpleToken.ARROW);
             var arrowPos = parser.previous().pos();
 
-            var body = parser.hasNext(Token.SimpleToken.BEGIN_CURLY)
-                    ? StatementParser.blockStatement(parser)
-                    : parser.setMetadata(new ReturnStatement(Optional.of(parser.expression())), MetadataKey.KEYWORD_POS, arrowPos);
+            Statement body;
+            if (parser.hasNext(Token.SimpleToken.BEGIN_CURLY)) {
+                body = StatementParser.blockStatement(parser);
+            } else {
+                body = new ReturnStatement(Optional.of(parser.expression()));
+                parser.setMetadata(body, MetadataKey.KEYWORD_POS, arrowPos);
+                parser.setMetadata(body, MetadataKey.FULL_POS, new SourceSpan(arrowPos.from(), parser.previous().to()));
+            }
             var expression = new FunctionExpression(body, arguments);
             parser.setMetadata(expression, MetadataKey.KEYWORD_POS, arrowPos);
             parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(beginPos, parser.previous().to()));

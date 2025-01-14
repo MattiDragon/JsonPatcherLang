@@ -22,10 +22,10 @@ public interface ModificationExpressionTests extends SharedTest {
                 debug.assert(c.a++ == 0);
                 debug.assert(c.a == 1);
                 
-                #a = 1;
-                #var d = [1];
-                #delete d[--a];
-                #debug.assert(d == []);
+                a = 1;
+                var d = [1];
+                delete d[--a];
+                debug.assert(d == []);
                 """;
         TestUtils.testCode(runner(), code);
     }

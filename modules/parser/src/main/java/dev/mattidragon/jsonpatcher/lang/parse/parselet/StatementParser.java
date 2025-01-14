@@ -205,7 +205,9 @@ public class StatementParser {
             parser.next();
             incrementer = parser.setMetadata(new EmptyStatement(), MetadataKey.FULL_POS, parser.previous().pos());
         } else {
-            incrementer = new ExpressionStatement(parser.expression());
+            var expression = parser.expression();
+            incrementer = new ExpressionStatement(expression);
+            parser.setMetadata(incrementer, MetadataKey.FULL_POS, parser.getMetadata(expression, MetadataKey.FULL_POS).orElseThrow());
         }
 
         parser.expect(SimpleToken.END_PAREN);
@@ -242,19 +244,21 @@ public class StatementParser {
 
     private static Statement breakStatement(Parser parser) {
         parser.expect(KeywordToken.BREAK);
-        var from = parser.previous().from();
+        var tokenPos = parser.previous().pos();
         parser.expectSoftly(SimpleToken.SEMICOLON);
         var statement = new BreakStatement();
-        parser.setMetadata(statement, MetadataKey.KEYWORD_POS, new SourceSpan(from, parser.previous().to()));
+        parser.setMetadata(statement, MetadataKey.KEYWORD_POS, tokenPos);
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(tokenPos.from(), parser.previous().to()));
         return statement;
     }
 
     private static Statement continueStatement(Parser parser) {
         parser.expect(KeywordToken.CONTINUE);
-        var from = parser.previous().from();
+        var tokenPos = parser.previous().pos();
         parser.expectSoftly(SimpleToken.SEMICOLON);
         var statement = new ContinueStatement();
-        parser.setMetadata(statement, MetadataKey.KEYWORD_POS, new SourceSpan(from, parser.previous().to()));
+        parser.setMetadata(statement, MetadataKey.KEYWORD_POS, tokenPos);
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(tokenPos.from(), parser.previous().to()));
         return statement;
     }
 
