@@ -1,11 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.test;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosCheckError;
+import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
+import dev.mattidragon.jsonpatcher.lang.ast.*;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
-import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
@@ -17,14 +17,12 @@ import dev.mattidragon.jsonpatcher.lang.runtime.*;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class TestUtils {
-    @SuppressWarnings("unused")
-    public static final Collection<Runtime> TEST_RUNTIMES = List.of(Runtime.RUNTIMES.get("legacy")/*, Runtime.RUNTIMES.get("jvm-bytecode")*/);
     public static final SourceFile FILE = new SourceFile("test file", "00");
     public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
@@ -35,7 +33,7 @@ public class TestUtils {
     public static void testCode(Runtime runtime, String code) {
         var result = parseFull(code);
         var program = result.program();
-        
+
         Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata(), PREPARE_CONTEXT_BUILDER_CONSUMER).run(RUNTIME_CONTEXT_BUILDER_CONSUMER, CONFIG));
     }
     
@@ -180,9 +178,24 @@ public class TestUtils {
                     .cause(combineErrors(parse.errors()))
                     .buildAndThrow();
         }
+
+        checkPos(parse.program(), parse.treeMetadata());
         return parse;
     }
-    
+
+    private static void checkPos(ProgramNode program, TreeMetadata treeMetadata) {
+        var errors = PosChecker.analyse(program, treeMetadata);
+        if (!errors.isEmpty()) {
+            AssertionFailureBuilder.assertionFailure()
+                    .message("Inconsistent position metadata\n" +
+                             errors.stream()
+                                     .map(PosCheckError::message)
+                                     .map(s -> "  " + s)
+                                     .collect(Collectors.joining("\n")))
+                    .buildAndThrow();
+        }
+    }
+
     private static <T extends Throwable> T combineErrors(Iterable<T> errors) {
         var iter = errors.iterator();
         if (!iter.hasNext()) throw new IllegalStateException("No errors provided");

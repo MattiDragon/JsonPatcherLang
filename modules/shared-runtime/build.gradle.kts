@@ -9,4 +9,5 @@ dependencies {
     testFixturesImplementation(libs.jspecify)
     testFixturesApi(project(":parser"))
     testFixturesApi(project(":legacy-runtime"))
+    testFixturesApi(project(":analysis"))
 }

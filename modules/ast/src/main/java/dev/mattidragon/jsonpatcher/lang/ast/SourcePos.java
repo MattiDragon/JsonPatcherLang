@@ -16,4 +16,8 @@ public record SourcePos(SourceFile file, int row, int column) implements Compara
         if (other.file != this.file) return 0;
         return Comparator.comparing(SourcePos::row).thenComparing(SourcePos::column).compare(this, other);
     }
+
+    public String format() {
+        return row + ":" + column;
+    }
 }

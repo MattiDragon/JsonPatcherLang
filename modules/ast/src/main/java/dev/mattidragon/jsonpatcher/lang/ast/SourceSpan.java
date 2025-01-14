@@ -11,4 +11,8 @@ public record SourceSpan(SourcePos from, SourcePos to) {
                && from.row() <= pos.row() 
                && (from.row() != pos.row() || from.column() <= pos.column());
     }
+
+    public String format() {
+        return from.format() + "-" + to.format();
+    }
 }
