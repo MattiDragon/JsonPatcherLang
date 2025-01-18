@@ -28,7 +28,7 @@ public final class FunctionScope extends MutableScope {
         }
 
         var ref = parent.find(name);
-        if (ref == null) {
+        if (!(ref instanceof Variable)) {
             ref = new LazyRef(name, parent);
         }
         switch (ref) {
