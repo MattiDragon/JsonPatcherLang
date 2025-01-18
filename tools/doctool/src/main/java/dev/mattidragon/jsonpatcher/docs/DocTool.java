@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.docs;
 
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import org.commonmark.node.Document;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -55,8 +55,8 @@ public class DocTool {
             System.exit(1);
             return;
         }
-        var config = new LangConfig(LangConfig.StackTraceMode.SHORT);
-        var parser = new DocParser(config);
+        var diagnostics = new DiagnosticsBuilder();
+        var parser = new DocParser(diagnostics);
         List<String> inputFiles = parsedArgs.inputFiles;
         for (int i = 0; i < inputFiles.size(); i++) {
             var file = inputFiles.get(i);
@@ -71,19 +71,19 @@ public class DocTool {
             }
             if (!parsedArgs.join) {
                 outputParse(parser, parsedArgs, parsedArgs.outputFiles.get(i));
-                parser = new DocParser(config);
+                parser = new DocParser(diagnostics);
             }
         }
         if (parsedArgs.join) {
             outputParse(parser, parsedArgs, parsedArgs.outputFiles.getFirst());
         }
+
+        for (var diagnostic : diagnostics.build().all()) {
+            System.err.println(diagnostic.toDisplay());
+        }
     }
     
     private static void outputParse(DocParser parser, Args args, String outFile) {
-        for (var error : parser.getErrors()) {
-            System.err.printf("Warn: Error while parsing docs:%n%s%n", error.getMessage());
-        }
-        
         System.out.printf("Writing %s%n", outFile);
         System.out.flush();
         

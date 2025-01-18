@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.lexer;
 
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
-import dev.mattidragon.jsonpatcher.lang.parse.PositionedToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Test;
@@ -14,10 +14,13 @@ public class StringTests {
         var program = """
                 "\\u0041"
                 """;
-        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
+        var diagnostics = new DiagnosticsBuilder();
+        var tokens = Lexer.lex(program, "test file", diagnostics).tokens();
+
+        TestUtils.checkDiagnostics(diagnostics.build(), "Lexer error", false);
         assertEquals(1, tokens.size(), "Expected 1 token");
-        PositionedToken positionedToken = tokens.getFirst();
-        var token = positionedToken.token();
+
+        var token = tokens.getFirst().token();
         assertInstanceOf(Token.StringToken.class, token, "Expected StringToken");
         assertEquals("A", ((Token.StringToken) token).value(), "Expected A");
     }
@@ -27,8 +30,9 @@ public class StringTests {
         var program = """
                 "\\u0gggg"
                 """;
-        var result = Lexer.lex(TestUtils.CONFIG, program, "test file");
-        assertFalse(result.errors().isEmpty(), "Expected error from invalid escape");
+        var diagnostics = new DiagnosticsBuilder();
+        Lexer.lex(program, "test file", diagnostics);
+        assertFalse(diagnostics.build().errors().isEmpty(), "Expected error from invalid escape");
     }
 
     @Test
@@ -36,10 +40,13 @@ public class StringTests {
         var program = """
                 true
                 """;
-        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
+        var diagnostics = new DiagnosticsBuilder();
+        var tokens = Lexer.lex(program, "test file", diagnostics).tokens();
+
+        TestUtils.checkDiagnostics(diagnostics.build(), "Lexer error", false);
         assertEquals(1, tokens.size(), "Expected 1 token");
-        PositionedToken positionedToken = tokens.getFirst();
-        var token = positionedToken.token();
+
+        var token = tokens.getFirst().token();
         assertInstanceOf(Token.KeywordToken.class, token, "Expected KeywordToken");
         assertEquals(Token.KeywordToken.TRUE, token, "Expected true");
     }
@@ -49,10 +56,13 @@ public class StringTests {
         var program = """
                 'true'
                 """;
-        var tokens = Lexer.lex(TestUtils.CONFIG, program, "test file").tokens();
+        var diagnostics = new DiagnosticsBuilder();
+        var tokens = Lexer.lex(program, "test file", diagnostics).tokens();
+
+        TestUtils.checkDiagnostics(diagnostics.build(), "Lexer error", false);
         assertEquals(1, tokens.size(), "Expected 1 token");
-        PositionedToken positionedToken = tokens.getFirst();
-        var token = positionedToken.token();
+
+        var token = tokens.getFirst().token();
         assertInstanceOf(Token.WordToken.class, token, "Expected WordToken");
         assertEquals("true", ((Token.WordToken) token).value(), "Expected true");
     }

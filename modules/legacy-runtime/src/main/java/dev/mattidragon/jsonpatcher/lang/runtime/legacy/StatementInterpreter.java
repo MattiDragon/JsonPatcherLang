@@ -25,7 +25,7 @@ public class StatementInterpreter {
             case ReturnStatement s -> throw new ReturnException(s.value().map(expression -> evaluate(expression, context)).orElse(Value.NullValue.NULL), context.getPos(s).orElse(null));
             case VariableCreationStatement s -> context.variables().createVariable(s.name(), evaluate(s.initializer(), context), s.mutable(), context.getPos(s).orElse(null));
 
-            case ErrorStatement s -> throw new IllegalStateException("Tried to execute error statement", s.error());
+            case ErrorStatement s -> throw new IllegalStateException("Tried to execute error statement:\n" + s.diagnostic().toDisplay());
             default -> throw new UnsupportedOperationException("Unsupported statement: %s".formatted(statement));
         }
     }
@@ -47,7 +47,7 @@ public class StatementInterpreter {
                     throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
                 }
             }
-            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression", e.error());
+            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression:\n" + e.diagnostic().toDisplay());
             default -> throw new UnsupportedOperationException("Unsupported target: %s".formatted(target));
         }
     }

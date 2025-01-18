@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.formatter;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrintOptions;
 import dev.mattidragon.jsonpatcher.formatter.printer.PrettyPrinter;
 import dev.mattidragon.jsonpatcher.formatter.printer.ProgramPrinter;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import org.jspecify.annotations.Nullable;
@@ -88,18 +88,12 @@ public class Main {
 
         Parser.Result parseResult;
         try {
-            var langConfig = new LangConfig(LangConfig.StackTraceMode.JAVA);
-            var lex = Lexer.lex(langConfig, code, ioOptions.infile); // TODO: capture comments and add them back
-            if (!lex.errors().isEmpty()) {
-                var e = lex.errors().getFirst();
-                lex.errors().stream().skip(1).forEach(e::addSuppressed);
-                throw e;
-            }
-            parseResult = Parser.parse(langConfig, lex.tokens());
-            if (!parseResult.errors().isEmpty()) {
-                var e = parseResult.errors().getFirst();
-                parseResult.errors().stream().skip(1).forEach(e::addSuppressed);
-                throw e;
+            var diagnostics = new DiagnosticsBuilder();
+            var lex = Lexer.lex(code, ioOptions.infile, diagnostics); // TODO: capture comments and add them back
+            parseResult = Parser.parse(lex.tokens(), diagnostics);
+
+            for (var diagnostic : diagnostics.build().all()) {
+                System.err.println(diagnostic.toDisplay());
             }
         } catch (RuntimeException e) {
             System.err.println("error: Error while parsing input file:");

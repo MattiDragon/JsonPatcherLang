@@ -1,7 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.parse;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.error.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -10,12 +8,15 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PostfixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PrefixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.StatementParser;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.VisibleForTesting;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,39 +24,36 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Parser {
-    private final LangConfig config;
     private final List<PositionedToken> tokens;
-    private final List<ParseException> errors = new ArrayList<>();
+    // We use a list instead of a DiagnosticsBuilder as we sometimes have to roll back previous errors
+    private final List<Diagnostic> diagnostics = new ArrayList<>();
     private final TreeMetadata treeMetadata = new TreeMetadata();
     private final PatchMetadata metadata;
     private int current = 0;
 
-    private Parser(LangConfig config, List<PositionedToken> tokens) {
-        this.config = config;
+    private Parser(List<PositionedToken> tokens) {
         this.tokens = tokens;
         this.metadata = new PatchMetadata();
     }
 
-    public static Result parse(LangConfig config, List<PositionedToken> tokens) {
-        return new Parser(config, tokens).program();
+    public static Result parse(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics) {
+        var parser = new Parser(tokens);
+        var result = parser.program();
+        parser.diagnostics.forEach(diagnostics::addDiagnostic);
+        return result;
     }
 
     @VisibleForTesting
-    public static Expression parseExpression(LangConfig config, List<PositionedToken> tokens) throws ParseException {
-        var parser = new Parser(config, tokens);
-        var errors = parser.errors;
+    public static Expression parseExpression(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics) throws ParseException {
+        var parser = new Parser(tokens);
         Expression expression = null;
         try {
             expression = parser.expression();
         } catch (EndParsingException ignored) {
         } catch (ParseException e) {
-            errors.add(e);
+            parser.addError(e.diagnostic());
         }
-        if (!errors.isEmpty()) {
-            var error = new RuntimeException("Expected successful parse");
-            errors.forEach(error::addSuppressed);
-            throw error;
-        }
+        parser.diagnostics.forEach(diagnostics::addDiagnostic);
         return Objects.requireNonNull(expression, "Something went wrong, the expression is null without error");
     }
 
@@ -68,7 +66,7 @@ public class Parser {
                 metadata.add(id, this);
                 expect(Token.SimpleToken.SEMICOLON);
             } catch (ParseException e) {
-                errors.add(e);
+                addError(e.diagnostic());
             } catch (EndParsingException ignored) {}
         }
         
@@ -78,7 +76,7 @@ public class Parser {
                 statements.add(statement());
             }
         } catch (ParseException e) {
-            errors.add(e);
+            addError(e.diagnostic());
         } catch (EndParsingException ignored) {}
 
         var end = start == null ? null : previous().to();
@@ -86,7 +84,7 @@ public class Parser {
         if (start != null) {
             treeMetadata.put(program, MetadataKey.FULL_POS, new SourceSpan(start, end));
         }
-        return new Result(program, metadata, treeMetadata, errors);
+        return new Result(program, metadata, treeMetadata);
     }
 
     private Statement statement() {
@@ -102,8 +100,8 @@ public class Parser {
         try {
             left = PrefixParser.parse(this, next());
         } catch (ParseException e) {
-            errors.add(e);
-            left = new ErrorExpression(e);
+            addError(e.diagnostic());
+            left = setMetadata(new ErrorExpression(e.diagnostic()), MetadataKey.FULL_POS, e.diagnostic().pos());
         }
 
         while (hasNext()) {
@@ -112,8 +110,8 @@ public class Parser {
                 if (postfix == null) break;
                 left = postfix;
             } catch (ParseException e) {
-                errors.add(e);
-                left = new ErrorExpression(e);
+                addError(e.diagnostic());
+                left = setMetadata(new ErrorExpression(e.diagnostic()), MetadataKey.FULL_POS, e.diagnostic().pos());
             }
         }
 
@@ -178,7 +176,7 @@ public class Parser {
         if (hasNext() && peek().token() == token) {
             next();
         } else {
-            addError(new ParseException("Expected " + token.explain(), new SourceSpan(semicolonPos, semicolonPos)));
+            addError(new SourceSpan(semicolonPos, semicolonPos), "Expected " + token.explain(), ParseDiagnostic.Code.UNEXPECTED_TOKEN);
         }
     }
 
@@ -188,17 +186,16 @@ public class Parser {
     }
 
     @Contract("_ -> fail")
-    private  <T> T expectFail(String expected) {
-        throw new ParseException("Expected %s, but found %s".formatted(expected, previous().token().explain()), previous().pos());
-    }
-
-    public void addError(ParseException error) {
-        errors.add(error);
+    private <T> T expectFail(String expected) {
+        throw new ParseException(new ParseDiagnostic(previous().pos(),
+                null,
+                "Expected %s, but found %s".formatted(expected, previous().token().explain()),
+                ParseDiagnostic.Code.UNEXPECTED_TOKEN));
     }
 
     public PositionedToken next() {
         if (!hasNext()) {
-            errors.add(new ParseException("Unexpected end of file", new SourceSpan(previous().to(), previous().to())));
+            addError(new SourceSpan(previous().to(), previous().to()), "Unexpected end of file", ParseDiagnostic.Code.EOF);
             throw new EndParsingException();
         }
         return tokens.get(current++);
@@ -212,7 +209,7 @@ public class Parser {
 
     public PositionedToken peek() {
         if (!hasNext()) {
-            errors.add(new ParseException("Unexpected end of file", new SourceSpan(previous().to(), previous().to())));
+            addError(new SourceSpan(previous().to(), previous().to()), "Unexpected end of file", ParseDiagnostic.Code.EOF);
             throw new EndParsingException();
         }
         return tokens.get(current);
@@ -229,13 +226,25 @@ public class Parser {
     }
 
     public Position savePos() {
-        return new Position(current, List.copyOf(errors));
+        return new Position(current, List.copyOf(diagnostics));
     }
 
     public void loadPos(Position pos) {
         current = pos.current;
-        errors.clear();
-        errors.addAll(pos.errors);
+        diagnostics.clear();
+        diagnostics.addAll(pos.errors);
+    }
+
+    public void addError(Diagnostic diagnostic) {
+        diagnostics.add(diagnostic);
+    }
+
+    public void addError(SourceSpan pos, @Nullable ProgramNode node, String message, ParseDiagnostic.Code code) {
+        addError(new ParseDiagnostic(pos, node, message, code));
+    }
+
+    public void addError(SourceSpan pos, String message, ParseDiagnostic.Code code) {
+        addError(pos, null, message, code);
     }
 
     /**
@@ -244,28 +253,47 @@ public class Parser {
     private static class EndParsingException extends RuntimeException {
     }
 
-    public class ParseException extends PositionedException {
-        public final SourceSpan pos;
+    public static class ParseException extends RuntimeException {
+        private final ParseDiagnostic diagnostic;
 
-        public ParseException(String message, SourceSpan pos) {
-            super(Parser.this.config, message);
-            this.pos = pos;
+        public ParseException(ParseDiagnostic diagnostic) {
+            super("Parsers error, should not be visible: " + diagnostic.message);
+            this.diagnostic = diagnostic;
         }
 
-        @Override
-        protected String getBaseMessage() {
-            return "Error while parsing patch";
-        }
-
-        @Override
-        public SourceSpan getPos() {
-            return pos;
+        public ParseDiagnostic diagnostic() {
+            return diagnostic;
         }
     }
 
-    public record Position(int current, List<ParseException> errors) {
+    public record ParseDiagnostic(SourceSpan pos, @Nullable ProgramNode node, String message, Code code) implements Diagnostic {
+        @Override
+        public Kind kind() {
+            return Kind.ERROR;
+        }
+
+        @Override
+        public String id() {
+            return code.id;
+        }
+
+        public enum Code {
+            EOF,
+            INVALID_TOKEN,
+            ILLEGAL_ASSIGNMENT,
+            UNKNOWN_TYPE,
+            DUPLICATE_PARAMETER,
+            ILLEGAL_VARARGS,
+            ILLEGAL_PARAMETER_ORDER,
+            UNEXPECTED_TOKEN;
+
+            private final String id = "PARSE-" + ordinal();
+        }
     }
 
-    public record Result(Program program, PatchMetadata metadata, TreeMetadata treeMetadata, List<ParseException> errors) {
+    public record Position(int current, List<Diagnostic> errors) {
+    }
+
+    public record Result(Program program, PatchMetadata metadata, TreeMetadata treeMetadata) {
     }
 }

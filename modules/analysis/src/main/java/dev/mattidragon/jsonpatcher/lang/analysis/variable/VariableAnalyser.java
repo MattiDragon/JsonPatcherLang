@@ -2,13 +2,12 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
-import org.jspecify.annotations.Nullable;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 
 import java.util.*;
 
@@ -23,10 +22,11 @@ public class VariableAnalyser {
     private final TreeMetadata metadata;
     private final Map<VariableAccessExpression, LazyRef> lazyRefs = new IdentityHashMap<>();
     private final List<Scope> scopes = new ArrayList<>();
-    private final List<AnalysisError> errors = new ArrayList<>();
+    private final DiagnosticsBuilder diagnostics;
 
-    private VariableAnalyser(TreeMetadata metadata) {
+    private VariableAnalyser(TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         this.metadata = metadata;
+        this.diagnostics = diagnostics;
     }
 
     /**
@@ -34,13 +34,14 @@ public class VariableAnalyser {
      * attaching metadata to variable references and returning results.
      * @param program The program to analyse
      * @param metadata The metadata object that variable metadata is added to
+     * @param diagnostics A diagnostic builder to which diagnostics are added
      * @param globals A list of global variable names to consider
      * @return A record containing errors and miscellaneous information
      */
-    public static VariableAnalysis analyse(Program program, TreeMetadata metadata, Collection<String> globals) {
-        var analyser = new VariableAnalyser(metadata);
+    public static VariableAnalysis analyse(Program program, TreeMetadata metadata, DiagnosticsBuilder diagnostics, Collection<String> globals) {
+        var analyser = new VariableAnalyser(metadata, diagnostics);
         analyser.analyse(program, globals);
-        return new VariableAnalysis(Collections.unmodifiableList(analyser.errors), Collections.unmodifiableList(analyser.scopes));
+        return new VariableAnalysis(Collections.unmodifiableList(analyser.scopes));
     }
 
     private void analyse(Program program, Collection<String> globals) {
@@ -54,21 +55,22 @@ public class VariableAnalyser {
             lazyRef.resolve();
             var variable = lazyRef.getValue();
             if (variable == null) {
-                errors.add(new AnalysisError.MissingVariable(lazyRef.getName(), access, metadata.get(access, MetadataKey.MAIN_POS).orElse(null)));
+                diagnostics.addDiagnostic(VariableAnalysisDiagnostic.missingVariable(lazyRef.getName(), metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
                 return;
             }
             variable.addUsage(access);
             metadata.put(access, VARIABLE_REFERENCE, variable);
         });
-        checkIllegalAccess(program);
+        verifyMutations(program);
+        checkUnused();
     }
-    
+
     private void analyseAll(Iterable<? extends ProgramNode> nodes, MutableScope current) {
         for (var node : nodes) {
             analyse(node, current);
         }
     }
-    
+
     private void analyse(ProgramNode node, MutableScope current) {
         switch (node) {
             case BlockStatement block -> {
@@ -163,78 +165,63 @@ public class VariableAnalyser {
                         metadata.put(access, VARIABLE_REFERENCE, variable);
                         variable.addUsage(access);
                     }
-                    case null -> errors.add(new AnalysisError.MissingVariable(access.name(), access, metadata.get(access, MetadataKey.MAIN_POS).orElse(null)));
+                    case null -> diagnostics.addDiagnostic(VariableAnalysisDiagnostic.missingVariable(access.name(), metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
                 }
             }
             case RootExpression expression -> metadata.put(expression, ROOT_REFERENCE, current.root());
             default -> analyseAll(node.getChildren(), current);
         }
     }
-    
-    private void checkIllegalAccess(ProgramNode node) {
+
+    // Side effect: marks mutated variables
+    private void verifyMutations(ProgramNode node) {
         switch (node) {
             case AssignmentExpression(VariableAccessExpression accessExpression, var value, var op) -> checkMutation(accessExpression);
             case UnaryModificationExpression(var postfix, VariableAccessExpression accessExpression, var op) -> checkMutation(accessExpression);
             default -> {}
         }
-        node.getChildren().forEach(this::checkIllegalAccess);
+        node.getChildren().forEach(this::verifyMutations);
     }
 
+    // Side effect: marks mutated variables
     private void checkMutation(VariableAccessExpression accessExpression) {
         var variable = metadata.get(accessExpression, VARIABLE_REFERENCE);
         if (variable.isEmpty()) {
             return;
         }
         if (!variable.get().mutable()) {
-            errors.add(new AnalysisError.IllegalMutation(variable.get().name(), accessExpression, metadata.get(accessExpression, MetadataKey.MAIN_POS).orElse(null)));
+            diagnostics.addDiagnostic(VariableAnalysisDiagnostic.illegalMutation(variable.get().name(), metadata.get(accessExpression, MetadataKey.MAIN_POS).orElse(null), accessExpression));
         }
+        variable.get().markMutated();
     }
 
     private void define(Variable variable, MutableScope scope, ProgramNode node) {
         if (scope.has(variable.name())) {
-            errors.add(new AnalysisError.DuplicateVariable(variable.name(), node, metadata.get(node, MetadataKey.MAIN_POS).orElse(null)));
+            diagnostics.addDiagnostic(VariableAnalysisDiagnostic.duplicateVariable(variable.name(), metadata.get(node, MetadataKey.MAIN_POS).orElse(null), node));
         }
         scope.define(variable);
     }
 
-    public static abstract sealed class AnalysisError {
-        private final String variableName;
-        private final ProgramNode node;
-        private final @Nullable SourceSpan pos;
-        
-        private AnalysisError(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
-            this.variableName = variableName;
-            this.node = node;
-            this.pos = pos;
-        }
+    // Relies on mutation marking from verifyMutations
+    private void checkUnused() {
+        for (var scope : scopes) {
+            for (var variable : scope.variables()) {
+                var definition = variable.definition();
+                // Unused arguments get a pass as they are api
+                if (definition instanceof FunctionArgument) continue;
 
-        public String getVariableName() {
-            return variableName;
-        }
+                var namePos = metadata.get(definition, MetadataKey.NAME_POS)
+                        .or(() -> metadata.get(definition, MetadataKey.MAIN_POS))
+                        .orElse(null);
+                var varKeywordPos = metadata.get(definition, MetadataKey.KEYWORD_POS)
+                        .or(() -> metadata.get(definition, MetadataKey.MAIN_POS))
+                        .orElse(null);
 
-        public ProgramNode getNode() {
-            return node;
-        }
-
-        public @Nullable SourceSpan getPos() {
-            return pos;
-        }
-
-        public static final class MissingVariable extends AnalysisError {
-            private MissingVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
-                super(variableName, node, pos);
-            }
-        }
-        
-        public static final class DuplicateVariable extends AnalysisError {
-            private DuplicateVariable(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
-                super(variableName, node, pos);
-            }
-        }
-        
-        public static final class IllegalMutation extends AnalysisError {
-            private IllegalMutation(String variableName, ProgramNode node, @Nullable SourceSpan pos) {
-                super(variableName, node, pos);
+                if (variable.usages().isEmpty()) {
+                    diagnostics.addDiagnostic(VariableAnalysisDiagnostic.unusedVariable(variable.name(), namePos, definition));
+                } else if (variable.mutable() && !variable.isMutated()) {
+                    diagnostics.addDiagnostic(VariableAnalysisDiagnostic.unnecessaryMutability(variable.name(), varKeywordPos, definition));
+                }
             }
         }
     }

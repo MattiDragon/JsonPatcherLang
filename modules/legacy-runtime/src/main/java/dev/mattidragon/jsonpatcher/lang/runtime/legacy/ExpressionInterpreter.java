@@ -30,7 +30,7 @@ public class ExpressionInterpreter {
             case RootExpression ignored -> context.root();
             case VariableAccessExpression e -> context.variables().getVariable(e.name(), context.getPos(e).orElse(null));
             
-            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression", e.error());
+            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression:\n" + e.diagnostic().toDisplay());
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         };
     }
@@ -52,7 +52,7 @@ public class ExpressionInterpreter {
                     throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                 }
             }
-            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression", e.error());
+            case ErrorExpression e -> throw new IllegalStateException("Tried to use error expression:\n" + e.diagnostic().toDisplay());
             default -> throw new UnsupportedOperationException("Unsupported target: %s".formatted(target));
         }
     }

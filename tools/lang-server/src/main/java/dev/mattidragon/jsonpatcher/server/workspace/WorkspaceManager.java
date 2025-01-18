@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.WorkspaceService;
@@ -10,13 +9,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceManager implements WorkspaceService {
-    private final LangConfig config;
     private final List<String> workspaceFolders = new ArrayList<>();
     private final WorkspaceDocManager docManager;
 
-    public WorkspaceManager(LangConfig config) {
-        this.config = config;
-        docManager = new WorkspaceDocManager(config);
+    public WorkspaceManager() {
+        docManager = new WorkspaceDocManager();
     }
 
     @Override
@@ -57,9 +54,5 @@ public class WorkspaceManager implements WorkspaceService {
     @Override
     public CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> symbol(WorkspaceSymbolParams params) {
         return WorkspaceService.super.symbol(params);
-    }
-
-    public LangConfig getConfig() {
-        return config;
     }
 }

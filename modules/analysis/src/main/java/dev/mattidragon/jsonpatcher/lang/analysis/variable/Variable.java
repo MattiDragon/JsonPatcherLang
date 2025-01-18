@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ public final class Variable implements VariableRef {
     private final ProgramNode definition;
     private final List<ProgramNode> usages = new ArrayList<>();
     private boolean captured = false;
+    private boolean mutated = false;
 
     Variable(String name, boolean mutable, ProgramNode definition) {
         this.name = name;
@@ -31,6 +33,10 @@ public final class Variable implements VariableRef {
         return captured;
     }
 
+    public boolean isMutated() {
+        return mutated;
+    }
+
     public ProgramNode definition() {
         return definition;
     }
@@ -45,5 +51,13 @@ public final class Variable implements VariableRef {
     
     void markCaptured() {
         captured = true;
+    }
+
+    void markMutated() {
+        mutated = true;
+    }
+
+    public boolean stdlib() {
+        return definition instanceof Program;
     }
 }

@@ -4,13 +4,14 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":analysis"))
     implementation(project(":parser"))
     implementation(project(":doctool"))
     implementation(libs.lsp4j)
 }
 
 tasks.jar {
-    manifest.attributes["Main-Class"] = "io.github.mattidragon.jsonpatcher.server.LangServerMain"
+    manifest.attributes["Main-Class"] = "dev.mattidragon.jsonpatcher.server.LangServerMain"
 }
 
 tasks.assemble {

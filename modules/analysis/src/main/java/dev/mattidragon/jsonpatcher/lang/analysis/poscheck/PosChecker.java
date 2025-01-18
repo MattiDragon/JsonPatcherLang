@@ -4,40 +4,38 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 
 /**
  * Validates that source positions are reasonable in a given AST
  */
 public class PosChecker {
     private final TreeMetadata metadata;
-    private final List<PosCheckError> errors = new ArrayList<>();
+    private final DiagnosticsBuilder diagnostics;
 
-    private PosChecker(TreeMetadata metadata) {
+    private PosChecker(TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         this.metadata = metadata;
+        this.diagnostics = diagnostics;
     }
 
-    public static List<PosCheckError> analyse(ProgramNode rootNode, TreeMetadata metadata) {
+    public static void analyse(ProgramNode rootNode, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         // If the root node lacks pos metadata, ignore it
         var fullPos = metadata.get(rootNode, MetadataKey.FULL_POS);
         if (fullPos.isEmpty()) {
-            return List.of(new MissingMetadataError(rootNode, MetadataKey.FULL_POS));
+            diagnostics.addDiagnostic(new MissingMetadataError(rootNode, MetadataKey.FULL_POS));
+            return;
         }
 
-        var checker = new PosChecker(metadata);
+        var checker = new PosChecker(metadata, diagnostics);
         for (var child : rootNode.getChildren()) {
             checker.analyse(child, fullPos.get());
         }
-        return Collections.unmodifiableList(checker.errors);
     }
 
     private void analyse(ProgramNode node, SourceSpan parentSpan) {
         var fullPos = metadata.get(node, MetadataKey.FULL_POS);
         if (fullPos.isEmpty()) {
-            errors.add(new MissingMetadataError(node, MetadataKey.FULL_POS));
+            diagnostics.addDiagnostic(new MissingMetadataError(node, MetadataKey.FULL_POS));
             return;
         }
         var mainPos = metadata.get(node, MetadataKey.MAIN_POS).orElseThrow();
@@ -61,7 +59,7 @@ public class PosChecker {
         if (child.to().row() == parent.to().row() && child.to().column() > parent.to().column()) illegal = true;
 
         if (illegal) {
-            errors.add(new IllegalPosNestingError(node, key, child, parent));
+            diagnostics.addDiagnostic(new IllegalPosNestingError(node, key, child, parent));
         }
     }
 
@@ -74,7 +72,7 @@ public class PosChecker {
         if (from.row() == to.row() && from.column() > to.column()) illegal = true;
 
         if (illegal) {
-            errors.add(new IllegalSourceSpanError(span));
+            diagnostics.addDiagnostic(new IllegalSourceSpanError(span));
         }
 
         return illegal;

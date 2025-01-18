@@ -4,7 +4,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BooleanExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
-import dev.mattidragon.jsonpatcher.lang.ast.expression.Reference;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
@@ -28,9 +27,9 @@ public class StatementParser {
                 statements.add(parse(parser));
             }
         } catch (Parser.ParseException e) {
-            parser.addError(e);
+            parser.addError(e.diagnostic());
             parser.seek(SimpleToken.END_CURLY);
-            return parser.setMetadata(new ErrorStatement(e), MetadataKey.FULL_POS, e.getPos());
+            return parser.setMetadata(new ErrorStatement(e.diagnostic()), MetadataKey.FULL_POS, e.diagnostic().pos());
         }
         parser.expect(SimpleToken.END_CURLY);
         var endPos = parser.previous().to();
@@ -93,7 +92,7 @@ public class StatementParser {
     private static Statement deleteStatement(Parser parser) {
         var keywordPos = parser.next().pos();
         var expression = parser.expression();
-        if (!(expression instanceof Reference ref)) throw parser.new ParseException("Can't delete %s".formatted(expression), keywordPos);
+        var ref = PostfixParser.checkReference(parser, expression, keywordPos);
         parser.expectSoftly(SimpleToken.SEMICOLON);
         var endPos = parser.previous().to();
 
@@ -147,9 +146,9 @@ public class StatementParser {
         try {
             expression = parser.expression();
         } catch (Parser.ParseException e) {
-            parser.addError(e);
+            parser.addError(e.diagnostic());
             parser.seek(SimpleToken.SEMICOLON);
-            return new ErrorStatement(e);
+            return parser.setMetadata(new ErrorStatement(e.diagnostic()), MetadataKey.FULL_POS, e.diagnostic().pos());
         }
 
         parser.expectSoftly(SimpleToken.SEMICOLON);

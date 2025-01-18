@@ -1,14 +1,16 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
 
@@ -16,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class ScriptCompiler {
     public static byte[] compile(Program program, TreeMetadata metadata, CompilerOptions options, Consumer<PreparationContextBuilder> contextBuilder, String scriptName, String className) {
@@ -27,9 +30,11 @@ public class ScriptCompiler {
                 return this;
             }
         });
-        
-        var variableAnalysis = VariableAnalyser.analyse(program, metadata, globals);
-        checkErrors(options.langConfig, variableAnalysis);
+
+        var diagnosticsBuilder = new DiagnosticsBuilder();
+        VariableAnalyser.analyse(program, metadata, diagnosticsBuilder, globals);
+        checkErrors(options.langConfig, diagnosticsBuilder.build());
+
         var functions = new HashMap<FunctionExpression, String>();
         findLambdas(program, functions, "");
 
@@ -42,7 +47,7 @@ public class ScriptCompiler {
         
         return compiler.getBytes();
     }
-    
+
     private static void findLambdas(ProgramNode node, Map<FunctionExpression, String> lambdas, String current) {
         if (node instanceof FunctionDeclarationStatement(String name, FunctionExpression e)) {
             current = name;
@@ -60,26 +65,13 @@ public class ScriptCompiler {
         }
     }
 
-    private static void checkErrors(LangConfig config, VariableAnalysis variableAnalysis) {
-        var errors = variableAnalysis.errors();
-        if (errors.isEmpty()) return;
-        
-        CompilationException e = null;
-        for (var error : errors) {
-            var subException = switch (error) {
-                case VariableAnalyser.AnalysisError.DuplicateVariable duplicateVariable ->
-                        new CompilationException(config, "Variable '%s' would shadow another variable by the same name".formatted(duplicateVariable.getVariableName()), duplicateVariable.getPos());
-                case VariableAnalyser.AnalysisError.MissingVariable missingVariable ->
-                        new CompilationException(config, "Cannot find variable '%s'".formatted(missingVariable.getVariableName()), missingVariable.getPos());
-                case VariableAnalyser.AnalysisError.IllegalMutation illegalMutation ->
-                        new CompilationException(config, "Cannot modify '%s'".formatted(illegalMutation.getVariableName()), illegalMutation.getPos());
-            };
-            if (e == null) {
-                e = subException;
-            } else {
-                e.addSuppressed(subException);
-            }
-        }
-        throw e;
+    private static void checkErrors(LangConfig config, Diagnostics diagnostics) {
+        var errors = diagnostics.errors();
+        if (!errors.iterator().hasNext()) return;
+
+        var errorMsg = errors.stream()
+                .map(Diagnostic::toDisplay)
+                .collect(Collectors.joining("\n"));
+        throw new CompilationException(config, "Variable analysis failed:\n" + errorMsg, null);
     }
 }

@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.server;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.server.document.DocumentManager;
 import dev.mattidragon.jsonpatcher.server.document.SemanticTokenizer;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
@@ -14,8 +13,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class JsonPatcherLanguageServer implements LanguageServer, LanguageClientAware {
     private int statusCode = 1;
-    private final LangConfig config = new LangConfig(LangConfig.StackTraceMode.SHORT);
-    private final WorkspaceManager workspaceManager = new WorkspaceManager(config);
+    private final WorkspaceManager workspaceManager = new WorkspaceManager();
     private final DocumentManager documentService = new DocumentManager(workspaceManager);
     private boolean watchedFilesDynReg;
     private LanguageClient client;

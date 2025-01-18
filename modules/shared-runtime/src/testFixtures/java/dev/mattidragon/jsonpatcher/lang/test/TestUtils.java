@@ -1,15 +1,16 @@
 package dev.mattidragon.jsonpatcher.lang.test;
 
-import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosCheckError;
 import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
 import dev.mattidragon.jsonpatcher.lang.ast.*;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.EmptyStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.Assertions;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class TestUtils {
     public static final SourceFile FILE = new SourceFile("test file", "00");
@@ -149,14 +149,13 @@ public class TestUtils {
     }
 
     public static Expression parseExpression(String code) {
-        var lex = Lexer.lex(CONFIG, code, "test program");
-        if (!lex.errors().isEmpty()) {
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Lexer errors")
-                    .cause(combineErrors(lex.errors()))
-                    .buildAndThrow();
-        }
-        return Parser.parseExpression(CONFIG, lex.tokens());
+        var diagnosticBuilder = new DiagnosticsBuilder();
+
+        var lex = Lexer.lex(code, "test program", diagnosticBuilder);
+        var expression = Parser.parseExpression(lex.tokens(), diagnosticBuilder);
+        checkDiagnostics(diagnosticBuilder.build(), "Parsing errors", false);
+
+        return expression;
     }
 
     public static Program parseProgram(String code) {
@@ -164,36 +163,35 @@ public class TestUtils {
     }
 
     public static Parser.Result parseFull(String code) {
-        var lex = Lexer.lex(CONFIG, code, "test program");
-        if (!lex.errors().isEmpty()) {
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Lexer errors")
-                    .cause(combineErrors(lex.errors()))
-                    .buildAndThrow();
-        }
-        var parse = Parser.parse(CONFIG, lex.tokens());
-        if (!parse.errors().isEmpty()) {
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Parser errors")
-                    .cause(combineErrors(parse.errors()))
-                    .buildAndThrow();
-        }
+        var diagnosticBuilder = new DiagnosticsBuilder();
+
+        var lex = Lexer.lex(code, "test program", diagnosticBuilder);
+        var parse = Parser.parse(lex.tokens(), diagnosticBuilder);
+
+        checkDiagnostics(diagnosticBuilder.build(), "Parsing errors", false);
 
         checkPos(parse.program(), parse.treeMetadata());
         return parse;
     }
 
     private static void checkPos(ProgramNode program, TreeMetadata treeMetadata) {
-        var errors = PosChecker.analyse(program, treeMetadata);
-        if (!errors.isEmpty()) {
-            AssertionFailureBuilder.assertionFailure()
-                    .message("Inconsistent position metadata\n" +
-                             errors.stream()
-                                     .map(PosCheckError::message)
-                                     .map(s -> "  " + s)
-                                     .collect(Collectors.joining("\n")))
-                    .buildAndThrow();
+        var diagnosticBuilder = new DiagnosticsBuilder();
+        PosChecker.analyse(program, treeMetadata, diagnosticBuilder);
+        checkDiagnostics(diagnosticBuilder.build(), "Inconsistent positions", false);
+    }
+
+    public static void checkDiagnostics(Diagnostics diagnostics, String errorMsg, boolean allowWarnings) {
+        var illegal = allowWarnings ? diagnostics.errors() : diagnostics.get(Diagnostic.Kind.ERROR, Diagnostic.Kind.INTERNAL_ERROR, Diagnostic.Kind.WARNING);
+        if (!illegal.iterator().hasNext()) return;
+
+        var wholeString = new StringBuilder("\n");
+        for (var diagnostic : illegal) {
+            wholeString.append(diagnostic.toDisplay()).append('\n');
         }
+        AssertionFailureBuilder.assertionFailure()
+                .message(errorMsg)
+                .reason(wholeString.toString())
+                .buildAndThrow();
     }
 
     private static <T extends Throwable> T combineErrors(Iterable<T> errors) {

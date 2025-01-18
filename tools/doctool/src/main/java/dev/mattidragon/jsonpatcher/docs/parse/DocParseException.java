@@ -1,31 +1,21 @@
 package dev.mattidragon.jsonpatcher.docs.parse;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.error.PositionedException;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import org.jspecify.annotations.Nullable;
 
-public class DocParseException extends PositionedException {
-    @Nullable
-    private final SourceSpan pos;
+public class DocParseException extends RuntimeException {
+    private final DocParseError error;
 
-    protected DocParseException(LangConfig config, String message, @Nullable SourceSpan pos) {
-        super(config, message);
-        this.pos = pos;
+    public DocParseException(String message, SourceSpan pos, DocParseError.Code code) {
+        super(message);
+        this.error = new DocParseError(pos, message, code);
     }
 
-    public DocParseException(LangConfig config, String message, SourcePos pos) {
-        this(config, message, new SourceSpan(pos, pos));
+    public DocParseException(String message, SourcePos pos, DocParseError.Code code) {
+        this(message, new SourceSpan(pos, pos), code);
     }
 
-    @Override
-    protected String getBaseMessage() {
-        return "Error while parsing docs";
-    }
-
-    @Override
-    public @Nullable SourceSpan getPos() {
-        return pos;
+    public DocParseError error() {
+        return error;
     }
 }

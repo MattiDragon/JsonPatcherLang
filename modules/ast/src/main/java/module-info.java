@@ -3,6 +3,7 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module jsonpatcher.lang.ast {
     requires org.jspecify;
+    requires org.jetbrains.annotations;
 
     exports dev.mattidragon.jsonpatcher.lang.ast;
     exports dev.mattidragon.jsonpatcher.lang.ast.expression;

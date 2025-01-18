@@ -8,6 +8,7 @@ module jsonpatcher.lang.runtime.bytecode {
     requires org.jetbrains.annotations;
     requires org.objectweb.asm;
     requires org.jspecify;
+    requires jdk.jshell;
 
     exports dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
     exports dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;

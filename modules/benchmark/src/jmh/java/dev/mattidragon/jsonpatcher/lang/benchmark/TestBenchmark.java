@@ -39,7 +39,7 @@ public class TestBenchmark {
                 return fib($index);
                 """;
 
-        var lex = Lexer.lex(config, code, "fib");
+        var lex = Lexer.lex(code, "fib");
         if (!lex.errors().isEmpty()) {
             var e = new IllegalStateException("Lexer error in benchmark script");
             e.addSuppressed(lex.errors().getFirst());
@@ -47,7 +47,7 @@ public class TestBenchmark {
             throw e;
         }
 
-        var parse = Parser.parse(config, lex.tokens());
+        var parse = Parser.parse(lex.tokens());
         if (!parse.errors().isEmpty()) {
             var e = new IllegalStateException("Parser error in benchmark script");
             e.addSuppressed(parse.errors().getFirst());

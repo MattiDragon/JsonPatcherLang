@@ -1,10 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.parse;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.error.PositionedException;
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -12,19 +13,18 @@ import java.util.List;
 
 public class Lexer {
     public static final int TAB_WIDTH = 4;
-    private final LangConfig config;
     private final SourceFile file;
     private final String program;
+    private final DiagnosticsBuilder diagnostics;
     private final List<PositionedToken> tokens = new ArrayList<>();
-    private final List<Lexer.LexException> errors = new ArrayList<>();
     private int current = 0;
     private int currentLine = 1;
     private int currentColumn = 1;
     private CommentHandler commentHandler = CommentHandler.EMPTY;
 
-    private Lexer(LangConfig config, String program, String filename) {
-        this.config = config;
+    private Lexer(String program, String filename, DiagnosticsBuilder diagnostics) {
         this.program = program;
+        this.diagnostics = diagnostics;
         this.file = new SourceFile(filename, program);
     }
 
@@ -45,23 +45,27 @@ public class Lexer {
                     else if (TokenTree.isStart(c)) readSimpleToken(c);
                     else if (isWordStartChar(c)) readWord(c);
                     else {
-                        addParsedToken(new Token.ErrorToken("Unexpected character: %c (0x%x)".formatted(c, (int) c)), 1);
+                        var token = new Token.ErrorToken("Unexpected character: %c (0x%x)".formatted(c, (int) c));
+                        var from = new SourcePos(file, currentLine, currentColumn - 1);
+                        var to = new SourcePos(file, currentLine, currentColumn - 1);
+                        SourceSpan pos = new SourceSpan(from, to);
+                        diagnostics.addDiagnostic(new LexError(token.error(), pos.from(), LexError.UNEXPECTED_CHAR));
                     }
                 }
             }
-        } catch (Lexer.LexException e) {
-            errors.add(e);
+        } catch (EofMarker e) {
+            diagnostics.addDiagnostic(error("Unexpected end of file", LexError.EOF));
         }
 
-        return new Result(tokens, errors);
+        return new Result(tokens);
     }
 
-    public static Result lex(LangConfig config, String program, String filename) {
-        return new Lexer(config, program, filename).lex();
+    public static Result lex(String program, String filename, DiagnosticsBuilder diagnostics) {
+        return new Lexer(program, filename, diagnostics).lex();
     }
 
-    public static Result lex(LangConfig config, String program, String filename, CommentHandler commentHandler) {
-        var lexer = new Lexer(config, program, filename);
+    public static Result lex(String program, String filename, DiagnosticsBuilder diagnostics, CommentHandler commentHandler) {
+        var lexer = new Lexer(program, filename, diagnostics);
         lexer.commentHandler = commentHandler;
         return lexer.lex();
     }
@@ -102,7 +106,7 @@ public class Lexer {
     private void readSimpleToken(char c) {
         var success = TokenTree.parse(this, c);
         if (!success) {
-            errors.add(error("Unable to parse token", 1));
+            diagnostics.addDiagnostic(error("Unable to parse token", 1, LexError.BROKEN_SIMPLE_TOKEN));
         }
     }
 
@@ -175,10 +179,10 @@ public class Lexer {
                         case '0' -> string.append('\0');
                         case 'x' -> string.append(readUnicodeEscape(2));
                         case 'u' -> string.append(readUnicodeEscape(4));
-                        default -> errors.add(error("Unknown escape sequence: \\%c".formatted(escaped), 1));
+                        default -> diagnostics.addDiagnostic(error("Unknown escape sequence: \\%c".formatted(escaped), 1, LexError.ILLEGAL_ESCAPE));
                     }
                 }
-                case '\n', '\r' -> errors.add(error("Multiline strings aren't supported. Did you forget a quote?"));
+                case '\n', '\r' -> diagnostics.addDiagnostic(error("Multiline strings aren't supported. Did you forget a quote?", LexError.MULTILINE_STRING));
                 default -> string.append(c);
             }
         }
@@ -195,7 +199,7 @@ public class Lexer {
             if (c >= '0' && c <= '9') value += (char) (c - '0');
             else if (c >= 'a' && c <= 'f') value += (char) (c - 'a' + 10);
             else if (c >= 'A' && c <= 'F') value += (char) (c - 'A' + 10);
-            else errors.add(error("Invalid character in unicode escape: %c".formatted(c), 1));
+            else diagnostics.addDiagnostic(error("Invalid character in unicode escape: %c".formatted(c), 1, LexError.ILLEGAL_ESCAPE));
         }
         return value;
     }
@@ -205,12 +209,12 @@ public class Lexer {
     }
 
     public char peek() {
-        if (!hasNext()) throw error("Unexpected end of file");
+        if (!hasNext()) throw new EofMarker();
         return program.charAt(current);
     }
 
     public char next() {
-        if (!hasNext()) throw error("Unexpected end of file");
+        if (!hasNext()) throw new EofMarker();
         var c = program.charAt(current++);
         if (c == '\n') {
             currentLine++;
@@ -229,7 +233,7 @@ public class Lexer {
         var to = new SourcePos(file, currentLine, currentColumn - 1);
         SourceSpan pos = new SourceSpan(from, to);
         if (token instanceof Token.ErrorToken(var error)) {
-            errors.add(new LexException(config, error, pos.from()));
+            diagnostics.addDiagnostic(new LexError(error, pos.from(), LexError.EOF));
         } else {
             tokens.add(new PositionedToken(pos, token));
         }
@@ -245,35 +249,65 @@ public class Lexer {
         currentColumn = pos.currentColumn;
     }
     
-    public LexException error(String message) {
-        return error(message, 0);
+    public Diagnostic error(String message, String id) {
+        return error(message, 0, id);
     }
 
-    public LexException error(String message, int offset) {
-        return new LexException(config, message, new SourcePos(file, currentLine, currentColumn - offset));
+    public Diagnostic error(String message, int offset, String id) {
+        return new LexError(message, new SourcePos(file, currentLine, currentColumn - offset), id);
+    }
+    
+    static class EofMarker extends RuntimeException {
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
     }
 
-    public static class LexException extends PositionedException {
+    public static final class LexError implements Diagnostic {
+        private static final String EOF = "LEX-0";
+        private static final String MULTILINE_STRING = "LEX-1";
+        private static final String ILLEGAL_ESCAPE = "LEX-2";
+        private static final String BROKEN_SIMPLE_TOKEN = "LEX-3";
+        private static final String UNEXPECTED_CHAR = "LEX-4";
+
         private final SourcePos pos;
+        private final String message;
+        private final String id;
         
-        public LexException(LangConfig config, String message, SourcePos pos) {
-            super(config, message);
+        LexError(String message, SourcePos pos, String id) {
             this.pos = pos;
+            this.message = message;
+            this.id = id;
         }
 
         @Override
-        protected String getBaseMessage() {
-            return "Error while parsing tokens";
-        }
-
-        @Override
-        @Nullable
-        public SourceSpan getPos() {
+        public SourceSpan pos() {
             return new SourceSpan(pos, pos);
         }
+
+        @Override
+        public @Nullable ProgramNode node() {
+            return null;
+        }
+
+        @Override
+        public String message() {
+            return message;
+        }
+
+        @Override
+        public String id() {
+            return id;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.ERROR;
+        }
     }
 
-    public record Result(List<PositionedToken> tokens, List<LexException> errors) {
+    public record Result(List<PositionedToken> tokens) {
     }
 
     public record Position(int current, int currentLine, int currentColumn) {}

@@ -1,8 +1,10 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
@@ -25,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class EvaluationEnvironment {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -46,6 +49,8 @@ public class EvaluationEnvironment {
     }
 
     public void bootstrap() {
+        var diagnosticsBuilder = new DiagnosticsBuilder();
+
         for (var name : STD_LIBS) {
             globals.put(name, new Value.ObjectValue());
         }
@@ -61,26 +66,20 @@ public class EvaluationEnvironment {
                 throw new IllegalStateException("Failed to read stdlib " + name, e);
             }
 
-            var lex = Lexer.lex(config, content, "stdlib/" + name + ".jsonpatch");
-            if (!lex.errors().isEmpty()) {
-                var e = new IllegalStateException("Lexer error in stdlib");
-                e.addSuppressed(lex.errors().getFirst());
-                lex.errors().stream().skip(1).forEach(e::addSuppressed);
-                throw e;
-            }
-
-            var parse = Parser.parse(config, lex.tokens());
-            if (!parse.errors().isEmpty()) {
-                var e = new IllegalStateException("Parser error in stdlib");
-                e.addSuppressed(parse.errors().getFirst());
-                parse.errors().stream().skip(1).forEach(e::addSuppressed);
-                throw e;
-            }
+            var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
+            var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
             var instance = classLoader.addScript(parse.program(), parse.treeMetadata(), compilerOptions,
                     "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name);
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
+        }
+
+        var diagnostics = diagnosticsBuilder.build();
+        var errors = diagnostics.errorsAndWarnings();
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException("Failed to bootstrap evaluation environment:\n"
+                + errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n")));
         }
     }
     
@@ -93,20 +92,18 @@ public class EvaluationEnvironment {
     }
     
     public AddedProgram addProgram(String code, String scriptName, String className) {
-        var lex = Lexer.lex(config, code, scriptName);
-        if (!lex.errors().isEmpty()) {
-            var e = new IllegalStateException("Lexer error in script: " + scriptName);
-            e.addSuppressed(lex.errors().getFirst());
-            lex.errors().stream().skip(1).forEach(e::addSuppressed);
-            throw e;
-        }
+        var diagnosticsBuilder = new DiagnosticsBuilder();
 
-        var parse = Parser.parse(config, lex.tokens());
-        if (!parse.errors().isEmpty()) {
-            var e = new IllegalStateException("Parser error in script: " + scriptName);
-            e.addSuppressed(parse.errors().getFirst());
-            parse.errors().stream().skip(1).forEach(e::addSuppressed);
-            throw e;
+        var lex = Lexer.lex(code, scriptName, diagnosticsBuilder);
+        var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
+
+        var diagnostics = diagnosticsBuilder.build();
+        var errors = diagnostics.errorsAndWarnings();
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException("Failed to parse script %s:\n%s".formatted(
+                    scriptName,
+                    errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n"))
+            ));
         }
 
         return addProgram(parse.program(), parse.treeMetadata(), scriptName, className);

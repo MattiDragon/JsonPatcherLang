@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -60,19 +61,17 @@ public class SemanticTokenizer {
         LEGEND = new SemanticTokensLegend(supportedTokens, supportedModifiers);
     }
 
-    private final TreeAnalysis analysis;
     private final DataBuilder builder = new DataBuilder();
     private final TreeMetadata metadata;
 
-    private SemanticTokenizer(TreeAnalysis analysis) {
-        this.analysis = analysis;
-        metadata = analysis.getMetadata();
+    private SemanticTokenizer(DocumentData documentData) {
+        metadata = documentData.treeMetadata();
     }
 
-    public static SemanticTokens getTokens(TreeAnalysis analysis, List<DocEntry> docs) {
-        var tokenizer = new SemanticTokenizer(analysis);
-        tokenizer.tokenizeDocs(docs);
-        tokenizer.tokenize(analysis.getTree());
+    public static SemanticTokens getTokens(DocumentData documentData) {
+        var tokenizer = new SemanticTokenizer(documentData);
+        tokenizer.tokenizeDocs(documentData.docs());
+        tokenizer.tokenize(documentData.program());
         return new SemanticTokens(tokenizer.builder.build());
     }
 
@@ -156,19 +155,19 @@ public class SemanticTokenizer {
                 var modifiers = new ArrayList<String>();
                 String type;
                 
-                var definition = analysis.getVariableDefinition(expression);
-                if (definition != null) {
-                    if (!definition.mutable()) {
+                var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElse(null);
+                if (variable != null) {
+                    if (!variable.mutable()) {
                         modifiers.add(SemanticTokenModifiers.Readonly);
                     }
-                    if (definition.stdlib()) {
+                    if (variable.stdlib()) {
                         modifiers.add(SemanticTokenModifiers.DefaultLibrary);
                     }
-                    type = switch (definition) {
-                        case TreeAnalysis.ImportDefinition __ -> SemanticTokenTypes.Namespace;
-                        case TreeAnalysis.FunctionDefinition __ -> SemanticTokenTypes.Function;
-                        case TreeAnalysis.LocalDefinition __ -> SemanticTokenTypes.Variable;
-                        case TreeAnalysis.ParameterDefinition __ -> SemanticTokenTypes.Parameter;
+                    type = switch (variable.definition()) {
+                        case ImportStatement __ -> SemanticTokenTypes.Namespace;
+                        case FunctionDeclarationStatement __ -> SemanticTokenTypes.Function;
+                        case FunctionArgument __ -> SemanticTokenTypes.Parameter;
+                        default -> SemanticTokenTypes.Variable;
                     };
                 } else {
                     // Assume unknown variables are locals as that's most likely

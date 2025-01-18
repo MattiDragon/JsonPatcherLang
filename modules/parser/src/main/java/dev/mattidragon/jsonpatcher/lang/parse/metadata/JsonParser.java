@@ -25,7 +25,7 @@ class JsonParser {
             case Token.KeywordToken.TRUE -> new MetadataBoolean(true);
             case Token.KeywordToken.FALSE -> new MetadataBoolean(false);
             case Token.KeywordToken.NULL -> MetadataNull.INSTANCE;
-            default -> throw parser.new ParseException("Unexpected token in json: " + token.token(), token.pos());
+            default -> throw new Parser.ParseException(new Parser.ParseDiagnostic(token.pos(), null, "Unexpected token in json: " + token.token().explain(), Parser.ParseDiagnostic.Code.UNEXPECTED_TOKEN));
         };
     }
 

@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
 
@@ -19,13 +19,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceDocManager {
-    private final LangConfig config;
     private final Map<Path, Entry> entries = new HashMap<>();
     private final DocHolder holder;
 
-    public WorkspaceDocManager(LangConfig config) {
-        this.config = config;
-        holder = new DocHolder(config);
+    public WorkspaceDocManager() {
+        holder = new DocHolder();
     }
 
     private static Optional<Path> getPath(String path) {
@@ -99,8 +97,10 @@ public class WorkspaceDocManager {
             var docs = CompletableFuture.<List<DocEntry>>supplyAsync(() -> {
                 try {
                     var code = Files.readString(file);
-                    var docParser = new DocParser(config);
-                    Lexer.lex(config, code, uri, docParser);
+                    // We ignore diagnostics, but still have to collect them
+                    var diagnosticsBuilder = new DiagnosticsBuilder();
+                    var docParser = new DocParser(diagnosticsBuilder);
+                    Lexer.lex(code, uri, diagnosticsBuilder, docParser);
                     return docParser.getEntries();
                 } catch (IOException e) {
                     return List.of();

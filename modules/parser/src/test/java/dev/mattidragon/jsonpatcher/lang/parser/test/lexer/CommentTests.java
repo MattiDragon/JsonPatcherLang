@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.parser.test.lexer;
 
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
@@ -24,7 +25,9 @@ public class CommentTests {
                 
                 # comment at eof
                 """;
-        var result = Lexer.lex(TestUtils.CONFIG, code, "test file");
+        var diagnostics = new DiagnosticsBuilder();
+        var result = Lexer.lex(code, "test file", diagnostics);
+        TestUtils.checkDiagnostics(diagnostics.build(), "Lexer error", false);
         Assertions.assertTrue(result.tokens().isEmpty(), "No tokens should be emitted");
     }
     
@@ -42,6 +45,7 @@ public class CommentTests {
                 
                 # comment at eof
                 """;
+        var diagnostics = new DiagnosticsBuilder();
         var expected = List.of(
                 List.of("Comment", " x2"),
                 List.of(" Comment after empty line", "", " ^ Empty comment"),
@@ -49,8 +53,9 @@ public class CommentTests {
                 List.of(" comment at eof")
         );
         var blocks = new ArrayList<List<String>>();
-        Lexer.lex(TestUtils.CONFIG, code, "test file", block -> blocks.add(block.stream().map(CommentHandler.Comment::text).toList()));
-        
+        Lexer.lex(code, "test file", diagnostics, block -> blocks.add(block.stream().map(CommentHandler.Comment::text).toList()));
+
+        TestUtils.checkDiagnostics(diagnostics.build(), "Lexer error", false);
         Assertions.assertIterableEquals(
                 expected,
                 blocks,

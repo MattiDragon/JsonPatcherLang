@@ -60,7 +60,7 @@ public class PostfixParser {
 
     private static Expression parseUnaryModification(Parser parser, Expression left, PositionedToken token, UnaryExpression.Operator operator) {
         var leftPos = getLeftStartPos(parser, left);
-        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't modify %s".formatted(left), token.pos());
+        var ref = checkReference(parser, left, token.pos());
         var expression = new UnaryModificationExpression(true, ref, operator);
         parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
         parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
@@ -69,12 +69,25 @@ public class PostfixParser {
 
     private static Expression parseAssignment(Parser parser, Expression left, PositionedToken token, BinaryExpression.Operator operator) {
         var leftPos = getLeftStartPos(parser, left);
-        if (!(left instanceof Reference ref)) throw parser.new ParseException("Can't assign to %s".formatted(left), token.pos());
+        var ref = checkReference(parser, left, token.pos());
         var right = parser.expression(Precedence.ROOT);
         var expression = new AssignmentExpression(ref, right, operator);
         parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
         parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
         return expression;
+    }
+
+    public static Reference checkReference(Parser parser, Expression candidate, SourceSpan pos) {
+        Reference ref;
+        if (candidate instanceof Reference ref1) {
+            ref = ref1;
+        } else {
+            var message = "%s is not assignable".formatted(candidate.getClass().getSimpleName());
+            var diagnostic = new Parser.ParseDiagnostic(pos, candidate, message, Parser.ParseDiagnostic.Code.ILLEGAL_ASSIGNMENT);
+            parser.addError(diagnostic);
+            ref = new ErrorExpression(diagnostic, candidate);
+        }
+        return ref;
     }
 
     private static Expression parseFunctionCall(Parser parser, Expression left, PositionedToken token) {
@@ -101,15 +114,19 @@ public class PostfixParser {
         var typeToken = parser.next().token();
         var typePos = parser.previous().pos();
         var type = getIsInstanceType(typeToken);
+        Expression expression;
         if (type != null) {
-            var expression = new IsInstanceExpression(left, type);
-            parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
-            parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
-            parser.setMetadata(expression, MetadataKey.IS_TYPE_POS, typePos);
-            return expression;
+            expression = new IsInstanceExpression(left, type);
         } else {
-            throw parser.new ParseException("Expected type name, got %s".formatted(typeToken.explain()), token.pos());
+            var message = "Expected valid type name, got %s".formatted(typeToken.explain());
+            var diagnostic = new Parser.ParseDiagnostic(token.pos(), null, message, Parser.ParseDiagnostic.Code.UNKNOWN_TYPE);
+            parser.addError(diagnostic);
+            expression = new ErrorExpression(diagnostic, left);
         }
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
+        parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.IS_TYPE_POS, typePos);
+        return expression;
     }
 
     private static @Nullable ValueType getIsInstanceType(Token typeToken) {
@@ -251,7 +268,7 @@ public class PostfixParser {
             }
             default:
                 if (simpleToken == Token.SimpleToken.ARROW) {
-                    throw parser.new ParseException("Unexpected arrow, did you mean to put parentheses around your function arguments?", parser.next().pos());
+                    parser.addError(parser.next().pos(), "Unexpected arrow, did you mean to put parentheses around your function arguments?", Parser.ParseDiagnostic.Code.UNEXPECTED_TOKEN);
                 }
                 return null;
         }

@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.parse;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 
@@ -9,18 +8,16 @@ import java.util.ArrayList;
 
 public class TypeParser {
     private final SourcePos pos;
-    private final LangConfig config;
     private final String text;
     private int index = 0;
 
-    public TypeParser(SourcePos pos, LangConfig config, String text) {
+    public TypeParser(SourcePos pos, String text) {
         this.pos = pos;
-        this.config = config;
         this.text = text;
     }
 
-    public static DocType parse(String text, LangConfig config, SourcePos pos) {
-        var parser = new TypeParser(pos, config, text);
+    public static DocType parse(String text, SourcePos pos) {
+        var parser = new TypeParser(pos, text);
         return parser.type();
     }
     
@@ -48,7 +45,7 @@ public class TypeParser {
             case '[' -> array();
             case '{' -> object();
             case Character c when isNameChar(c) -> name();
-            case Character c -> throw new DocParseException(config, "Unexpected character in type expression: '%s'".formatted(c), pos(0));
+            case Character c -> throw new DocParseException("Unexpected character in type expression: '%s'".formatted(c), pos(0), DocParseError.Code.UNEXPECTED_CHARACTER);
         };
     }
 
@@ -90,7 +87,7 @@ public class TypeParser {
             var type = type();
             args.add(new DocType.Function.Argument(name, type, optional, varargs, new SourceSpan(nameStart, nameEnd), operatorPoses));
             skipWhitespace();
-            if (!hasNext()) throw new DocParseException(config, "EOL in function arguments", pos());
+            if (!hasNext()) throw new DocParseException("EOL in function arguments", pos(), DocParseError.Code.EOL);
             switch (peek()) {
                 case ',' -> {
                     next();
@@ -100,7 +97,7 @@ public class TypeParser {
                 case ')' -> {
                     break argLoop;
                 }
-                default -> throw new DocParseException(config, "Unexpected char in function arguments: '%s'".formatted(peek()), pos());
+                default -> throw new DocParseException("Unexpected char in function arguments: '%s'".formatted(peek()), pos(), DocParseError.Code.UNEXPECTED_CHARACTER);
             }
         }
         expect(')');
@@ -176,7 +173,7 @@ public class TypeParser {
     }
     
     private void expect(char c) {
-        if (!hasNext() || next() != c) throw new DocParseException(config, "Expected '%s'".formatted(c), pos());
+        if (!hasNext() || next() != c) throw new DocParseException("Expected '%s'".formatted(c), pos(), DocParseError.Code.UNEXPECTED_CHARACTER);
     }
     
     private SourcePos pos() {

@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
 
@@ -28,7 +28,6 @@ public class DocHolder {
             "arrays.jsonpatch", "debug.jsonpatch", "functions.jsonpatch",
             "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch"
     );
-    private final LangConfig config;
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final CompletableFuture<Void> stdlibFuture;
@@ -36,8 +35,7 @@ public class DocHolder {
     private Map<String, ModuleData> moduleLookup = new HashMap<>();
     private Map<String, TypeData> typeLookup = new HashMap<>();
 
-    public DocHolder(LangConfig config) {
-        this.config = config;
+    public DocHolder() {
         stdlibFuture = loadStdlib();
     }
 
@@ -84,9 +82,11 @@ public class DocHolder {
 
                 var path = tempDirectory.resolve(fileName);
                 Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
-                
-                var docParser = new DocParser(config);
-                Lexer.lex(config, Files.readString(path), path.toUri().toASCIIString(), docParser);
+
+                // We ignore diagnostics here, but still need to collect them
+                var diagnosticBuilder = new DiagnosticsBuilder();
+                var docParser = new DocParser(diagnosticBuilder);
+                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), diagnosticBuilder, docParser);
                 
                 return buildFile(path.toUri().toASCIIString(), docParser.getEntries());
             } catch (IOException e) {
