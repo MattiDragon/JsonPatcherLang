@@ -1,4 +1,4 @@
-#| module functions
+#| global module functions
 #| Provides utilities for working with functions. 
 #| Some of the can be used as methods on function objects.
 

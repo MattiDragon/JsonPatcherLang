@@ -7,31 +7,32 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import java.util.ArrayList;
 
 public class TypeParser {
-    private final SourcePos pos;
-    private final String text;
-    private int index = 0;
+    private final ParseTool parseTool;
 
-    public TypeParser(SourcePos pos, String text) {
-        this.pos = pos;
-        this.text = text;
+    public TypeParser(ParseTool parseTool) {
+        this.parseTool = parseTool;
     }
 
     public static DocType parse(String text, SourcePos pos) {
-        var parser = new TypeParser(pos, text);
+        return parse(new ParseTool(text, pos));
+    }
+
+    public static DocType parse(ParseTool parseTool) {
+        var parser = new TypeParser(parseTool);
         return parser.type();
     }
-    
+
     private DocType type() {
         var types = new ArrayList<DocType>();
         var separators = new ArrayList<SourcePos>();
         types.add(atom());
-        skipWhitespace();
-        
-        while (hasNext() && peek() == '|') {
-            next();
-            separators.add(pos());
+        parseTool.skipWhitespace();
+
+        while (parseTool.hasNext() && parseTool.peek() == '|') {
+            parseTool.next();
+            separators.add(parseTool.pos(-1));
             types.add(atom());
-            skipWhitespace();
+            parseTool.skipWhitespace();
         }
         
         if (types.size() == 1) return types.getFirst();
@@ -39,100 +40,94 @@ public class TypeParser {
     }
     
     private DocType atom() {
-        skipWhitespace();
-        return switch ((Character) peek()) {
+        parseTool.skipWhitespace();
+        return switch ((Character) parseTool.peek()) {
             case '(' -> function();
             case '[' -> array();
             case '{' -> object();
-            case Character c when isNameChar(c) -> name();
-            case Character c -> throw new DocParseException("Unexpected character in type expression: '%s'".formatted(c), pos(0), DocParseError.Code.UNEXPECTED_CHARACTER);
+            case Character c when ParseTool.isWordChar(c) -> name();
+            case Character c -> throw new DocParseException("Unexpected character in type expression: '%s'".formatted(c), parseTool.pos(0), DocParseError.Code.UNEXPECTED_CHARACTER);
         };
-    }
-
-    private static boolean isNameChar(Character c) {
-        return c >= 'a' && c <= 'z'
-               || c >= 'A' && c <= 'Z'
-               || c >= '0' && c <= '9'
-               || c == '_';
     }
 
     private DocType function() {
         var functionOperatorPoses = new ArrayList<SourceSpan>();
-        expect('(');
-        functionOperatorPoses.add(pos().toSpan());
-        skipWhitespace();
-        
+        parseTool.expect('(');
+        functionOperatorPoses.add(parseTool.pos(-1).toSpan());
+        parseTool.skipWhitespace();
+
         var args = new ArrayList<DocType.Function.Argument>();
         argLoop:
-        while (hasNext() && isNameChar(peek())) {
-            var nameStart = pos(0);
+        while (true) {
+            if (!(parseTool.hasNext() && ParseTool.isWordChar(parseTool.peek()))) break;
+            var nameStart = parseTool.pos(0);
             var name = readString();
-            var nameEnd = pos();
+            var nameEnd = parseTool.pos(-1);
             var operatorPoses = new ArrayList<SourcePos>();
             var optional = false;
             var varargs = false;
-            skipWhitespace();
-            if (hasNext() && peek() == '?') {
+            parseTool.skipWhitespace();
+            if (parseTool.hasNext() && parseTool.peek() == '?') {
                 optional = true;
-                next();
-                operatorPoses.add(pos());
-            } else if (hasNext() && peek() == '*') {
-                varargs = true;
-                next();
-                operatorPoses.add(pos());
+                parseTool.next();
+                operatorPoses.add(parseTool.pos(-1));
+            } else {
+                if (parseTool.hasNext() && parseTool.peek() == '*') {
+                    varargs = true;
+                    parseTool.next();
+                    operatorPoses.add(parseTool.pos(-1));
+                }
             }
-            skipWhitespace();
-            expect(':');
-            operatorPoses.add(pos());
+            parseTool.skipWhitespace();
+            parseTool.expect(':');
+            operatorPoses.add(parseTool.pos(-1));
             var type = type();
             args.add(new DocType.Function.Argument(name, type, optional, varargs, new SourceSpan(nameStart, nameEnd), operatorPoses));
-            skipWhitespace();
-            if (!hasNext()) throw new DocParseException("EOL in function arguments", pos(), DocParseError.Code.EOL);
-            switch (peek()) {
+            parseTool.skipWhitespace();
+            if (!parseTool.hasNext()) throw new DocParseException("EOL in function arguments", parseTool.pos(-1), DocParseError.Code.EOL);
+            switch (parseTool.peek()) {
                 case ',' -> {
-                    next();
-                    operatorPoses.add(pos());
-                    skipWhitespace();
+                    parseTool.next();
+                    operatorPoses.add(parseTool.pos(-1));
+                    parseTool.skipWhitespace();
                 }
                 case ')' -> {
                     break argLoop;
                 }
-                default -> throw new DocParseException("Unexpected char in function arguments: '%s'".formatted(peek()), pos(), DocParseError.Code.UNEXPECTED_CHARACTER);
+                default -> throw new DocParseException("Unexpected char in function arguments: '%s'".formatted(parseTool.peek()), parseTool.pos(-1), DocParseError.Code.UNEXPECTED_CHARACTER);
             }
         }
-        expect(')');
-        functionOperatorPoses.add(pos().toSpan());
-        skipWhitespace();
-        expect('-');
-        expect('>');
-        functionOperatorPoses.add(new SourceSpan(pos(-2), pos(-1)));
+        parseTool.expect(')');
+        functionOperatorPoses.add(parseTool.pos(-1).toSpan());
+        parseTool.skipWhitespace();
+        parseTool.expect('-');
+        parseTool.expect('>');
+        functionOperatorPoses.add(new SourceSpan(parseTool.pos(-2), parseTool.pos(-1)));
         var returnType = type();
         return new DocType.Function(returnType, args, functionOperatorPoses);
     }
     
     private DocType array() {
-        expect('[');
-        skipWhitespace();
+        parseTool.expect('[');
+        parseTool.skipWhitespace();
         var type = type();
-        skipWhitespace();
-        expect(']');
+        parseTool.skipWhitespace();
+        parseTool.expect(']');
         return new DocType.Array(type);
     }
     
     private DocType object() {
-        expect('{');
-        skipWhitespace();
+        parseTool.expect('{');
+        parseTool.skipWhitespace();
         var type = type();
-        skipWhitespace();
-        expect('}');
+        parseTool.skipWhitespace();
+        parseTool.expect('}');
         return new DocType.Object(type);
     }
     
     private DocType name() {
-        var start = pos(0);
         var name = readString();
-        var end = pos();
-        var pos = new SourceSpan(start, end);
+        var pos = parseTool.span();
         return switch (name) {
             case "any" -> new DocType.Special(DocType.SpecialKind.ANY, pos);
             case "number" -> new DocType.Special(DocType.SpecialKind.NUMBER, pos);
@@ -147,40 +142,7 @@ public class TypeParser {
     }
 
     private String readString() {
-        var name = new StringBuilder();
-        while (hasNext() && isNameChar(peek())) {
-            name.append(next());
-        }
-        return name.toString();
+        return parseTool.readWord();
     }
 
-    private void skipWhitespace() {
-        while (hasNext() && peek() == ' ') {
-            next();
-        }
-    }
-    
-    private boolean hasNext() {
-        return index < text.length();
-    }
-    
-    private char peek() {
-        return text.charAt(index);
-    }
-    
-    private char next() {
-        return text.charAt(index++);
-    }
-    
-    private void expect(char c) {
-        if (!hasNext() || next() != c) throw new DocParseException("Expected '%s'".formatted(c), pos(), DocParseError.Code.UNEXPECTED_CHARACTER);
-    }
-    
-    private SourcePos pos() {
-        return pos(-1);
-    }
-    
-    private SourcePos pos(int offset) {
-        return pos.offset(index + offset);
-    }
 }

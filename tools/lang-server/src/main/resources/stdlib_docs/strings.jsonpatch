@@ -1,4 +1,4 @@
-#| module strings
+#| global module strings
 #| Provides utilities for manipulating strings. Many of the methods in this module can be used as methods.
 
 #| value strings.matches: (string: string, regex: string) -> boolean

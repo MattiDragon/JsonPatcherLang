@@ -8,17 +8,9 @@ import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DocParser implements CommentHandler {
-    // Regex for parsing comment headers. Works by first checking the kind of header in a capture group and then using lookbehind to parse based on that.
-    // This allows use to capture the kind in a single group, which wouldn't be possible if the capture was with the parsing.
-    //                                    The kind of doc comment      If kind is type, parse type                            If kind is value, parse value                                              If kind is module, parse module
-    //                                   |------------------------|   |----------------------------------------------------| |------------------------------------------------------------------------| |------------------------------------------------------------------|
-    private static final String REGEX = "(?<kind>type|value|module)(?:(?<=type) *(?<typename>\\w+) *: *(?<typedefinition>.+)|(?<=value) *(?<owner>\\w+)\\.(?<valuename>\\w+) *: *(?<valuedefinition>.+)|(?<=module) *(?<modulename>\\w+)(?: +at +\"(?<modulelocation>.+)\")?)";
-    private static final Pattern HEADER_PATTERN = Pattern.compile(REGEX);
     private final List<DocEntry> entries = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
 
@@ -68,39 +60,100 @@ public class DocParser implements CommentHandler {
     }
 
     private DocEntry parseEntry(CommentHandler.Comment header, String body) {
-        var matcher = HEADER_PATTERN.matcher(header.text());
-        var headerSpan = new SourceSpan(header.start(), header.start().offset(header.text().length()));
-
-        if (!matcher.matches()) {
-            throw new DocParseException("Failed to parse comment header", headerSpan, DocParseError.Code.INVALID_HEADER);
+        var parseTool = new ParseTool(header.text(), header.start());
+        parseTool.skipWhitespace();
+        var entryType = parseTool.readWord();
+        var entryTypePos = parseTool.span();
+        switch (entryType) {
+            case "type" -> {
+                parseTool.skipWhitespace();
+                var name = parseTool.readWord();
+                var namePos = parseTool.span();
+                parseTool.skipWhitespace();
+                parseTool.expect(':');
+                parseTool.skipWhitespace();
+                var definition = TypeParser.parse(parseTool);
+                parseTool.expectEol();
+                return new DocEntry.Type(name, definition, body, namePos);
+            }
+            case "value" -> {
+                parseTool.skipWhitespace();
+                var owner = parseTool.readWord();
+                var ownerPos = parseTool.span();
+                parseTool.expect('.');
+                var name = parseTool.readWord();
+                var namePos = parseTool.span();
+                parseTool.skipWhitespace();
+                parseTool.expect(':');
+                parseTool.skipWhitespace();
+                var definition = TypeParser.parse(parseTool);
+                parseTool.expectEol();
+                return new DocEntry.Value(owner, name, definition, body, ownerPos, namePos);
+            }
+            case "module" -> {
+                parseTool.skipWhitespace();
+                var name = parseTool.readWord();
+                var namePos = parseTool.span();
+                parseTool.skipWhitespace();
+                var location = name;
+                SourceSpan locationPos = null;
+                if (parseTool.hasNext()) {
+                    parseTool.expectWord("at");
+                    parseTool.skipWhitespace();
+                    location = parseTool.readString();
+                    locationPos = parseTool.span();
+                }
+                parseTool.expectEol();
+                return new DocEntry.Module(name, location, body, namePos, locationPos);
+            }
+            case "global" -> {
+                parseTool.skipWhitespace();
+                var globalEntryType = parseTool.readWord();
+                var globalEntryTypePos = parseTool.span();
+                switch (globalEntryType) {
+                    case "value" -> {
+                        parseTool.skipWhitespace();
+                        var name = parseTool.readWord();
+                        var namePos = parseTool.span();
+                        parseTool.skipWhitespace();
+                        parseTool.expect(':');
+                        parseTool.skipWhitespace();
+                        var definition = TypeParser.parse(parseTool);
+                        parseTool.skipWhitespace();
+                        var requiredMetadata = readRequiresClause(parseTool);
+                        parseTool.expectEol();
+                        return new DocEntry.GlobalValue(name, definition, body, namePos, requiredMetadata);
+                    }
+                    case "module" -> {
+                        parseTool.skipWhitespace();
+                        var name = parseTool.readWord();
+                        var namePos = parseTool.span();
+                        var requiredMetadata = readRequiresClause(parseTool);
+                        parseTool.expectEol();
+                        return new DocEntry.GlobalModule(name, body, namePos, requiredMetadata);
+                    }
+                    default -> throw new DocParseException("Unknown doc entry type: global " + globalEntryType, globalEntryTypePos, DocParseError.Code.UNKNOWN_ENTRY_TYPE);
+                }
+            }
+            default -> throw new DocParseException("Unknown doc entry type: " + entryType, entryTypePos, DocParseError.Code.UNKNOWN_ENTRY_TYPE);
         }
-
-        return switch (matcher.group("kind")) {
-            case "type" -> new DocEntry.Type(
-                    matcher.group("typename"),
-                    TypeParser.parse(matcher.group("typedefinition"), groupPos(header, matcher, "typedefinition").from()),
-                    body,
-                    groupPos(header, matcher, "typename"));
-            case "value" -> new DocEntry.Value(
-                    matcher.group("owner"),
-                    matcher.group("valuename"),
-                    TypeParser.parse(matcher.group("valuedefinition"), groupPos(header, matcher, "valuedefinition").from()),
-                    body,
-                    groupPos(header, matcher, "owner"),
-                    groupPos(header, matcher, "valuename"));
-            case "module" -> new DocEntry.Module(
-                    matcher.group("modulename"),
-                    matcher.group("modulelocation") != null ? matcher.group("modulelocation") : matcher.group("modulename"),
-                    body,
-                    groupPos(header, matcher, "modulename"),
-                    matcher.group("modulelocation") != null ? groupPos(header, matcher, "modulelocation") : null
-            );
-            default -> throw new IllegalStateException("Regex produced impossible capture group");
-        };
     }
-    
-    private SourceSpan groupPos(CommentHandler.Comment header, Matcher matcher, String group) {
-        var start = header.start();
-        return new SourceSpan(start.offset(matcher.start(group)), start.offset(matcher.end(group) - 1));
+
+    private static ArrayList<String> readRequiresClause(ParseTool parseTool) {
+        var requiredMetadata = new ArrayList<String>();
+        parseTool.skipWhitespace();
+        if (parseTool.hasNext()) {
+            parseTool.expectWord("requires");
+            parseTool.skipWhitespace();
+            requiredMetadata.add(parseTool.readWord());
+            parseTool.skipWhitespace();
+            while (parseTool.hasNext() && parseTool.peek() == ',') {
+                parseTool.next();
+                parseTool.skipWhitespace();
+                requiredMetadata.add(parseTool.readWord());
+                parseTool.skipWhitespace();
+            }
+        }
+        return requiredMetadata;
     }
 }

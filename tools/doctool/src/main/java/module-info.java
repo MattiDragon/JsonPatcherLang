@@ -7,6 +7,7 @@ module jsonpatcher.tools.doctool {
     requires org.commonmark.ext.gfm.strikethrough;
     requires org.commonmark.ext.gfm.tables;
     requires org.jspecify;
+    requires org.jetbrains.annotations;
 
     exports dev.mattidragon.jsonpatcher.docs;
     exports dev.mattidragon.jsonpatcher.docs.data;

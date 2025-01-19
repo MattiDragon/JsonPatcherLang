@@ -24,6 +24,8 @@ public record DocParseError(SourceSpan pos, String message, Code code) implement
     public enum Code {
         INVALID_HEADER,
         UNEXPECTED_CHARACTER,
-        EOL
+        EOL,
+        TRAILING_DATA,
+        UNKNOWN_ENTRY_TYPE
     }
 }

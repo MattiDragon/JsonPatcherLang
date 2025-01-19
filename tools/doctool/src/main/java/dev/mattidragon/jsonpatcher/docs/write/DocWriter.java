@@ -17,6 +17,8 @@ public class DocWriter {
     public static final Parser DEFAULT_PARSER = Parser.builder().extensions(DEFAULT_EXTENSIONS).build();
     private final List<OutputType> types = new ArrayList<>();
     private final List<OutputModule> modules = new ArrayList<>();
+    private final List<OutputGlobalModule> globalModules = new ArrayList<>();
+    private final List<DocEntry.GlobalValue> globalValues = new ArrayList<>();
 
     private int headingLevel = 1;
     private Parser parser = DEFAULT_PARSER;
@@ -25,18 +27,21 @@ public class DocWriter {
 
     public DocWriter(List<DocEntry> entries) {
         var values = new ArrayList<DocEntry.Value>();
-        
+
         for (var entry : entries) {
             switch (entry) {
                 case DocEntry.Module module -> modules.add(new OutputModule(module, new ArrayList<>()));
                 case DocEntry.Type type -> types.add(new OutputType(type, new ArrayList<>()));
                 case DocEntry.Value value -> values.add(value);
+                case DocEntry.GlobalModule globalModule -> globalModules.add(new OutputGlobalModule(globalModule, new ArrayList<>()));
+                case DocEntry.GlobalValue globalValue -> globalValues.add(globalValue);
             }
         }
 
         var owners = new LinkedHashMap<String, Owner>();
         types.forEach(type -> owners.put(type.entry().name(), type));
         modules.forEach(module -> owners.put(module.entry().name(), module));
+        globalModules.forEach(module -> owners.put(module.entry().name(), module));
 
         for (var value : values) {
             var owner = owners.get(value.owner());
@@ -68,6 +73,13 @@ public class DocWriter {
     }
 
     public void buildDocument(Node document) {
+        for (var module : globalModules) {
+            writeEntry(document, module.entry());
+            writeValues(document, module.values());
+        }
+        for (var value : globalValues) {
+            writeEntry(document, value);
+        }
         for (var module : modules) {
             writeEntry(document, module.entry());
             writeValues(document, module.values());
@@ -96,6 +108,18 @@ public class DocWriter {
                 writeTypeDefinition(document, value.definition());
                 document.appendChild(parser.parse(value.description()));
             }
+            case DocEntry.GlobalModule module -> {
+                writeHeader(document, "Global Module", module.name(), "", headingLevel);
+                addGlobalExplainer(document, module);
+                document.appendChild(parser.parse(module.description()));
+            }
+            case DocEntry.GlobalValue value -> {
+                var heading = value.definition().isFunction() ? "Global function" : "Global value";
+                writeHeader(document, heading, value.name(), value.definition().format(), valueSubHeaders ? headingLevel + 1 : headingLevel);
+                writeTypeDefinition(document, value.definition());
+                addGlobalExplainer(document, value);
+                document.appendChild(parser.parse(value.description()));
+            }
         }
     }
 
@@ -106,6 +130,22 @@ public class DocWriter {
         var emp = new Emphasis();
         emp.appendChild(new Text("Available at "));
         emp.appendChild(new Code("\"" + entry.location() + "\""));
+        location.appendChild(emp);
+        document.appendChild(location);
+    }
+
+    private static void addGlobalExplainer(Node document, DocEntry.Global entry) {
+        var location = new Paragraph();
+        var emp = new Emphasis();
+        var text = entry.requiredMetadata().isEmpty() ? "Available as a global variable"
+                : "Available as a global variable with metadata set: ";
+        emp.appendChild(new Text(text));
+        var first = true;
+        for (var metadata : entry.requiredMetadata()) {
+            if (!first) emp.appendChild(new Text(","));
+            else first = false;
+            emp.appendChild(new Code("@" + metadata));
+        }
         location.appendChild(emp);
         document.appendChild(location);
     }
@@ -156,4 +196,5 @@ public class DocWriter {
     
     record OutputModule(DocEntry.Module entry, List<DocEntry.Value> values) implements Owner {}
     record OutputType(DocEntry.Type entry, List<DocEntry.Value> values) implements Owner {}
+    record OutputGlobalModule(DocEntry.GlobalModule entry, List<DocEntry.Value> values) implements Owner {}
 }

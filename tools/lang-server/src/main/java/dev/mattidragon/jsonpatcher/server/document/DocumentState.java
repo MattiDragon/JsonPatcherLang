@@ -8,24 +8,25 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 public class DocumentState {
-    // TODO: replace with dynamic globals from docs
-    private static final List<String> GLOBALS = Arrays.asList("debug", "math", "objects", "arrays", "functions", "strings");
-
     private final String name;
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
+    private final Supplier<Map<String, DocHolder.GlobalData>> globalsGetter;
+    private final DocHolder docHolder;
 
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
@@ -33,6 +34,8 @@ public class DocumentState {
         this.name = name;
         this.client = client;
         this.definitionFinder = new DefinitionFinder(() -> data, workspace, name);
+        docHolder = workspace.getDocManager().getHolder();
+        this.globalsGetter = docHolder::getGlobals;
     }
 
     public void updateContent(String content) {
@@ -44,8 +47,15 @@ public class DocumentState {
             var parseResult = Parser.parse(tokens, diagnostics);
             var program = parseResult.program();
             var treeMetadata = parseResult.treeMetadata();
+            var metadata = parseResult.metadata();
 
-            VariableAnalyser.analyse(program, treeMetadata, diagnostics, GLOBALS);
+            var globals = globalsGetter.get()
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> entry.getValue().entry().requiredMetadata().stream().allMatch(metadata::has))
+                    .map(Map.Entry::getKey)
+                    .toList();
+            VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
             var lookups = Lookups.get(program, treeMetadata);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
@@ -78,7 +88,7 @@ public class DocumentState {
     }
 
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return data.thenApplyAsync(SemanticTokenizer::getTokens, Util.EXECUTOR);
+        return data.thenApplyAsync(documentData -> SemanticTokenizer.getTokens(documentData, docHolder), Util.EXECUTOR);
     }
 
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {

@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -13,6 +14,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
+import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokens;
@@ -63,13 +65,15 @@ public class SemanticTokenizer {
 
     private final DataBuilder builder = new DataBuilder();
     private final TreeMetadata metadata;
+    private final DocHolder docHolder;
 
-    private SemanticTokenizer(DocumentData documentData) {
+    private SemanticTokenizer(DocumentData documentData, DocHolder docHolder) {
         metadata = documentData.treeMetadata();
+        this.docHolder = docHolder;
     }
 
-    public static SemanticTokens getTokens(DocumentData documentData) {
-        var tokenizer = new SemanticTokenizer(documentData);
+    public static SemanticTokens getTokens(DocumentData documentData, DocHolder docHolder) {
+        var tokenizer = new SemanticTokenizer(documentData, docHolder);
         tokenizer.tokenizeDocs(documentData.docs());
         tokenizer.tokenize(documentData.program());
         return new SemanticTokens(tokenizer.builder.build());
@@ -94,6 +98,14 @@ public class SemanticTokenizer {
                     builder.addToken(value.namePos(), type, SemanticTokenModifiers.Declaration);
                     builder.addToken(value.ownerPos(), SemanticTokenTypes.Namespace);
                     tokenizeDocType(value.definition());
+                }
+                case DocEntry.GlobalModule globalModule -> {
+                    builder.addToken(globalModule.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
+                }
+                case DocEntry.GlobalValue globalValue -> {
+                    var type = globalValue.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
+                    builder.addToken(globalValue.namePos(), type, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(globalValue.definition());
                 }
             }
         }
@@ -167,6 +179,13 @@ public class SemanticTokenizer {
                         case ImportStatement __ -> SemanticTokenTypes.Namespace;
                         case FunctionDeclarationStatement __ -> SemanticTokenTypes.Function;
                         case FunctionArgument __ -> SemanticTokenTypes.Parameter;
+                        case Program __ -> {
+                            var globalDocData = docHolder.getGlobal(variable.name()).orElse(null);
+                            if (globalDocData instanceof DocHolder.GlobalModuleData) {
+                                yield SemanticTokenTypes.Namespace;
+                            }
+                            yield SemanticTokenTypes.Variable;
+                        }
                         default -> SemanticTokenTypes.Variable;
                     };
                 } else {

@@ -1,4 +1,4 @@
-#| module debug
+#| global module debug
 #| Provides various functions for debugging code.
 
 #| value debug.assert: (value: any, message?: string) -> null

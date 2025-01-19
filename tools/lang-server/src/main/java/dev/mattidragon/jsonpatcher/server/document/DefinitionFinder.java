@@ -92,9 +92,9 @@ public class DefinitionFinder {
                     if (variable.definition() instanceof Program) {
                         workspace.getDocManager()
                                 .getHolder()
-                                .getStdlibModule(variable.name())
-                                .map(DocHolder.ModuleData::entry)
-                                .map(DocEntry.Module::namePos)
+                                .getGlobal(variable.name())
+                                .map(DocHolder.GlobalData::entry)
+                                .map(DocEntry.Global::namePos)
                                 .map(DocumentState::spanToLocation)
                                 .ifPresent(consumer);
                     } else {
@@ -214,7 +214,7 @@ public class DefinitionFinder {
     private Optional<DocEntry> getVariableDocs(Lookups lookups, SourcePos pos) {
         return Optional.ofNullable(lookups.variableReferences().getFirstAt(pos))
                 .flatMap(this::getDocs)
-                .map(DocHolder.OwnerData::entry);
+                .map(DocHolder.DocsData::entry);
     }
 
     private Optional<DocEntry> getPropertyDocs(Lookups lookups, SourcePos pos) {
@@ -226,14 +226,15 @@ public class DefinitionFinder {
         var variable = lookups.treeMetadata().get(variableAccess, VariableAnalyser.VARIABLE_REFERENCE);
 
         return variable.flatMap(this::getDocs)
-                .map(DocHolder.OwnerData::values)
+                .flatMap(data ->
+                        data instanceof DocHolder.OwnerData ownerData ? Optional.of(ownerData.values()) : Optional.empty())
                 .map(valueMap -> valueMap.get(name));
     }
 
-    private Optional<DocHolder.OwnerData> getDocs(Variable variable) {
+    private Optional<DocHolder.DocsData> getDocs(Variable variable) {
         var docHolder = workspace.getDocManager().getHolder();
         if (variable.stdlib()) {
-            return docHolder.getStdlibModule(variable.name()).map(Function.identity());
+            return docHolder.getGlobal(variable.name()).map(Function.identity());
         }
         if (variable.definition() instanceof ImportStatement importStatement) {
             return docHolder.getModuleData(importStatement.libraryName()).map(Function.identity());

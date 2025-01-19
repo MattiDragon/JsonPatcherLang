@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -31,9 +28,10 @@ public class DocHolder {
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final CompletableFuture<Void> stdlibFuture;
-    private Map<String, ModuleData> moduleLookupByDocName = new HashMap<>();
     private Map<String, ModuleData> moduleLookup = new HashMap<>();
     private Map<String, TypeData> typeLookup = new HashMap<>();
+    private Map<String, OwnerData> ownerLookup = new HashMap<>();
+    private Map<String, GlobalData> globalLookup = new HashMap<>();
 
     public DocHolder() {
         stdlibFuture = loadStdlib();
@@ -121,17 +119,20 @@ public class DocHolder {
      */
     public synchronized void clear() {
         files.clear();
+        stdlibFiles.forEach((name, file) -> files.put("stdlib::" + name, file));
         rebuildLookups();
     }
     
     private static FileData buildFile(String uri, List<DocEntry> entries) {
-        var file = new FileData(uri, new HashMap<>(), new HashMap<>());
+        var file = new FileData(uri, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
 
         for (var entry : entries) {
             switch (entry) {
                 case DocEntry.Module module -> file.modules.put(module.name(), new ModuleData(file, module, new HashMap<>()));
                 case DocEntry.Type type -> file.types.put(type.name(), new TypeData(file, type, new HashMap<>()));
                 case DocEntry.Value value -> {}
+                case DocEntry.GlobalModule module -> file.globalModules.put(module.name(), new GlobalModuleData(file, module, new HashMap<>()));
+                case DocEntry.GlobalValue value -> file.globalValues.put(value.name(), new GlobalValueData(file, value));
             }
         }
 
@@ -145,20 +146,20 @@ public class DocHolder {
             if (type != null) {
                 type.values.put(value.name(), value);
             }
+            var globalModule = file.globalModules.get(value.owner());
+            if (globalModule != null) {
+                globalModule.values.put(value.name(), value);
+            }
         }
         return file;
     }
 
-    /**
-     * Gets the module data of a standard library module.
-     * @param name The name of the module
-     * @return The data of the module or {@link Optional#empty()} if not found.
-     */
-    public Optional<ModuleData> getStdlibModule(String name) {
-        stdlibFuture.join();
-        return Optional.ofNullable(stdlibFiles.get(name))
-                .map(FileData::modules)
-                .map(modules -> modules.get(name));
+    public synchronized Optional<DocHolder.GlobalData> getGlobal(String name) {
+        return Optional.ofNullable(globalLookup.get(name));
+    }
+
+    public synchronized Map<String, DocHolder.GlobalData> getGlobals() {
+        return Collections.unmodifiableMap(globalLookup);
     }
 
     /**
@@ -168,8 +169,7 @@ public class DocHolder {
      * @return The data of the type or module, or {@link Optional#empty()} if not found.
      */
     public synchronized Optional<DocHolder.OwnerData> getOwnerData(String name) {
-        return Optional.<OwnerData>ofNullable(moduleLookupByDocName.get(name))
-                .or(() -> Optional.ofNullable(typeLookup.get(name)));
+        return Optional.ofNullable(ownerLookup.get(name));
     }
     
     public synchronized Optional<DocHolder.ModuleData> getModuleData(String name) {
@@ -182,12 +182,16 @@ public class DocHolder {
     
     private synchronized void rebuildLookups() {
         moduleLookup = new HashMap<>();
-        moduleLookupByDocName = new HashMap<>();
+        ownerLookup = new HashMap<>();
+        globalLookup = new HashMap<>();
         typeLookup = new HashMap<>();
-        for (FileData file : files.values()) {
+        for (var file : files.values()) {
             file.modules.values().forEach(module -> moduleLookup.put(module.entry.location(), module));
-            moduleLookupByDocName.putAll(file.modules);
+            ownerLookup.putAll(file.modules);
+            ownerLookup.putAll(file.types);
             typeLookup.putAll(file.types);
+            globalLookup.putAll(file.globalModules);
+            globalLookup.putAll(file.globalValues);
         }
     }
 
@@ -197,14 +201,20 @@ public class DocHolder {
      * @param modules A map of module names to module data.
      * @param types A map of type names to type data.
      */
-    public record FileData(String uri, Map<String, ModuleData> modules, Map<String, TypeData> types) {
+    public record FileData(
+            String uri,
+            Map<String, ModuleData> modules,
+            Map<String, GlobalModuleData> globalModules,
+            Map<String, TypeData> types,
+            Map<String, GlobalValueData> globalValues
+    ) {
+        @Override
+        public String toString() {
+            return "FileData[%s]".formatted(uri);
+        }
     }
 
-    /**
-     * Superinterface for {@link ModuleData} and {@link TypeData} for cases where both are applicable.
-     * Primarily used when dealing with value doc comments.
-     */
-    public sealed interface OwnerData permits ModuleData, TypeData {
+    public sealed interface DocsData {
         /**
          * Returns the file defining this module or type
          */
@@ -214,12 +224,26 @@ public class DocHolder {
          * Returns the doc entry for this module or type
          */
         DocEntry entry();
+    }
 
+    /**
+     * Superinterface for {@link ModuleData} and {@link TypeData} for cases where both are applicable.
+     * Primarily used when dealing with value doc comments.
+     */
+    public sealed interface OwnerData extends DocsData {
         /**
          * Returns a map from value name to doc entry for values belonging to this module or type.
          */
         Map<String, DocEntry.Value> values();
     }
+
+    public sealed interface GlobalData extends DocsData {
+        /**
+         * Returns the doc entry for this module or type
+         */
+        DocEntry.Global entry();
+    }
+
 
     /**
      * Stores the docs of a single module and its values.
@@ -231,11 +255,23 @@ public class DocHolder {
     }
 
     /**
+     * Stores the docs of a single global module and its values.
+     * @param file The file defining the module
+     * @param entry The doc entry for the module itself
+     * @param values A map from value name to doc entry for said value
+     */
+    public record GlobalModuleData(FileData file, DocEntry.GlobalModule entry, Map<String, DocEntry.Value> values) implements OwnerData, GlobalData {
+    }
+
+    /**
      * Stores the docs of a single type and its values.
      * @param file The file defining the type
      * @param entry The doc entry for the type itself
      * @param values A map from value name to doc entry for said value
      */
     public record TypeData(FileData file, DocEntry.Type entry, Map<String, DocEntry.Value> values) implements OwnerData {
+    }
+
+    public record GlobalValueData(FileData file, DocEntry.GlobalValue entry) implements GlobalData {
     }
 }

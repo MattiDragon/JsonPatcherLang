@@ -1,4 +1,4 @@
-#| module math
+#| global module math
 #| The math library contains many functions for performing mathematical operations.
 
 #| value math.PI: number
