@@ -34,7 +34,7 @@ import java.util.function.Supplier;
 import static dev.mattidragon.jsonpatcher.server.document.DocumentState.spanToRange;
 
 public class DefinitionFinder {
-    private static final SourceFile LOOKUP_FAKE_FILE = new SourceFile("lookup fake file", "");
+    static final SourceFile LOOKUP_FAKE_FILE = new SourceFile("lookup fake file", "");
 
     private final Renderer renderer = MarkdownRenderer.builder().extensions(DocWriter.DEFAULT_EXTENSIONS).build();
     private final DocWriter docWriter = new DocWriter(List.of());

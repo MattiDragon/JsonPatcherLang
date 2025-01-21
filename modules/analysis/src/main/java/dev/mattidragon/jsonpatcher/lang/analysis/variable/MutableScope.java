@@ -23,4 +23,8 @@ sealed abstract class MutableScope implements Scope permits ApplyScope, BlockSco
             case null -> false;
         };
     }
+
+    public void define(Variable variable) {
+        variables().add(variable);
+    }
 }

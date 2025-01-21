@@ -13,8 +13,4 @@ public sealed interface Scope permits MutableScope {
     default RootVariable root() {
         return Objects.requireNonNull(parent(), "parent must be present or root() must be overridden").root();
     }
-    
-    default void define(Variable variable) {
-        variables().add(variable);
-    }
 }

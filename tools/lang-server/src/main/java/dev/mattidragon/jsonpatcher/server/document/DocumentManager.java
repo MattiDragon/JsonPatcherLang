@@ -57,6 +57,15 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
     }
 
     @Override
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.autoComplete(params.getPosition());
+        }
+        return null;
+    }
+
+    @Override
     public CompletableFuture<SemanticTokens> semanticTokensFull(SemanticTokensParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {

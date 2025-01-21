@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
@@ -18,6 +19,7 @@ public class Lookups {
     private final PosLookup<String> libraryImports = new PosLookup<>();
     private final PosLookup<Variable> variableReferences = new PosLookup<>();
     private final PosLookup<PropertyAccessExpression> propertyAccesses = new PosLookup<>();
+    private final PosLookup<Scope> scopes = new PosLookup<>();
 
     private final TreeMetadata metadata;
 
@@ -32,6 +34,10 @@ public class Lookups {
     }
 
     private void search(ProgramNode node) {
+        metadata.get(node, MetadataKey.FULL_POS)
+                .ifPresent(pos -> metadata.get(node, VariableAnalyser.SCOPE)
+                        .ifPresent(scope -> scopes.add(pos, scope)));
+
         switch (node) {
             case ImportStatement statement -> {
                 metadata.get(statement, MetadataKey.IMPORT_LOCATION_POS)
@@ -93,5 +99,9 @@ public class Lookups {
 
     public PosLookup<PropertyAccessExpression> propertyAccesses() {
         return propertyAccesses;
+    }
+
+    public PosLookup<Scope> scopes() {
+        return scopes;
     }
 }

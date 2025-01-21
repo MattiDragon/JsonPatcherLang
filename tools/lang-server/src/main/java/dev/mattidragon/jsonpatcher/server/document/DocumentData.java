@@ -6,5 +6,11 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 
 import java.util.List;
 
-public record DocumentData(Program program, TreeMetadata treeMetadata, List<DocEntry> docs, Lookups lookups) {
+public record DocumentData(
+        Program program,
+        TreeMetadata treeMetadata,
+        List<DocEntry> docs,
+        Lookups lookups,
+        TokenLookup tokens
+) {
 }

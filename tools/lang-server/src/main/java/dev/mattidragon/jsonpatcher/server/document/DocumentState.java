@@ -25,6 +25,7 @@ public class DocumentState {
     private final String name;
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
+    private final AutoCompleteHelper autoCompleteHelper;
     private final Supplier<Map<String, DocHolder.GlobalData>> globalsGetter;
     private final DocHolder docHolder;
 
@@ -33,8 +34,9 @@ public class DocumentState {
     public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
         this.name = name;
         this.client = client;
-        this.definitionFinder = new DefinitionFinder(() -> data, workspace, name);
         docHolder = workspace.getDocManager().getHolder();
+        this.definitionFinder = new DefinitionFinder(() -> data, workspace, name);
+        autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.globalsGetter = docHolder::getGlobals;
     }
 
@@ -43,6 +45,8 @@ public class DocumentState {
             var diagnostics = new DiagnosticsBuilder();
             var docParser = new DocParser(diagnostics);
             var tokens = Lexer.lex(content, name, diagnostics, docParser).tokens();
+
+            var tokenLookup = new TokenLookup(tokens);
 
             var parseResult = Parser.parse(tokens, diagnostics);
             var program = parseResult.program();
@@ -59,7 +63,7 @@ public class DocumentState {
             var lookups = Lookups.get(program, treeMetadata);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
-            return new DocumentData(program, treeMetadata, docParser.getEntries(), lookups);
+            return new DocumentData(program, treeMetadata, docParser.getEntries(), lookups, tokenLookup);
         }, Util.EXECUTOR);
     }
 
@@ -103,12 +107,16 @@ public class DocumentState {
         return definitionFinder.getHover(position);
     }
 
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> autoComplete(Position position) {
+        return autoCompleteHelper.autoComplete(position).thenApply(Either::forRight);
+    }
+
     public static Range spanToRange(SourceSpan span) {
         var pos1 = new Position(span.from().row() - 1, span.from().column() - 1);
         var pos2 = new Position(span.to().row() - 1, span.to().column());
         return new Range(pos1, pos2);
     }
-    
+
     public static Location spanToLocation(SourceSpan span) {
         if (!Objects.equals(span.from().file().name(), span.to().file().name())) {
             throw new IllegalArgumentException("Cross file span can't be converted to location");

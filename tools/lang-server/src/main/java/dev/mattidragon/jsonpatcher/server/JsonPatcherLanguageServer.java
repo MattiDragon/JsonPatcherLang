@@ -49,6 +49,10 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         
         capabilities.setDefinitionProvider(true);
         capabilities.setReferencesProvider(true);
+
+        var completionOptions = new CompletionOptions();
+        completionOptions.setTriggerCharacters(List.of(".", "[", "$", ":", "@"));
+        capabilities.setCompletionProvider(completionOptions);
         
         var workspaceCapabilities = new WorkspaceServerCapabilities();
         var folderOptions = new WorkspaceFoldersOptions();

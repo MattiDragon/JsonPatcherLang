@@ -12,13 +12,27 @@ public class PosLookup<T> {
     private final Map<T, List<SourceSpan>> positions = new HashMap<>();
     
     public void add(SourceSpan pos, T value) {
-        if (pos.from().row() != pos.to().row()) throw new IllegalStateException("Multiline elements not allowed in pos lookup");
+        if (pos.from().row() != pos.to().row()) {
+            addMultiline(pos, value);
+        } else {
+            addEntry(pos, value);
+        }
+        positions.computeIfAbsent(value, __ -> new ArrayList<>()).add(pos);
+    }
+
+    private void addMultiline(SourceSpan pos, T value) {
+        addEntry(new SourceSpan(pos.from(), new SourcePos(pos.to().file(), pos.from().row(), Integer.MAX_VALUE)), value);
+        for (int i = pos.from().row() + 1; i < pos.to().row(); i++) {
+            addEntry(new SourceSpan(new SourcePos(pos.from().file(), i, 0), new SourcePos(pos.to().file(), i, Integer.MAX_VALUE)), value);
+        }
+        addEntry(new SourceSpan(new SourcePos(pos.from().file(), pos.to().row(), 0), pos.to()), value);
+    }
+
+    private void addEntry(SourceSpan pos, T value) {
         entries.computeIfAbsent(pos.from().row(), row -> new ArrayList<>())
                 .add(new Entry<>(pos.from().column(), pos.to().column(), value));
-        positions.computeIfAbsent(value, __ -> new ArrayList<>())
-                .add(pos);
     }
-    
+
     public List<SourceSpan> getPositions(T value) {
         return Collections.unmodifiableList(positions.getOrDefault(value, List.of()));
     }
