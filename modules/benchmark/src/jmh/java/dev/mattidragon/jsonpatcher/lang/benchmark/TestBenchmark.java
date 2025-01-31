@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.benchmark;
 
+import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
@@ -39,20 +40,17 @@ public class TestBenchmark {
                 return fib($index);
                 """;
 
-        var lex = Lexer.lex(code, "fib");
-        if (!lex.errors().isEmpty()) {
-            var e = new IllegalStateException("Lexer error in benchmark script");
-            e.addSuppressed(lex.errors().getFirst());
-            lex.errors().stream().skip(1).forEach(e::addSuppressed);
-            throw e;
-        }
+        var diagnostics = new DiagnosticsBuilder();
 
-        var parse = Parser.parse(lex.tokens());
-        if (!parse.errors().isEmpty()) {
-            var e = new IllegalStateException("Parser error in benchmark script");
-            e.addSuppressed(parse.errors().getFirst());
-            parse.errors().stream().skip(1).forEach(e::addSuppressed);
-            throw e;
+        var lex = Lexer.lex(code, "fib", diagnostics);
+        var parse = Parser.parse(lex.tokens(), diagnostics);
+
+        var issues = diagnostics.build().errorsAndWarnings();
+        if (!issues.isEmpty()) {
+            for (var issue : issues) {
+                System.out.println(issue.toDisplay());
+            }
+            throw new IllegalStateException("Issues in parse");
         }
 
         var env = new EvaluationEnvironment(CompilerOptions.builder().build());
