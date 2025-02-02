@@ -75,13 +75,13 @@ public class BinaryExpressionHooks {
         return switch (pair) {
             case Pair(Value.NumberValue(var first), Value.NumberValue(var second)) -> new Value.NumberValue(first + second);
             case Pair(Value.StringValue(var first), Value.StringValue(var second)) -> new Value.StringValue(first + second);
-            case Pair(Value.ArrayValue(var first), Value.ArrayValue(var second)) -> {
+            case Pair(Value.ArrayValue(var first, var firstFrozen), Value.ArrayValue(var second, var secondFrozen)) -> {
                 var array = new Value.ArrayValue();
                 array.value().addAll(first);
                 array.value().addAll(second);
                 yield array;
             }
-            case Pair(Value.ObjectValue(var first), Value.ObjectValue(var second)) -> {
+            case Pair(Value.ObjectValue(var first, var firstFrozen), Value.ObjectValue(var second, var secondFrozen)) -> {
                 var object = new Value.ObjectValue();
                 object.value().putAll(first);
                 object.value().putAll(second);
@@ -105,7 +105,7 @@ public class BinaryExpressionHooks {
         return switch (first) {
             case Value.NumberValue(var number) -> new Value.NumberValue(number * multiplier);
             case Value.StringValue(var string) -> new Value.StringValue(string.repeat((int) multiplier));
-            case Value.ArrayValue(var values) ->  {
+            case Value.ArrayValue(var values, var frozen) ->  {
                 var array = new Value.ArrayValue();
                 for (int i = 0; i < (int) multiplier; i++) {
                     array.value().addAll(values);
@@ -162,10 +162,10 @@ public class BinaryExpressionHooks {
     }
 
     private static Value in(Value first, Value second) {
-        if (second instanceof Value.ArrayValue(var array)) {
+        if (second instanceof Value.ArrayValue(var array, var frozen)) {
             return Value.BooleanValue.of(array.contains(first));
         }
-        if (first instanceof Value.StringValue(var key) && second instanceof Value.ObjectValue(var object)) {
+        if (first instanceof Value.StringValue(var key) && second instanceof Value.ObjectValue(var object, var frozen)) {
             return Value.BooleanValue.of(object.containsKey(key));
         }
         throw new IncompatibleOperandsException("Can't check if %s is in %s".formatted(first, second));

@@ -45,10 +45,14 @@ public class ExpressionInterpreter {
             }
             case PropertyAccessExpression expression -> {
                 var parent = evaluate(expression.parent(), context);
-                if (parent instanceof Value.ObjectValue(var object)) {
+                if (parent instanceof Value.ObjectValue(var object, var frozen)) {
+                    if (frozen) {
+                        var message = "Tried to write to property %s of %s, but it is frozen.".formatted(expression.name(), parent);
+                        throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
+                    }
                     object.put(expression.name(), value);
                 } else {
-                    String message = "Tried to write property %s of %s. Only objects have writable properties.".formatted(expression.name(), parent);
+                    var message = "Tried to write property %s of %s. Only objects have writable properties.".formatted(expression.name(), parent);
                     throw new EvaluationException(context.config(), message, context.getPos(expression).orElse(null));
                 }
             }
@@ -60,7 +64,7 @@ public class ExpressionInterpreter {
     private static Value.ArrayValue evaluateArrayInit(EvaluationContext context, ArrayInitializerExpression expression) {
         return new Value.ArrayValue(expression.contents().stream()
                 .map(subExpression -> evaluate(subExpression, context))
-                .toList());
+                .toList(), false);
     }
 
     private static Value evaluateObjectInit(EvaluationContext context, ObjectInitializerExpression expression) {

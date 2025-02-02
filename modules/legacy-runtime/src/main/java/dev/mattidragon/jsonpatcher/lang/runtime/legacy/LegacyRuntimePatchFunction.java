@@ -3,8 +3,8 @@ package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
-import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import org.jspecify.annotations.Nullable;
 
@@ -35,7 +35,7 @@ public record LegacyRuntimePatchFunction(Statement body, FunctionArguments args,
                         functionContext);
             } else if (i == argEntryCount - 1 && this.args.varargs()) {
                 // If we're on the last argument of a varargs function, grab 'em all
-                value = new Value.ArrayValue(args.stream().skip(i).toList());
+                value = new Value.ArrayValue(args.stream().skip(i).toList(), false);
             } else {
                 // Normal argument passing
                 value = args.get(i);

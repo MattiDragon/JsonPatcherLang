@@ -20,7 +20,6 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 
 public class EvaluationEnvironment {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final String[] STD_LIBS = {"arrays", "debug", "functions", "math", "objects", "strings"};
 
     private final Map<String, Value> globals = new HashMap<>();
     private final Map<String, Consumer<Value.ObjectValue>> libraries = new HashMap<>();
@@ -51,21 +49,12 @@ public class EvaluationEnvironment {
     public void bootstrap() {
         var diagnosticsBuilder = new DiagnosticsBuilder();
 
-        for (var name : STD_LIBS) {
+        // Prepare objects beforehand to prevent issues when libs use each other
+        for (var name : Stdlib.LIBRARY_NAMES) {
             globals.put(name, new Value.ObjectValue());
         }
 
-        for (var name : STD_LIBS) {
-            var fileName = "bytecode-runtime-files/stdlib/" + name + ".jsonpatch";
-
-            String content;
-            try (var stream = getClass().getClassLoader().getResourceAsStream(fileName)) {
-                if (stream == null) throw new IllegalStateException("Cannot find stdlib " + name);
-                content = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to read stdlib " + name, e);
-            }
-
+        Stdlib.LIBRARY_CONTENTS.forEach((name, content) -> {
             var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
@@ -73,6 +62,11 @@ public class EvaluationEnvironment {
                     "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name);
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
+        });
+
+        // Freeze stdlib after init
+        for (var name : Stdlib.LIBRARY_NAMES) {
+            globals.put(name, new Value.ObjectValue(((Value.ObjectValue) globals.get(name)).value(), true));
         }
 
         var diagnostics = diagnosticsBuilder.build();
@@ -117,7 +111,7 @@ public class EvaluationEnvironment {
     }
 
     private void configureCompiler(PreparationContextBuilder builder) {
-        builder.declareVariables(STD_LIBS);
+        builder.declareVariables(Stdlib.LIBRARY_NAMES);
     }
 
     private void locateLibrary(String name, Value.ObjectValue value, PlatformContext context) {

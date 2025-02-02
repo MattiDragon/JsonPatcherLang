@@ -1,10 +1,10 @@
 package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
-import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 public sealed interface Value {
     ThreadLocal<Set<Value>> TO_STRING_RECURSION_TRACKER = ThreadLocal.withInitial(HashSet::new);
@@ -16,9 +16,12 @@ public sealed interface Value {
             case Pair(NumberValue(var first), NumberValue(var second)) -> first == second;
             case Pair(StringValue(var first), StringValue(var second)) -> first.equals(second);
             case Pair(BooleanValue first, BooleanValue second) -> first == second;
-            // TODO: fix nested array and object checks
-            case Pair(ArrayValue(var first), ArrayValue(var second)) -> first.equals(second);
-            case Pair(ObjectValue(var first), ObjectValue(var second)) -> first.equals(second);
+            case Pair(ArrayValue first, ArrayValue second) ->
+                    first.value.size() == second.value.size() && IntStream.range(0, first.value.size())
+                            .allMatch(i -> isEqual(first.value.get(i), second.value.get(i)));
+            case Pair(ObjectValue first, ObjectValue second) ->
+                    first.value.size() == second.value.size() && first.value.keySet().stream()
+                            .allMatch(i -> isEqual(first.value.get(i), second.value.get(i)));
             case Pair(FunctionValue(var first), FunctionValue(var second)) -> first.equals(second);
             case Pair(NullValue first, NullValue second) -> true;
             default -> false;
@@ -60,9 +63,13 @@ public sealed interface Value {
         return value == null ? NullValue.NULL : value;
     }
 
-    record ObjectValue(Map<String, Value> value) implements Value {
+    record ObjectValue(Map<String, Value> value, boolean frozen) implements Value {
         public ObjectValue {
-            value = new LinkedHashMap<>(value);
+            value = frozen ? Collections.unmodifiableMap(new LinkedHashMap<>(value)) : new LinkedHashMap<>(value);
+        }
+
+        public ObjectValue(Map<String, Value> value) {
+            this(value, false);
         }
 
         public ObjectValue() {
@@ -80,6 +87,10 @@ public sealed interface Value {
 
         @Override
         public void set(Value index, Value value, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             if (!(index instanceof StringValue(var key))) {
                 throw context.createException("Object %s can only be indexed by string".formatted(this));
             }
@@ -89,6 +100,10 @@ public sealed interface Value {
 
         @Override
         public void delete(Value index, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             if (!(index instanceof StringValue(var key))) {
                 throw context.createException("Object %s can only be indexed by string".formatted(this));
             }
@@ -106,11 +121,19 @@ public sealed interface Value {
 
         @Override
         public void setProperty(String key, Value value, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             this.value.put(key, value);
         }
 
         @Override
         public void deleteProperty(String key, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             if (!value.containsKey(key)) {
                 throw context.createException("Object %s has no key %s".formatted(this, key));
             }
@@ -149,9 +172,13 @@ public sealed interface Value {
         }
     }
 
-    record ArrayValue(List<Value> value) implements Value {
+    record ArrayValue(List<Value> value, boolean frozen) implements Value {
         public ArrayValue {
             value = new ArrayList<>(value);
+        }
+
+        public ArrayValue(List<Value> value) {
+            this(value, false);
         }
 
         public ArrayValue() {
@@ -165,11 +192,19 @@ public sealed interface Value {
 
         @Override
         public void set(Value index, Value value, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             this.value.set(fixIndex(index, context), value);
         }
 
         @Override
         public void delete(Value index, PlatformContext context) {
+            if (frozen) {
+                throw context.createException("Object %s if frozen and cannot be mutated");
+            }
+
             value.remove(fixIndex(index, context));
         }
 

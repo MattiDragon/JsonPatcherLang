@@ -40,7 +40,11 @@ public class StatementInterpreter {
             case VariableAccessExpression e -> context.variables().deleteVariable(e.name(), context.getPos(e).orElse(null));
             case PropertyAccessExpression e -> {
                 var parent = evaluate(e.parent(), context);
-                if (parent instanceof Value.ObjectValue(var map)) {
+                if (parent instanceof Value.ObjectValue(var map, var frozen)) {
+                    if (frozen) {
+                        var message = "Tried to delete to property %s of %s, but it is frozen.".formatted(e.name(), parent);
+                        throw new EvaluationException(context.config(), message, context.getPos(e).orElse(null));
+                    }
                     map.remove(e.name());
                 } else {
                     String message = "Tried to delete property %s of %s. Only objects have writable properties.".formatted(e.name(), parent);
@@ -69,8 +73,12 @@ public class StatementInterpreter {
 
     private static void executeForEachLoop(EvaluationContext context, ForEachLoopStatement statement) {
         var values = evaluate(statement.iterable(), context);
-        if (!(values instanceof Value.ArrayValue(var array))) {
+        if (!(values instanceof Value.ArrayValue(var array, var frozen))) {
             throw new EvaluationException(context.config(), "Can only iterate arrays, tried to iterate %s".formatted(values), context.getPos(statement.iterable()).orElse(null));
+        }
+        if (frozen) {
+            var message = "Tried to iterate %s, but it is frozen.".formatted(values);
+            throw new EvaluationException(context.config(), message, context.getPos(statement).orElse(null));
         }
         for (var value : array) {
             var loopContext = context.newScope();

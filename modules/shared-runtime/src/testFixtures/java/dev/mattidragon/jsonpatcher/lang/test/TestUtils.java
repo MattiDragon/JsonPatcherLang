@@ -98,7 +98,8 @@ public class TestUtils {
     public static boolean areEqual(Value v1, Value v2) {
         if (v1.equals(v2)) return true;
 
-        if (v1 instanceof Value.ObjectValue(var o1) && v2 instanceof Value.ObjectValue(var o2)) {
+        if (v1 instanceof Value.ObjectValue(var o1, var frozen1) && v2 instanceof Value.ObjectValue(var o2, var frozen2)) {
+            if (frozen1 != frozen2) return false;
             if (o1.size() != o2.size()) return false;
 
             for (var entry : o1.entrySet()) {
@@ -108,7 +109,8 @@ public class TestUtils {
             return true;
         }
 
-        if (v1 instanceof Value.ArrayValue(var a1) && v2 instanceof Value.ArrayValue(var a2)) {
+        if (v1 instanceof Value.ArrayValue(var a1, var frozen1) && v2 instanceof Value.ArrayValue(var a2, var frozen2)) {
+            if (frozen1 != frozen2) return false;
             if (a1.size() != a2.size()) return false;
 
             for (int i = 0; i < a1.size(); i++) {

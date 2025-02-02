@@ -21,9 +21,11 @@ import java.util.concurrent.CompletionException;
  * Only one instance of this class should exist and that instance should be managed by the {@link WorkspaceDocManager}.
  */
 public class DocHolder {
+    // TODO: Move stdlib out of compiler and reuse here (requires getting rid of interpreter)
     private static final List<String> STDLIB_FILES = List.of(
             "arrays.jsonpatch", "debug.jsonpatch", "functions.jsonpatch",
-            "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch"
+            "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch",
+            "values.jsonpatch"
     );
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();

@@ -4,10 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.DontBind;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Method;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.*;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -23,12 +20,14 @@ public class BytecodeInternalsLibrary {
         this.propertyHolder = propertyHolder;
     }
 
+    @DisableErrorWrapping
     public void _throw(Value value) {
+        // TODO: Custom exception
         throw new RuntimeException(value.toString());
     }
 
     public void log(Value value) {
-        
+        // TODO: implement logging
     }
 
     @DontBind
@@ -112,5 +111,15 @@ public class BytecodeInternalsLibrary {
     public void loadStringLib(Value.ObjectValue object) {
         // Strings require tons of bindings into java code, so it's easier to just reuse the old stdlib
         new LibraryBuilder(Libraries.StringsLibrary.class, Method.class).build(object);
+    }
+
+    public Value freeze(Value value) {
+        return switch (value) {
+            case Value.ObjectValue(var map, var frozen) -> new Value.ObjectValue(map, true);
+            case Value.ArrayValue(var elements, var frozen) -> new Value.ArrayValue(elements, true);
+            // Functions and primitives are already immutable, so we can just return them.
+            case Value.FunctionValue function -> function;
+            case Value.Primitive primitive -> primitive;
+        };
     }
 }

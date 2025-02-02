@@ -9,3 +9,5 @@ function keys(object) {
     debug.assert(object is object, "Can only get keys of object");
     return internals.keys(object);
 }
+
+$keys = keys;

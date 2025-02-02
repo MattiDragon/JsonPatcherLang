@@ -12,7 +12,7 @@ public final class PropertyHolder implements PropertyLookup {
 
     @Override
     public @Nullable Value getProperty(Value value, String name) {
-        if (value instanceof Value.ArrayValue(var values) && name.equals("length")) {
+        if (value instanceof Value.ArrayValue(var values, var frozen) && name.equals("length")) {
             return new Value.NumberValue(values.size());
         }
 
