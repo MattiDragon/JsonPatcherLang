@@ -20,10 +20,8 @@ public class BytecodeInternalsLibrary {
         this.propertyHolder = propertyHolder;
     }
 
-    @DisableErrorWrapping
     public void _throw(Value value) {
-        // TODO: Custom exception
-        throw new RuntimeException(value.toString());
+        throw new PatchException(value.toString());
     }
 
     public void log(Value value) {

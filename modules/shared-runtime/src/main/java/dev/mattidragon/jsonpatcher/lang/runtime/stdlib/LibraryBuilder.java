@@ -87,6 +87,10 @@ public class LibraryBuilder {
                     throw new IllegalStateException("Unexpected return value from library function %s: %s".formatted(name, result));
                 } catch (InvocationTargetException e) {
                     if (e.getCause() instanceof RuntimeException e1) {
+                        if (overload.getAnnotation(DisableErrorWrapping.class) != null) {
+                            throw e1;
+                        }
+
                         throw context.createException("Error while calling builtin function %s".formatted(name), e1);
                     } else {
                         throw new RuntimeException("Unexpected error while calling builtin function %s".formatted(name), e);
