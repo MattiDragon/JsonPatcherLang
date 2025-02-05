@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class FreezeTests {
-    private final TestRunner runner = new EnvironmentTestRunner(CompilerOptions.DEFAULT);
+    private final TestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT);
 
     @Test
     public void testFreeze() {

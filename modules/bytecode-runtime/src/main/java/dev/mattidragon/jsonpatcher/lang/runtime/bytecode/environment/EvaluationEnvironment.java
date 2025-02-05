@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -7,9 +7,11 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.Stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
@@ -22,17 +24,14 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.function.Consumer;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class EvaluationEnvironment {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private final Map<String, Value> globals = new HashMap<>();
-    private final Map<String, Consumer<Value.ObjectValue>> libraries = new HashMap<>();
+    private final Map<String, Library> libraries = new HashMap<>();
     private final PropertyHolder propertyHolder = new PropertyHolder();
     private final ScriptClassLoader classLoader = new ScriptClassLoader();
     private final CompilerOptions compilerOptions;
@@ -47,6 +46,17 @@ public class EvaluationEnvironment {
     }
 
     public void bootstrap() {
+        addLibrary(new Library(
+                LibraryGroup.INTERNALS,
+                "@internals",
+                () -> {
+                    var obj = new Value.ObjectValue();
+                    new LibraryBuilder(BytecodeInternalsLibrary.class, new BytecodeInternalsLibrary(propertyHolder))
+                            .build(obj);
+                    return obj;
+                }
+        ));
+
         var diagnosticsBuilder = new DiagnosticsBuilder();
 
         // Prepare objects beforehand to prevent issues when libs use each other
@@ -58,8 +68,13 @@ public class EvaluationEnvironment {
             var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
-            var instance = classLoader.addScript(parse.program(), parse.treeMetadata(), compilerOptions,
-                    "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name);
+            var instance = classLoader.addScript(
+                    parse.program(),
+                    parse.treeMetadata(),
+                    compilerOptions,
+                    "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name,
+                    List.of(LibraryGroup.DEFAULT, LibraryGroup.INTERNALS)
+            );
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
         });
@@ -77,15 +92,15 @@ public class EvaluationEnvironment {
         }
     }
     
-    public void addLibrary(String name, Value.ObjectValue value) {
-        libraries.put(name, root -> root.value().putAll(value.value()));
+    public void addLibrary(Library library) {
+        libraries.put(library.name(), library);
     }
 
     public void enableDumping(String path) {
         dumpPath = path;
     }
     
-    public AddedProgram addProgram(String code, String scriptName, String className) {
+    public AddedProgram addProgram(String code, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
         var diagnosticsBuilder = new DiagnosticsBuilder();
 
         var lex = Lexer.lex(code, scriptName, diagnosticsBuilder);
@@ -100,13 +115,11 @@ public class EvaluationEnvironment {
             ));
         }
 
-        return addProgram(parse.program(), parse.treeMetadata(), scriptName, className);
+        return addProgram(parse.program(), parse.treeMetadata(), scriptName, className, allowedLibraries);
     }
 
-    public AddedProgram addProgram(Program program, TreeMetadata metadata, String scriptName, String className) {
-        var instance = classLoader.addScript(program, metadata, compilerOptions,
-                scriptName, className);
-
+    public AddedProgram addProgram(Program program, TreeMetadata metadata, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
+        var instance = classLoader.addScript(program, metadata, compilerOptions, scriptName, className, allowedLibraries);
         return new AddedProgram(instance);
     }
 
@@ -114,17 +127,16 @@ public class EvaluationEnvironment {
         builder.declareVariables(Stdlib.LIBRARY_NAMES);
     }
 
-    private void locateLibrary(String name, Value.ObjectValue value, PlatformContext context) {
-        if (name.equals("@internals")) {
-            new LibraryBuilder(BytecodeInternalsLibrary.class, new BytecodeInternalsLibrary(propertyHolder))
-                    .build(value);
-            return;
+    private Value.ObjectValue locateLibrary(String name, Collection<LibraryGroup> libraryGroups) {
+        if (!libraries.containsKey(name)) {
+            throw new NoSuchElementException("Cannot find library " + name);
         }
-        if (libraries.containsKey(name)) {
-            libraries.get(name).accept(value);
-            return;
+        var lib = libraries.get(name);
+        if (!libraryGroups.contains(lib.group())) {
+            throw new IllegalStateException("Library %s is not available to the current program. It is in group %s and the current program has access to the groups %s"
+                    .formatted(name, lib.group().name(), libraryGroups.stream().map(LibraryGroup::name).collect(Collectors.joining(", "))));
         }
-        throw new NoSuchElementException("Cannot find library " + name);
+        return lib.contents();
     }
     
     public final class AddedProgram {
@@ -140,7 +152,7 @@ public class EvaluationEnvironment {
     }
     
     private class ScriptClassLoader extends ClassLoader {
-        public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className) {
+        public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
             byte[] bytes;
             try {
                 bytes = ScriptCompiler.compile(program, metadata, compilerOptions, EvaluationEnvironment.this::configureCompiler, scriptName, className);
@@ -163,7 +175,8 @@ public class EvaluationEnvironment {
             var clazz = defineClass(null, bytes, 0, bytes.length);
             try {
                 var constructor = LOOKUP.findConstructor(clazz, MethodType.methodType(void.class, EvaluationContext.class));
-                var instance = constructor.invoke(new EvaluationContext(config, propertyHolder, EvaluationEnvironment.this::locateLibrary));
+                LibraryLookup libraryLocator = (name) -> EvaluationEnvironment.this.locateLibrary(name, allowedLibraries);
+                var instance = constructor.invoke(new EvaluationContext(config, propertyHolder, libraryLocator));
                 return (GeneratedProgram) instance;
             } catch (Throwable e) {
                 throw new IllegalStateException("Failed to instantiate script", e);

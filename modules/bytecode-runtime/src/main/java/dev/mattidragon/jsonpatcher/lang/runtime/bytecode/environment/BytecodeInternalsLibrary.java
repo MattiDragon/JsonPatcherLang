@@ -1,10 +1,14 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.PatchException;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.*;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.DontBind;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
+import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Method;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;

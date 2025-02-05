@@ -2,9 +2,9 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
 import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.LibraryLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
@@ -16,18 +16,17 @@ import java.util.SequencedSet;
 
 public record EvaluationContext(LangConfig config,
                                 PropertyLookup propertyLookup,
-                                LibraryLocator libraryLocator) implements PlatformContext {
+                                LibraryLookup libraryLookup) implements PlatformContext {
     private static final ThreadLocal<SequencedSet<String>> LIBRARY_RECURSION_DETECTOR = ThreadLocal.withInitial(LinkedHashSet::new);
 
-    // TODO: custom exception
     @Override
     public RuntimeException createException(String message) {
-        return new RuntimeException(message);
+        return new PatchException(message);
     }
 
     @Override
     public RuntimeException createException(String message, RuntimeException e) {
-        return new RuntimeException(message, e);
+        return new PatchException(message, e);
     }
 
     @Override
@@ -58,9 +57,7 @@ public record EvaluationContext(LangConfig config,
             if (!LIBRARY_RECURSION_DETECTOR.get().add(libraryName)) {
                 throw createException("Recursive library import detected: %s -> %s".formatted(String.join(" -> ", LIBRARY_RECURSION_DETECTOR.get()), libraryName));
             }
-            var json = new Value.ObjectValue();
-            libraryLocator.loadLibrary(libraryName, json, this);
-            return json;
+            return libraryLookup.findLibrary(libraryName);
         } finally {
             LIBRARY_RECURSION_DETECTOR.get().remove(libraryName);
         }
