@@ -7,5 +7,6 @@ public enum ValueType {
     ARRAY,
     OBJECT,
     NULL,
-    FUNCTION
+    FUNCTION,
+    SPECIAL
 }

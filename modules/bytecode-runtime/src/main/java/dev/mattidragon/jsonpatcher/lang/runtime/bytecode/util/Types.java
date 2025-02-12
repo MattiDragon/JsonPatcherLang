@@ -15,6 +15,7 @@ public class Types {
     public static final String OBJECT_VALUE = Type.getInternalName(Value.ObjectValue.class);
     public static final String ARRAY_VALUE = Type.getInternalName(Value.ArrayValue.class);
     public static final String FUNCTION_VALUE = Type.getInternalName(Value.FunctionValue.class);
+    public static final String SPECIAL_VALUE = Type.getInternalName(Value.SpecialValue.class);
     public static final String BINARY_EXPRESSION_HOOKS = Type.getInternalName(BinaryExpressionHooks.class);
     public static final String CONSTANT_HOOKS = Type.getInternalName(ConstantHooks.class);
     public static final String BOX = Type.getInternalName(Box.class);

@@ -1,15 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.legacy;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import dev.mattidragon.jsonpatcher.lang.runtime.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.runtime.LibraryLocator;
-import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime.RuntimeContextBuilder;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
+import dev.mattidragon.jsonpatcher.lang.runtime.*;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
 import org.jspecify.annotations.Nullable;
 
@@ -77,7 +73,7 @@ public record EvaluationContext(Value.ObjectValue root, VariableStack variables,
         }
 
         @Override
-        public RuntimeException createException(String message, RuntimeException e) {
+        public RuntimeException createException(String message, Exception cause) {
             return new EvaluationException(config, message, callPos);
         }
 

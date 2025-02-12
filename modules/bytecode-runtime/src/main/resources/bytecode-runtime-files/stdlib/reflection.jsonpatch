@@ -1,0 +1,46 @@
+@libgroup "reflection";
+
+import "@internals/reflection" as internal;
+
+#| module reflection
+#| A library containing utilities for interacting with the parent JVM.
+#|
+#| This module can be dangerous if given to untrusted code, and is thus placed in its own library group: `reflection`
+#| Any code using this library should make sure to not allow outside code to call arbitrary java code.
+
+#| type JavaClass: special
+#| Represents a java class. Inner classes as well as static methods and fields are available as properties.
+#| In case of name conflicts, you can specify the jvm method or field descriptor.
+#|
+#| Constructors are available either by calling the class object as a function or via methods named `<init>`,
+#| which must have their signature specified.
+
+#| value JavaClass.class: JavaObject
+#| A special property on class values. Allows scripts to access the `java.lang.Class` instance corresponding to the class.
+
+#| type JavaObject: special
+#| An object representing a java object. Both arrays and regular objects are represented with this class.
+#|
+#| For regular objects methods and fields can be accesses similar to static ones on `JavaClass`.
+#| Arrays can be indexed using jsonpatcher indexing operators. Their length field is also exposed.
+
+#| value reflection.findClass: (name: string) -> JavaClass
+#| Finds a Java class and loads it into a JsonPatcher value.
+#| The class is looked up by `java.lang.Class#forName`, with the same syntax as that method.
+$findClass = internal.findClass;
+
+val Array = $findClass("java.lang.reflect.Array");
+
+#| value reflection.makeArray: (class: JavaClass, size: number, fill: any?) -> JavaObject
+#| Utility function to instantiate a Java array of a certain class.
+#| Takes in the component type of the array, the size of the array and an optional value to fill it with.
+function makeArray(class, size, fill = null) {
+    val array = Array.newInstance(class.class, size);
+    if (fill != null)
+        for (var i = 0; i < size; i++)
+            array[i] = fill;
+    return array;
+}
+$makeArray = makeArray;
+
+

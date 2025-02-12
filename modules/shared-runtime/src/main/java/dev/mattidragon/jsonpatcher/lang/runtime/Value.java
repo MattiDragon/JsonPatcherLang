@@ -10,6 +10,8 @@ public sealed interface Value {
     ThreadLocal<Set<Value>> TO_STRING_RECURSION_TRACKER = ThreadLocal.withInitial(HashSet::new);
 
     static boolean isEqual(Value value1, Value value2) {
+        if (value1 == value2) return true;
+
         record Pair(Value first, Value second) {}
         
         return switch (new Pair(value1, value2)) {
@@ -23,7 +25,6 @@ public sealed interface Value {
                     first.value.size() == second.value.size() && first.value.keySet().stream()
                             .allMatch(i -> isEqual(first.value.get(i), second.value.get(i)));
             case Pair(FunctionValue(var first), FunctionValue(var second)) -> first.equals(second);
-            case Pair(NullValue first, NullValue second) -> true;
             default -> false;
         };
     }
@@ -359,6 +360,26 @@ public sealed interface Value {
         @Override
         public String toString() {
             return "null";
+        }
+    }
+
+    non-sealed interface SpecialValue extends Value {
+        default Value invoke(PlatformContext context, Value... args) {
+            throw context.createException("Tried to invoke %s, but it can't be invoked".formatted(this));
+        }
+
+        @Override
+        default boolean asBoolean() {
+            return true;
+        }
+
+        @Override
+        default ValueType type() {
+            return ValueType.SPECIAL;
+        }
+
+        default Value freeze() {
+            return this;
         }
     }
 }

@@ -25,8 +25,8 @@ public record EvaluationContext(LangConfig config,
     }
 
     @Override
-    public RuntimeException createException(String message, RuntimeException e) {
-        return new PatchException(message, e);
+    public RuntimeException createException(String message, Exception cause) {
+        return new PatchException(message, cause);
     }
 
     @Override

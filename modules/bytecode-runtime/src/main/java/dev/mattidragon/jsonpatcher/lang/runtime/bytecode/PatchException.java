@@ -5,7 +5,7 @@ public class PatchException extends RuntimeException {
         super(message);
     }
 
-    public PatchException(String message, RuntimeException cause) {
+    public PatchException(String message, Exception cause) {
         super(message, cause);
     }
 }

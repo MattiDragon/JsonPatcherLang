@@ -139,6 +139,7 @@ public class ExpressionInterpreter {
             case OBJECT -> value instanceof Value.ObjectValue;
             case NULL -> value instanceof Value.NullValue;
             case FUNCTION -> value instanceof Value.FunctionValue;
+            case SPECIAL -> value instanceof Value.SpecialValue;
         });
     }
 

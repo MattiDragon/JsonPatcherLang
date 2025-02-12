@@ -1,0 +1,221 @@
+package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.reflection;
+
+import dev.mattidragon.jsonpatcher.lang.runtime.PlatformContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import org.intellij.lang.annotations.Language;
+import org.jspecify.annotations.Nullable;
+
+import java.lang.constant.ClassDesc;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+class JavaValueUtil {
+    @Language("RegExp")
+    private static final String FIELD_DESCRIPTOR = "\\[*(?:[BCDFIJSZ]|L[^.;() ]+;)";
+    @Language("RegExp")
+    private static final String METHOD_DESCRIPTOR = "\\((?:" + FIELD_DESCRIPTOR + ")*\\)(?:" + FIELD_DESCRIPTOR + "|V)";
+
+    private static final Pattern FIELD_REFERENCE = Pattern.compile("(" + FIELD_DESCRIPTOR + ") ([^.;() ]+)");
+    private static final Pattern CONSTRUCTOR_REFERENCE = Pattern.compile("<init>(" + METHOD_DESCRIPTOR + ")");
+    private static final Pattern METHOD_REFERENCE = Pattern.compile("([^.;() ]+)(" + METHOD_DESCRIPTOR + ")");
+    private static final Pattern SIMPLE_REFERENCE = Pattern.compile("[^.;() ]+");
+
+    // Create a lookup on our classloader, but without any special permissions
+    static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup().in(JavaValueUtil.class);
+    private static final MethodHandles.Lookup PRIVATE_LOOKUP = MethodHandles.lookup();
+
+    private static final MethodHandle OBJECT_TO_VALUE_HANDLE;
+    private static final MethodHandle VALUE_TO_OBJECT_HANDLE;
+
+    static {
+        try {
+            OBJECT_TO_VALUE_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "objectToValue", MethodType.methodType(Value.class, Object.class));
+            VALUE_TO_OBJECT_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "valueToObject", MethodType.methodType(Object.class, Value.class, Class.class));
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new IllegalStateException("Cannot find required methods", e);
+        }
+    }
+
+    public static ClassChild resolveClassChild(Class<?> clazz, String name, PlatformContext context) {
+        if (SIMPLE_REFERENCE.matcher(name).matches()) return resolveSimple(clazz, name, context);
+
+        var constructorMatcher = CONSTRUCTOR_REFERENCE.matcher(name);
+        if (constructorMatcher.matches()) return resolveConstructor(clazz, name, constructorMatcher, context);
+
+        var methodMatcher = METHOD_REFERENCE.matcher(name);
+        if (methodMatcher.matches()) return resolveMethod(clazz, name, methodMatcher, context);
+
+        var fieldMatcher = FIELD_REFERENCE.matcher(name);
+        if (fieldMatcher.matches()) return resolveField(clazz, name, fieldMatcher, context);
+
+        throw context.createException("Invalid java member reference");
+    }
+
+    private static ClassChild resolveSimple(Class<?> clazz, String name, PlatformContext context) {
+        var children = new ArrayList<ClassChild>();
+        Arrays.stream(clazz.getMethods())
+                .filter(m -> m.getName().equals(name))
+                .map(ClassChild.MethodChild::new)
+                .forEach(children::add);
+
+        Arrays.stream(clazz.getFields())
+                .filter(f -> f.getName().equals(name))
+                .map(ClassChild.FieldChild::new)
+                .forEach(children::add);
+
+        Arrays.stream(clazz.getClasses())
+                .filter(c -> c.getName().equals(name))
+                .map(ClassChild.InnerClass::new)
+                .forEach(children::add);
+
+        if (children.isEmpty()) {
+            throw context.createException("Cannot find public member by the name '" + name + "'");
+        } else if (children.size() > 1) {
+            throw context.createException("Multiple public members with the name '" + name + "' found, please specify descriptor:\n"
+                + children.stream().map(ClassChild::toString).collect(Collectors.joining("\n")));
+        }
+
+        return children.getFirst();
+    }
+
+    private static ClassChild resolveField(Class<?> clazz, String fullName, Matcher fieldMatcher, PlatformContext context) {
+        var desc = fieldMatcher.group(1);
+        var name = fieldMatcher.group(2);
+
+        var type = resolveFieldDesc(desc, context);
+        for (var field : clazz.getFields()) {
+            if (field.getName().equals(name) && field.getType() == type) {
+                return new ClassChild.FieldChild(field);
+            }
+        }
+
+        throw context.createException("Cannot find field " + fullName);
+    }
+
+    private static ClassChild resolveConstructor(Class<?> clazz, String fullName, Matcher matcher, PlatformContext context) {
+        var desc = matcher.group(1);
+
+        var methodType = MethodType.fromMethodDescriptorString(desc, JavaValueUtil.class.getClassLoader());
+        for (var constructor : clazz.getConstructors()) {
+            if (Arrays.equals(constructor.getParameterTypes(), methodType.parameterArray())) {
+                return new ClassChild.ConstructorChild(constructor);
+            }
+        }
+
+        throw context.createException("Cannot find constructor " + fullName);
+    }
+
+    private static ClassChild resolveMethod(Class<?> clazz, String fullName, Matcher matcher, PlatformContext context) {
+        var name = matcher.group(1);
+        var desc = matcher.group(2);
+
+        var methodType = MethodType.fromMethodDescriptorString(desc, JavaValueUtil.class.getClassLoader());
+        for (var method : clazz.getMethods()) {
+            if (method.getName().equals(name)
+                && method.getReturnType() == methodType.returnType()
+                && Arrays.equals(method.getParameterTypes(), methodType.parameterArray())) {
+                return new ClassChild.MethodChild(method);
+            }
+        }
+
+        throw context.createException("Cannot find method " + fullName);
+    }
+
+    private static Class<?> resolveFieldDesc(String desc, PlatformContext context) {
+        try {
+            return ClassDesc.ofDescriptor(desc).resolveConstantDesc(LOOKUP);
+        } catch (ReflectiveOperationException e) {
+            throw context.createException("Failed to resolve field descriptor " + desc, e);
+        }
+    }
+
+    public static MethodHandle wrapMethodHandle(MethodHandle original) {
+        var originalType = original.type();
+        var argCount = originalType.parameterCount();
+        var filterArray = new MethodHandle[argCount];
+        for (var i = 0; i < argCount; i++) {
+            var expectedType = originalType.parameterType(i);
+            filterArray[i] = MethodHandles.insertArguments(VALUE_TO_OBJECT_HANDLE, 1, expectedType)
+                    .asType(MethodType.methodType(expectedType, Object.class));
+        }
+        var withArgsModified = MethodHandles.filterArguments(original, 0, filterArray);
+        if (originalType.returnType() == void.class) {
+            return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
+        } else {
+            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_TO_VALUE_HANDLE);
+        }
+    }
+
+    /**
+     * Converts a java object to a value. If no conversion is available it is wrapped using {@link JavaObjectValue}
+     * @param object The object to convert
+     * @return The converted value
+     */
+    public static Value objectToValue(@Nullable Object object) {
+        return switch (object) {
+            case Value value -> value;
+            case String s -> new Value.StringValue(s);
+            case Number n -> new Value.NumberValue(n.doubleValue());
+            case Boolean b -> Value.BooleanValue.of(b);
+            case null -> Value.NullValue.NULL;
+            default -> new JavaObjectValue(object);
+        };
+    }
+
+    /**
+     * Converts a value to a java object. May fail if no conversion is available.
+     * @param value The value to convert
+     * @param clazz A class object representing the target type
+     * @return The converted value
+     * @throws ClassCastException If no conversion is possible.
+     * @param <T> The type to convert to
+     */
+    public static <T> @Nullable T valueToObject(Value value, Class<T> clazz) {
+        if (Value.class.isAssignableFrom(clazz)) {
+            if (clazz.isAssignableFrom(value.getClass())) {
+                return clazz.cast(value);
+            } else {
+                throw new ClassCastException(value + " cannot be cast to " + clazz.getSimpleName());
+            }
+        }
+
+        if (value instanceof JavaObjectValue objectValue) {
+            return clazz.cast(objectValue.object());
+        }
+
+        return switch (value) {
+            case Value.StringValue(var s) when clazz == String.class -> clazz.cast(s);
+            case Value.BooleanValue booleanValue when clazz == boolean.class || clazz == Boolean.class -> clazz.cast(booleanValue.value());
+            case Value.NullValue nullValue when !clazz.isPrimitive() -> null;
+
+            case Value.NumberValue(var n) when clazz == long.class || clazz == Long.class -> clazz.cast((long) n);
+            case Value.NumberValue(var n) when clazz == int.class || clazz == Integer.class -> clazz.cast((int) n);
+            case Value.NumberValue(var n) when clazz == short.class || clazz == Short.class -> clazz.cast((short) n);
+            case Value.NumberValue(var n) when clazz == byte.class || clazz == Byte.class -> clazz.cast((byte) n);
+            case Value.NumberValue(var n) when clazz == char.class || clazz == Character.class -> clazz.cast((char) n);
+            case Value.NumberValue(var n) when clazz == float.class || clazz == Float.class -> clazz.cast((float) n);
+            case Value.NumberValue(var n) when clazz == double.class || clazz == Double.class -> clazz.cast(n);
+            default -> throw new ClassCastException(value + " cannot be cast to " + clazz.getSimpleName());
+        };
+    }
+
+    sealed interface ClassChild {
+        record InnerClass(Class<?> clazz) implements ClassChild {
+        }
+        record MethodChild(Method method) implements ClassChild {
+        }
+        record FieldChild(Field field) implements ClassChild {
+        }
+        record ConstructorChild(Constructor<?> constructor) implements ClassChild {
+        }
+    }
+}

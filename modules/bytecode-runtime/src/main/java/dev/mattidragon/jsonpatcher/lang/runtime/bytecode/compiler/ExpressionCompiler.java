@@ -136,6 +136,7 @@ public class ExpressionCompiler implements Opcodes {
             case OBJECT -> Types.OBJECT_VALUE;
             case NULL -> Types.NULL_VALUE;
             case FUNCTION -> Types.FUNCTION_VALUE;
+            case SPECIAL -> Types.SPECIAL_VALUE;
         };
         visitor.visitTypeInsn(INSTANCEOF, clazz);
         visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE, "of", "(Z)Ldev/mattidragon/jsonpatcher/lang/runtime/Value$BooleanValue;", false);

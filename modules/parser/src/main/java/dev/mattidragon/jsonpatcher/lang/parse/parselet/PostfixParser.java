@@ -138,6 +138,7 @@ public class PostfixParser {
             case Token.WordToken(var word) when word.equals("boolean") -> ValueType.BOOLEAN;
             case Token.WordToken(var word) when word.equals("array") -> ValueType.ARRAY;
             case Token.WordToken(var word) when word.equals("object") -> ValueType.OBJECT;
+            case Token.WordToken(var word) when word.equals("special") -> ValueType.SPECIAL;
             default -> null;
         };
     }

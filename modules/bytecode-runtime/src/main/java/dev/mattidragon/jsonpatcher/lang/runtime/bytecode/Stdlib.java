@@ -15,42 +15,58 @@ import java.util.Map;
  */
 public class Stdlib {
     /**
-     * Contains a list of all standard libraries.
+     * Contains a list of all globally available standard libraries.
      */
-    public static final String[] LIBRARY_NAMES;
+    public static final String[] GLOBAL_LIBRARY_NAMES;
+    /**
+     * Contains a list of all standard libraries that can be imported.
+     */
+    public static final String[] MISC_LIBRARY_NAMES;
     /**
      * Contains the contents of the standard library files.
      */
     public static final Map<String, String> LIBRARY_CONTENTS;
 
     static {
-        try (var stream = Stdlib.class.getResourceAsStream("/bytecode-runtime-files/liblist")) {
+        GLOBAL_LIBRARY_NAMES = loadLibList("globals");
+        MISC_LIBRARY_NAMES = loadLibList("misc");
+
+        var contents = new HashMap<String, String>();
+        for (var name : GLOBAL_LIBRARY_NAMES) {
+            loadLibraryContent(name, contents);
+        }
+        for (var name : MISC_LIBRARY_NAMES) {
+            loadLibraryContent(name, contents);
+        }
+        LIBRARY_CONTENTS = Collections.unmodifiableMap(contents);
+    }
+
+    private static void loadLibraryContent(String name, HashMap<String, String> contents) {
+        var filename = "/bytecode-runtime-files/stdlib/" + name + ".jsonpatch";
+
+        try (var stream = Stdlib.class.getResourceAsStream(filename)) {
+            if (stream == null) {
+                throw new IllegalStateException("Cannot find stdlib at " + filename);
+            }
+
+            contents.put(name, new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read stdlib at " + filename, e);
+        }
+    }
+
+    private static String[] loadLibList(String name) {
+        try (var stream = Stdlib.class.getResourceAsStream("/bytecode-runtime-files/" + name + ".liblist")) {
             if (stream == null) {
                 throw new IllegalStateException("Cannot find stdlib list");
             }
 
-            LIBRARY_NAMES = new BufferedReader(new InputStreamReader(stream))
+            return new BufferedReader(new InputStreamReader(stream))
                     .lines()
                     .toArray(String[]::new);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load stdlib list", e);
         }
-
-        var contents = new HashMap<String, String>();
-        for (var name : LIBRARY_NAMES) {
-            var filename = "/bytecode-runtime-files/stdlib/" + name + ".jsonpatch";
-
-            try (var stream = Stdlib.class.getResourceAsStream(filename)) {
-                if (stream == null) {
-                    throw new IllegalStateException("Cannot find stdlib at " + filename);
-                }
-
-                contents.put(name, new String(stream.readAllBytes(), StandardCharsets.UTF_8));
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to read stdlib at " + filename, e);
-            }
-        }
-        LIBRARY_CONTENTS = Collections.unmodifiableMap(contents);
     }
 
     private Stdlib() {

@@ -9,7 +9,7 @@ import java.util.List;
 public interface PlatformContext {
     RuntimeException createException(String message);
 
-    RuntimeException createException(String message, RuntimeException e);
+    RuntimeException createException(String message, Exception cause);
 
     LangConfig config();
 

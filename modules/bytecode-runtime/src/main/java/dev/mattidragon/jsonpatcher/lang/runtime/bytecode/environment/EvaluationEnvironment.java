@@ -15,6 +15,7 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.Stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.generated.GeneratedProgram;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.reflection.ReflectionInternalsLibrary;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.LibraryBuilder;
 import org.jspecify.annotations.Nullable;
@@ -56,15 +57,25 @@ public class EvaluationEnvironment {
                     return obj;
                 }
         ));
+        addLibrary(new Library(
+                LibraryGroup.INTERNALS,
+                "@internals/reflections",
+                () -> {
+                    var obj = new Value.ObjectValue();
+                    new LibraryBuilder(ReflectionInternalsLibrary.class, new ReflectionInternalsLibrary()).build(obj);
+                    return obj;
+                }
+        ));
 
         var diagnosticsBuilder = new DiagnosticsBuilder();
 
         // Prepare objects beforehand to prevent issues when libs use each other
-        for (var name : Stdlib.LIBRARY_NAMES) {
+        for (var name : Stdlib.GLOBAL_LIBRARY_NAMES) {
             globals.put(name, new Value.ObjectValue());
         }
 
-        Stdlib.LIBRARY_CONTENTS.forEach((name, content) -> {
+        for (var name : Stdlib.GLOBAL_LIBRARY_NAMES) {
+            var content = Stdlib.LIBRARY_CONTENTS.get(name);
             var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
@@ -72,16 +83,49 @@ public class EvaluationEnvironment {
                     parse.program(),
                     parse.treeMetadata(),
                     compilerOptions,
-                    "stdlib/" + name + ".jsonpatch", "jsonpatcher_generated/stdlib/" + name,
+                    "stdlib/" + name + ".jsonpatch",
+                    "jsonpatcher_generated/stdlib/" + name,
                     List.of(LibraryGroup.DEFAULT, LibraryGroup.INTERNALS)
             );
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
-        });
+        }
 
         // Freeze stdlib after init
-        for (var name : Stdlib.LIBRARY_NAMES) {
+        for (var name : Stdlib.GLOBAL_LIBRARY_NAMES) {
             globals.put(name, new Value.ObjectValue(((Value.ObjectValue) globals.get(name)).value(), true));
+        }
+
+        // Prepare non-global stdlibs
+        for (var name : Stdlib.MISC_LIBRARY_NAMES) {
+            var content = Stdlib.LIBRARY_CONTENTS.get(name);
+            var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
+            var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
+
+            var instance = classLoader.addScript(
+                    parse.program(),
+                    parse.treeMetadata(),
+                    compilerOptions,
+                    "stdlib/" + name + ".jsonpatch",
+                    "jsonpatcher_generated/stdlib/" + name,
+                    List.of(LibraryGroup.DEFAULT, LibraryGroup.INTERNALS)
+            );
+
+            var libraryGroup = switch (parse.metadata().has("libgroup") ? parse.metadata().getString("libgroup") : null) {
+                case "reflection" -> LibraryGroup.REFLECTION;
+                case "default" -> LibraryGroup.DEFAULT;
+                case null -> LibraryGroup.DEFAULT;
+                case String group -> throw new IllegalArgumentException("Unsupported library group in stdlib: " + group);
+            };
+
+            var object = new Value.ObjectValue();
+            instance.run(object, globals);
+            var frozenObject = new Value.ObjectValue(object.value(), true);
+            addLibrary(new Library(
+                    libraryGroup,
+                    name,
+                    () -> frozenObject
+            ));
         }
 
         var diagnostics = diagnosticsBuilder.build();
@@ -91,7 +135,7 @@ public class EvaluationEnvironment {
                 + errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n")));
         }
     }
-    
+
     public void addLibrary(Library library) {
         libraries.put(library.name(), library);
     }
@@ -124,7 +168,7 @@ public class EvaluationEnvironment {
     }
 
     private void configureCompiler(PreparationContextBuilder builder) {
-        builder.declareVariables(Stdlib.LIBRARY_NAMES);
+        builder.declareVariables(Stdlib.GLOBAL_LIBRARY_NAMES);
     }
 
     private Value.ObjectValue locateLibrary(String name, Collection<LibraryGroup> libraryGroups) {

@@ -122,6 +122,7 @@ public class BytecodeInternalsLibrary {
             // Functions and primitives are already immutable, so we can just return them.
             case Value.FunctionValue function -> function;
             case Value.Primitive primitive -> primitive;
+            case Value.SpecialValue specialValue -> specialValue.freeze();
         };
     }
 }

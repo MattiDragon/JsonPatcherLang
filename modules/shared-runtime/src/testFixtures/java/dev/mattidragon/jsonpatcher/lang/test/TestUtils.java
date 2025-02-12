@@ -215,8 +215,8 @@ public class TestUtils {
             }
 
             @Override
-            public RuntimeException createException(String message, RuntimeException e) {
-                return new RuntimeException("Error in test: " + message, e);
+            public RuntimeException createException(String message, Exception cause) {
+                return new RuntimeException("Error in test: " + message, cause);
             }
 
             @Override
