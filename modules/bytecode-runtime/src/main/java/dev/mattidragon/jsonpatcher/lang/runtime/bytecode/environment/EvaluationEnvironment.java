@@ -59,7 +59,7 @@ public class EvaluationEnvironment {
         ));
         addLibrary(new Library(
                 LibraryGroup.INTERNALS,
-                "@internals/reflections",
+                "@internals/reflection",
                 () -> {
                     var obj = new Value.ObjectValue();
                     new LibraryBuilder(ReflectionInternalsLibrary.class, new ReflectionInternalsLibrary()).build(obj);

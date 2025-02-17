@@ -10,8 +10,10 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.reflection.JavaValueUti
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessFlag;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -19,6 +21,7 @@ public class JavaClassValue implements Value.SpecialValue {
     private final Class<?> clazz;
     private final Map<String, Supplier<Value>> propertyGetterCache = new HashMap<>();
     private final Map<String, Consumer<Value>> propertySetterCache = new HashMap<>();
+    private final Map<Integer, MethodHandle> constructorsByArgCount = new HashMap<>();
 
     public JavaClassValue(Class<?> clazz) {
         this.clazz = clazz;
@@ -59,10 +62,8 @@ public class JavaClassValue implements Value.SpecialValue {
                 yield () -> {
                     try {
                         return (Value) handle.invoke();
-                    } catch (Exception e) {
-                        throw context.createException("Error while reading field", e);
-                    } catch (Error e) {
-                        throw e; // Let it through, we probably shouldn't recover
+                    } catch (Error | RuntimeException e) {
+                        throw e;
                     } catch (Throwable e) {
                         throw new RuntimeException("Unexpected error while reading field", e);
                     }
@@ -117,10 +118,8 @@ public class JavaClassValue implements Value.SpecialValue {
         Consumer<Value> consumer = v -> {
             try {
                 handle.invoke(v);
-            } catch (Exception e) {
-                throw context.createException("Error while writing field", e);
-            } catch (Error e) {
-                throw e; // Let it through, we probably shouldn't recover
+            } catch (Error | RuntimeException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new RuntimeException("Unexpected error while writing field", e);
             }
@@ -130,6 +129,49 @@ public class JavaClassValue implements Value.SpecialValue {
         consumer.accept(value);
     }
 
+    @Override
+    public Value invoke(PlatformContext context, Value... args) {
+        var argCount = args.length;
+
+        if (constructorsByArgCount.containsKey(argCount)) {
+            try {
+                return (Value) constructorsByArgCount.get(argCount).invoke((Object[]) args);
+            } catch (Error | RuntimeException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new RuntimeException("Unexpected error while calling constructor", e);
+            }
+        }
+
+        var available = Arrays.stream(clazz.getConstructors())
+                .filter(c -> c.getParameterCount() == argCount)
+                .toList();
+
+        if (available.size() > 1) {
+            throw new IllegalStateException("Multiple constructors with %s arguments, please call via <init> method".formatted(argCount));
+        }
+        if (available.isEmpty()) {
+            throw new NoSuchElementException("No constructor with %s arguments".formatted(argCount));
+        }
+
+        MethodHandle handle;
+        try {
+            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectConstructor(available.getFirst()));
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Cannot access public field", e);
+        }
+
+        constructorsByArgCount.put(argCount, handle);
+
+        try {
+            return (Value) handle.invokeWithArguments((Object[]) args);
+        } catch (Error | RuntimeException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new RuntimeException("Unexpected error while calling constructor", e);
+        }
+    }
+
     public Class<?> clazz() {
         return clazz;
     }
@@ -137,5 +179,15 @@ public class JavaClassValue implements Value.SpecialValue {
     @Override
     public String toString() {
         return "JavaClassValue[" + clazz.getCanonicalName() + "]";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof JavaClassValue other && other.clazz == clazz;
+    }
+
+    @Override
+    public int hashCode() {
+        return clazz.hashCode();
     }
 }

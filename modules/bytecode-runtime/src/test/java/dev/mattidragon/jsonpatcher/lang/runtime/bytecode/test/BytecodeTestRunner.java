@@ -29,10 +29,14 @@ public class BytecodeTestRunner implements TestRunner {
         return "bytecode compiler";
     }
 
+    public EvaluationEnvironment environment() {
+        return environment;
+    }
+
     @Override
     public void executeCode(Program program, TreeMetadata metadata, Map<String, Value.ObjectValue> libraries) {
         libraries.forEach((name, contents) -> environment.addLibrary(new Library(LibraryGroup.DEFAULT, name, () -> contents)));
-        var added = environment.addProgram(program, metadata, "test_script", "jsonpatcher_generated/test" + CLASS_COUNTER.getAndIncrement(), List.of(LibraryGroup.DEFAULT));
+        var added = environment.addProgram(program, metadata, "test_script", "jsonpatcher_generated/test" + CLASS_COUNTER.getAndIncrement(), List.of(LibraryGroup.DEFAULT, LibraryGroup.REFLECTION));
         added.run(new Value.ObjectValue());
     }
 }

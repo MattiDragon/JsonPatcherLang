@@ -26,6 +26,8 @@ public class FunctionHooks {
     private static final MethodHandle GET_WRONG_RUNTIME_ERROR;
     private static final MethodHandle UNWRAP_FUNCTION;
 
+    private static final MethodHandle INVOKE_SPECIAL;
+
     static {
         try {
             UNWRAP_OPTIONAL = LOOKUP.findStatic(FunctionHooks.class, "unwrapOptional", MethodType.methodType(Value.class, Value[].class, int.class));
@@ -45,6 +47,8 @@ public class FunctionHooks {
             ARRAY_AS_LIST = LOOKUP.findStatic(Arrays.class, "asList", MethodType.methodType(List.class, Object[].class));
             DEFINED_FUNCTION_HANDLE = LOOKUP.findVirtual(DefinedFunction.class, "handle", MethodType.methodType(MethodHandle.class));
             GET_WRONG_RUNTIME_ERROR = LOOKUP.findStatic(FunctionHooks.class, "getWrongRuntimeError", MethodType.methodType(IllegalStateException.class, PatchFunction.class));
+
+            INVOKE_SPECIAL = LOOKUP.findVirtual(Value.SpecialValue.class, "invoke", MethodType.methodType(Value.class, PlatformContext.class, Value[].class));
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot resolve method", e);
         }
@@ -107,6 +111,8 @@ public class FunctionHooks {
         // The type of the instanceof handles
         var testType = MethodType.methodType(boolean.class, PlatformContext.class, PatchFunction.class, Value[].class);
 
+        var genericMethodType = MethodType.methodType(Value.class, PlatformContext.class, Value.class, Value[].class);
+
         // We build this spaghetti method handle instead of using a normal method because this doesn't show up on stacktraces
         // It's a lot nicer for end users when it looks like their functions are directly calling each other
         /*
@@ -123,7 +129,7 @@ public class FunctionHooks {
             }
         }
          */
-        var handler = MethodHandles.guardWithTest(
+        var functionHandler = MethodHandles.guardWithTest(
                 // Check for builtin functions
                 MethodHandles.permuteArguments(MethodHandles.insertArguments(INSTANCEOF_CHECK, 1, PatchFunction.BuiltInPatchFunction.class).asType(MethodType.methodType(boolean.class, PatchFunction.class)), testType, 1),
                 // If builtin, first wrap args array into a list
@@ -159,7 +165,19 @@ public class FunctionHooks {
         );
 
         // Finally we wrap all that in another method handle that unwraps the function from a value, and then apply varargs correctly
-        return new ConstantCallSite(MethodHandles.filterArguments(handler, 1, UNWRAP_FUNCTION).asVarargsCollector(Value[].class).asType(methodType));
+        var functionValueHandler = MethodHandles.filterArguments(functionHandler, 1, UNWRAP_FUNCTION);
+
+        return new ConstantCallSite(MethodHandles.guardWithTest(
+                MethodHandles.permuteArguments(
+                        MethodHandles.insertArguments(INSTANCEOF_CHECK, 1, Value.SpecialValue.class).asType(MethodType.methodType(boolean.class, Value.class)),
+                        MethodType.methodType(boolean.class, PlatformContext.class, Value.class),
+                        1),
+                MethodHandles.permuteArguments(INVOKE_SPECIAL,
+                        MethodType.methodType(Value.class, PlatformContext.class, Value.SpecialValue.class, Value[].class),
+                        1, 0, 2)
+                        .asType(genericMethodType),
+                functionValueHandler
+        ).asVarargsCollector(Value[].class).asType(methodType));
     }
 
     private static IllegalStateException getWrongRuntimeError(PatchFunction function) {

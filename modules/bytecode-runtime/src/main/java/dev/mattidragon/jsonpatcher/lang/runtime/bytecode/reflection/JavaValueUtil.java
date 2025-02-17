@@ -30,7 +30,7 @@ class JavaValueUtil {
     private static final Pattern SIMPLE_REFERENCE = Pattern.compile("[^.;() ]+");
 
     // Create a lookup on our classloader, but without any special permissions
-    static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup().in(JavaValueUtil.class);
+    static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup().dropLookupMode(MethodHandles.Lookup.MODULE);
     private static final MethodHandles.Lookup PRIVATE_LOOKUP = MethodHandles.lookup();
 
     private static final MethodHandle OBJECT_TO_VALUE_HANDLE;
@@ -151,7 +151,7 @@ class JavaValueUtil {
         if (originalType.returnType() == void.class) {
             return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
         } else {
-            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_TO_VALUE_HANDLE);
+            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_TO_VALUE_HANDLE.asType(MethodType.methodType(Value.class, originalType.returnType())));
         }
     }
 
@@ -179,6 +179,7 @@ class JavaValueUtil {
      * @throws ClassCastException If no conversion is possible.
      * @param <T> The type to convert to
      */
+    @SuppressWarnings("unchecked")
     public static <T> @Nullable T valueToObject(Value value, Class<T> clazz) {
         if (Value.class.isAssignableFrom(clazz)) {
             if (clazz.isAssignableFrom(value.getClass())) {
@@ -197,13 +198,18 @@ class JavaValueUtil {
             case Value.BooleanValue booleanValue when clazz == boolean.class || clazz == Boolean.class -> clazz.cast(booleanValue.value());
             case Value.NullValue nullValue when !clazz.isPrimitive() -> null;
 
-            case Value.NumberValue(var n) when clazz == long.class || clazz == Long.class -> clazz.cast((long) n);
-            case Value.NumberValue(var n) when clazz == int.class || clazz == Integer.class -> clazz.cast((int) n);
-            case Value.NumberValue(var n) when clazz == short.class || clazz == Short.class -> clazz.cast((short) n);
-            case Value.NumberValue(var n) when clazz == byte.class || clazz == Byte.class -> clazz.cast((byte) n);
-            case Value.NumberValue(var n) when clazz == char.class || clazz == Character.class -> clazz.cast((char) n);
-            case Value.NumberValue(var n) when clazz == float.class || clazz == Float.class -> clazz.cast((float) n);
-            case Value.NumberValue(var n) when clazz == double.class || clazz == Double.class -> clazz.cast(n);
+            // We need to do unchecked casts as primitive classes don't support casts from wrappers :annoyed:
+            case Value.NumberValue(var n) when clazz == long.class || clazz == Long.class -> (T) (Long) (long) n;
+            case Value.NumberValue(var n) when clazz == int.class || clazz == Integer.class -> (T) (Integer) (int) n;
+            case Value.NumberValue(var n) when clazz == short.class || clazz == Short.class -> (T) (Short) (short) n;
+            case Value.NumberValue(var n) when clazz == byte.class || clazz == Byte.class -> (T) (Byte) (byte) n;
+            case Value.NumberValue(var n) when clazz == char.class || clazz == Character.class -> (T) (Character) (char) n;
+            case Value.StringValue(var s) when clazz == char.class || clazz == Character.class -> {
+                if (s.length() != 1) throw new ClassCastException("Only strings of length 1 can be converted to chars");
+                yield (T) (Character) s.charAt(0);
+            }
+            case Value.NumberValue(var n) when clazz == float.class || clazz == Float.class -> (T) (Float) (float) n;
+            case Value.NumberValue(var n) when clazz == double.class || clazz == Double.class -> (T) (Double) n;
             default -> throw new ClassCastException(value + " cannot be cast to " + clazz.getSimpleName());
         };
     }

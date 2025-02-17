@@ -146,4 +146,14 @@ public class JavaObjectValue implements Value.SpecialValue {
     public String toString() {
         return "JavaObjectValue[" + object + "]";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof JavaObjectValue other && other.object == object;
+    }
+
+    @Override
+    public int hashCode() {
+        return object.hashCode();
+    }
 }
