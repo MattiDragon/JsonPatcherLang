@@ -1,5 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.ast;
 
-public interface ProgramNode {
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
+
+public interface ProgramNode extends MetadataHolder {
     Iterable<? extends ProgramNode> getChildren();
 }

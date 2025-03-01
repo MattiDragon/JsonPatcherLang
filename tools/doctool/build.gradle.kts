@@ -6,6 +6,7 @@ plugins {
 dependencies {
     api(project(":parser"))
     api(libs.bundles.commonmark)
+    testImplementation(testFixtures(project(":shared-runtime")))
 }
 
 tasks.jar {

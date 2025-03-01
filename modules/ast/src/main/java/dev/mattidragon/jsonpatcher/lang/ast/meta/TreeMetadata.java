@@ -1,13 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.ast.meta;
 
-import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
-
 import java.util.*;
 
 public class TreeMetadata {
-    private final Map<ProgramNode, Map<MetadataKey<?>, Object>> values = new IdentityHashMap<>();
+    private final Map<MetadataHolder, Map<MetadataKey<?>, Object>> values = new IdentityHashMap<>();
     
-    public <T> void put(ProgramNode node, MetadataKey<T> key, T value) {
+    public <T> void put(MetadataHolder node, MetadataKey<T> key, T value) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
@@ -17,7 +15,7 @@ public class TreeMetadata {
     }
     
     @SuppressWarnings("unchecked")
-    public <T> Optional<T> get(ProgramNode node, MetadataKey<T> key) {
+    public <T> Optional<T> get(MetadataHolder node, MetadataKey<T> key) {
         var nodeMap = values.get(node);
         if (nodeMap == null) return Optional.empty();
         
@@ -41,7 +39,7 @@ public class TreeMetadata {
      * @param to The node to copy the key to.
      * @param key The key to copy.
      */
-    public void copy(ProgramNode from, ProgramNode to, MetadataKey<?> key) {
+    public void copy(MetadataHolder from, MetadataHolder to, MetadataKey<?> key) {
         var nodeMap = values.get(from);
         if (nodeMap == null) return;
 
