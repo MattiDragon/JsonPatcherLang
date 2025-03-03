@@ -124,6 +124,13 @@ public class NewDocParser {
                 expectEol();
                 yield new NewDocEntry.MetadataEntry(new NamespaceDescription(dottedNames), name, type, condition, body);
             }
+            case "namespace" -> {
+                var dottedNames = readDottedNames();
+                var name = dottedNames.removeLast();
+                var condition = checkCondition();
+                expectEol();
+                yield new NewDocEntry.NamespaceEntry(new NamespaceDescription(dottedNames), name, condition, body);
+            }
             default -> {
                 var pos = tokens.lastPos();
                 diagnostics.addDiagnostic(new DocParseError(pos, "Unknown doc comment type: " + firstToken, DocParseError.Type.DOC_PARSE));
