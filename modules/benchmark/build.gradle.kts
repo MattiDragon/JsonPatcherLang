@@ -11,7 +11,6 @@ dependencies {
     implementation(libs.jspecify)
 
     implementation(project(":bytecode-runtime"))
-    implementation(project(":legacy-runtime"))
     implementation(project(":parser"))
     constraints {
         implementation(libs.bundles.asm)

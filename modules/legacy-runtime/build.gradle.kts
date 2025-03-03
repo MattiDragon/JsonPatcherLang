@@ -1,8 +1,0 @@
-plugins {
-    id("shared")
-}
-
-dependencies {
-    api(project(":shared-runtime"))
-    testImplementation(testFixtures(project(":shared-runtime")))
-}

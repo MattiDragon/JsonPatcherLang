@@ -1,16 +1,12 @@
 package dev.mattidragon.jsonpatcher.lang.benchmark;
 
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.PreparationContextBuilder;
-import dev.mattidragon.jsonpatcher.lang.runtime.PreparedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.EvaluationEnvironment;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.LibraryGroup;
-import dev.mattidragon.jsonpatcher.lang.runtime.legacy.LegacyRuntime;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
@@ -23,14 +19,11 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 @State(Scope.Benchmark)
 public class TestBenchmark {
-    private final LangConfig config = new LangConfig(LangConfig.StackTraceMode.JAVA);
-
     @Param({ "5", "10", "20" })
     public int index;
 
     private EvaluationEnvironment.AddedProgram bytecodeProgram;
     private EvaluationEnvironment.AddedProgram bytecodeProgramWithoutCondy;
-    private PreparedProgram legacyProgram;
 
     @Setup
     public void compileCode() {
@@ -61,8 +54,6 @@ public class TestBenchmark {
         var env2 = new EvaluationEnvironment(CompilerOptions.builder().disableDynamicConstants().build());
         env2.enableDumping("dump-without-condy");
         bytecodeProgramWithoutCondy = env2.addProgram(parse.program(), parse.treeMetadata(), "fib2", "CompiledFib2", List.of(LibraryGroup.DEFAULT));
-
-        legacyProgram = new LegacyRuntime().prepare(parse.program(), parse.treeMetadata(), PreparationContextBuilder::declareStdlib);
     }
 
     @TearDown
@@ -102,12 +93,5 @@ public class TestBenchmark {
         var root = new Value.ObjectValue();
         root.value().put("index", new Value.NumberValue(index));
         return bytecodeProgramWithoutCondy.run(root);
-    }
-
-    @Benchmark
-    public Value fibonacciLegacy() {
-        var root = new Value.ObjectValue();
-        root.value().put("index", new Value.NumberValue(index));
-        return legacyProgram.run(builder -> builder.addStdlib().root(root), config);
     }
 }
