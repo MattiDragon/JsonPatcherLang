@@ -28,6 +28,14 @@ public class Tokenizer {
             return new DocToken.Name(word.toString());
         }
 
+        if (c >= '0' && c <= '9') {
+            var num = c - '0';
+            while (hasNextChar() && peekChar() >= '0' && peekChar() <= '9') {
+                num = num * 10 + nextChar() - '0';
+            }
+            return new DocToken.Number(num);
+        }
+
         return switch (c) {
             case '(' -> DocToken.Symbol.BEGIN_PAREN;
             case ')' -> DocToken.Symbol.END_PAREN;
@@ -40,6 +48,14 @@ public class Tokenizer {
             case '|' -> DocToken.Symbol.BAR;
             case ':' -> DocToken.Symbol.COLON;
             case ',' -> DocToken.Symbol.COMMA;
+            case '.' -> DocToken.Symbol.DOT;
+            case '@' -> DocToken.Symbol.AT;
+            case '!' -> DocToken.Symbol.BANG;
+            case '&' -> DocToken.Symbol.AND;
+            case '#' -> DocToken.Symbol.HASH;
+            case '=' -> DocToken.Symbol.EQUAL;
+            case '^' -> DocToken.Symbol.CARET;
+            case '~' -> DocToken.Symbol.TILDE;
             case '-' -> {
                 var c2 = nextChar();
                 if (c2 == '>') yield DocToken.Symbol.ARROW;

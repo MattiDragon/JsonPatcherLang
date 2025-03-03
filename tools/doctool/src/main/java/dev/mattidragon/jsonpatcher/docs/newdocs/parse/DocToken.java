@@ -12,6 +12,9 @@ sealed interface DocToken {
     record VarName(String value) implements DocToken {
     }
 
+    record Number(int value) implements DocToken {
+    }
+
     enum Symbol implements DocToken {
         BEGIN_PAREN,
         END_PAREN,
@@ -23,7 +26,18 @@ sealed interface DocToken {
         END_ANGLE,
         BAR,
         COLON,
-        COMMA, ARROW
+        COMMA,
+        DOT,
+        AT,
+        BANG,
+        AND,
+        ARROW,
+        HASH,
+        LESS,
+        GREATER,
+        EQUAL,
+        CARET,
+        TILDE
     }
 
     record Error(String message, String id, SourceSpan pos) implements DocToken, Diagnostic {

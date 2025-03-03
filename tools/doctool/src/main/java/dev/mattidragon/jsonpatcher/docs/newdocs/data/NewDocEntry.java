@@ -6,17 +6,37 @@ import java.util.Optional;
 
 public sealed interface NewDocEntry {
     Optional<DocCondition> condition();
+    NamespaceDescription namespace();
+    String name();
+    String body();
 
-    record LibraryEntry(String name, Optional<String> location, Optional<DocCondition> condition) implements NewDocEntry {
+    record LibraryEntry(NamespaceDescription namespace, String name, Optional<String> location, Optional<DocCondition> condition, String body) implements NewDocEntry {
     }
 
-    record GlobalLibraryEntry(String name, Optional<DocCondition> condition) implements NewDocEntry {
+    record GlobalLibraryEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements NewDocEntry {
     }
 
-    record GlobalValueEntry(String name, NewDocType type, Optional<DocCondition> condition) implements NewDocEntry {
+    record GlobalValueEntry(NamespaceDescription namespace, String name, NewDocType type, Optional<DocCondition> condition, String body) implements NewDocEntry {
     }
 
-    record PropertyEntry() { }
+    record PropertyEntry(NamespaceDescription namespace, String owner, String name, NewDocType type, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    }
+
+    record TypeDeclarationEntry(NamespaceDescription namespace, String name, BaseType baseType, Optional<DocCondition> condition, String body) implements NewDocEntry {
+        public enum BaseType {
+            OBJECT,
+            SPECIAL
+        }
+    }
+
+    record TypeAliasEntry(NamespaceDescription namespace, String name, NewDocType definition, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    }
+
+    record MetadataEntry(NamespaceDescription namespace, String name, NewDocType type, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    }
+
+    record NamespaceEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    }
 }
 
 /*
