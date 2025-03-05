@@ -6,6 +6,6 @@ module jsonpatcher.lang.runtime.shared {
     requires org.jspecify;
     requires transitive jsonpatcher.lang.ast;
 
-    exports dev.mattidragon.jsonpatcher.lang.runtime;
-    exports dev.mattidragon.jsonpatcher.lang.runtime.stdlib;
+    exports dev.mattidragon.jsonpatcher.lang.runtime_shared;
+    exports dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib;
 }

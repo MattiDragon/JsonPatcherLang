@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.test.library;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.stdlib.Libraries;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.Libraries;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

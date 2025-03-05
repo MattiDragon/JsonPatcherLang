@@ -10,7 +10,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.KeywordToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 import java.util.List;
 

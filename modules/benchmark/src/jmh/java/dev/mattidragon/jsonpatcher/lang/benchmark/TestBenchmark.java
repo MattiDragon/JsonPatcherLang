@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.benchmark;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.EvaluationEnvironment;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.LibraryGroup;

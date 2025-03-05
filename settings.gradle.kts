@@ -8,7 +8,8 @@ fun module(name: String) {
 module("shared-runtime")
 module("benchmark")
 module("parser")
-module("bytecode-runtime")
+module("compiler")
+module("runtime")
 module("ast")
 module("analysis")
 

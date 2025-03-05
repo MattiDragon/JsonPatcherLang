@@ -5,7 +5,6 @@ import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.KeywordToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class ProgramPrinter {
     public static void prettyPrint(Program program, PatchMetadata metadata, PrintTarget target) {

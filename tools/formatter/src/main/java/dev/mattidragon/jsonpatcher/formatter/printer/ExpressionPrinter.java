@@ -4,7 +4,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
 
 public class ExpressionPrinter {
     public static PrintTarget prettyPrint(Expression expression, PrintTarget target) {

@@ -13,8 +13,8 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.Runtime;
-import dev.mattidragon.jsonpatcher.lang.runtime.*;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.*;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Runtime;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 

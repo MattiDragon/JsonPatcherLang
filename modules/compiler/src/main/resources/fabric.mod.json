@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-compiler",
+  "name": "JsonPatcherLang Compiler",
+  "description": "Part of the JsonPatcher language libraries. Contains compiler that compiles scripts to jvm bytecode.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}

@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.test;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.runtime.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 
 import java.util.Map;
 
