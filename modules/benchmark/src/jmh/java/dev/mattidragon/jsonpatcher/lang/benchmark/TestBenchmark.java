@@ -3,10 +3,10 @@ package dev.mattidragon.jsonpatcher.lang.benchmark;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.EvaluationEnvironment;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.environment.LibraryGroup;
+import dev.mattidragon.jsonpatcher.lang.runtime.environment.EvaluationEnvironment;
+import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryGroup;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
@@ -49,10 +49,10 @@ public class TestBenchmark {
         }
 
         var env = new EvaluationEnvironment(CompilerOptions.builder().build());
-        env.enableDumping("dump-with-condy");
+        //env.enableDumping("dump-with-condy");
         bytecodeProgram = env.addProgram(parse.program(), parse.treeMetadata(), "fib", "CompiledFib", List.of(LibraryGroup.DEFAULT));
         var env2 = new EvaluationEnvironment(CompilerOptions.builder().disableDynamicConstants().build());
-        env2.enableDumping("dump-without-condy");
+        //env2.enableDumping("dump-without-condy");
         bytecodeProgramWithoutCondy = env2.addProgram(parse.program(), parse.treeMetadata(), "fib2", "CompiledFib2", List.of(LibraryGroup.DEFAULT));
     }
 

@@ -11,7 +11,9 @@ dependencies {
     implementation(libs.jspecify)
 
     implementation(project(":compiler"))
+    implementation(project(":runtime"))
     implementation(project(":parser"))
+
     constraints {
         implementation(libs.bundles.asm)
         jmh(libs.bundles.asm)

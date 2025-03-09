@@ -5,6 +5,6 @@ plugins {
 dependencies {
     implementation(project(":analysis"))
     implementation(project(":parser"))
-    //api(project(":shared-runtime"))
+    runtimeOnly(project(":runtime"))
     implementation(libs.bundles.asm)
 }
