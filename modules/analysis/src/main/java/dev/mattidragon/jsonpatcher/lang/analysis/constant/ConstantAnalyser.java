@@ -5,14 +5,13 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A simple analyser that finds and marks constant expressions in the AST.
  */
 public class ConstantAnalyser {
-    public static final MetadataKey<Value.Primitive> CONSTANT_VALUE = new MetadataKey<>("ConstantAnalyser/CONSTANT_VALUE");
+    public static final MetadataKey<ConstantValue> CONSTANT_VALUE = new MetadataKey<>("ConstantAnalyser/CONSTANT_ConstantValue");
 
     private final TreeMetadata metadata;
 
@@ -32,40 +31,40 @@ public class ConstantAnalyser {
         }
     }
 
-    private Value.@Nullable Primitive analyseExpression(Expression expr) {
+    private @Nullable ConstantValue analyseExpression(Expression expr) {
         var value = switch (expr) {
-            case NumberExpression(var number) -> new Value.NumberValue(number);
-            case StringExpression(var string) -> new Value.StringValue(string);
-            case BooleanExpression(var bool) -> Value.BooleanValue.of(bool);
-            case NullExpression() -> Value.NullValue.NULL;
+            case NumberExpression(var number) -> new ConstantValue.Number(number);
+            case StringExpression(var string) -> new ConstantValue.String(string);
+            case BooleanExpression(var bool) -> ConstantValue.Boolean.of(bool);
+            case NullExpression() -> ConstantValue.Null.NULL;
             case UnaryExpression(var input, var op) -> {
-                var inputValue = analyseExpression(input);
-                if (inputValue == null) yield null;
-                yield computeUnary(op, inputValue);
+                var inputConstantValue = analyseExpression(input);
+                if (inputConstantValue == null) yield null;
+                yield computeUnary(op, inputConstantValue);
             }
             case BinaryExpression(var first, var second, var op) -> {
-                var firstValue = analyseExpression(first);
-                var secondValue = analyseExpression(second);
-                if (firstValue == null || secondValue == null) yield null;
-                yield computeBinary(op, firstValue, secondValue);
+                var firstConstantValue = analyseExpression(first);
+                var secondConstantValue = analyseExpression(second);
+                if (firstConstantValue == null || secondConstantValue == null) yield null;
+                yield computeBinary(op, firstConstantValue, secondConstantValue);
             }
             case ShortedBinaryExpression(var first, var second, var op) -> {
-                var firstValue = analyseExpression(first);
-                var secondValue = analyseExpression(second);
-                // If we short after the first value, the second expr never runs, and can thus be non-constant
-                if (firstValue == null) yield null;
+                var firstConstantValue = analyseExpression(first);
+                var secondConstantValue = analyseExpression(second);
+                // If we short after the first ConstantValue, the second expr never runs, and can thus be non-constant
+                if (firstConstantValue == null) yield null;
                 yield switch (op) {
-                    case AND -> firstValue.asBoolean() ? secondValue : firstValue;
-                    case OR -> firstValue.asBoolean() ? firstValue : secondValue;
+                    case AND -> firstConstantValue.asBoolean() ? secondConstantValue : firstConstantValue;
+                    case OR -> firstConstantValue.asBoolean() ? firstConstantValue : secondConstantValue;
                 };
             }
             case TernaryExpression(var condition, var ifTrue, var ifFalse) -> {
-                var conditionValue = analyseExpression(condition);
-                var trueValue = analyseExpression(ifTrue);
-                var falseValue = analyseExpression(ifFalse);
+                var conditionConstantValue = analyseExpression(condition);
+                var trueConstantValue = analyseExpression(ifTrue);
+                var falseConstantValue = analyseExpression(ifFalse);
                 // If the condition is constant, we don't care about that branch that's never taken
-                if (conditionValue == null) yield null;
-                yield conditionValue.asBoolean() ? trueValue : falseValue;
+                if (conditionConstantValue == null) yield null;
+                yield conditionConstantValue.asBoolean() ? trueConstantValue : falseConstantValue;
             }
             default -> {
                 expr.getChildren().forEach(this::analyse);
@@ -76,66 +75,66 @@ public class ConstantAnalyser {
         return value;
     }
 
-    private Value.@Nullable Primitive computeBinary(BinaryExpression.Operator op, Value.Primitive first, Value.Primitive second) {
-        record Pair(Value.Primitive first, Value.Primitive second) {}
+    private @Nullable ConstantValue computeBinary(BinaryExpression.Operator op, ConstantValue first, ConstantValue second) {
+        record Pair(ConstantValue first, ConstantValue second) {}
         var pair = new Pair(first, second);
 
         return switch (op) {
             case PLUS -> switch (pair) {
-                case Pair(Value.NumberValue(var a), Value.NumberValue(var b)) -> new Value.NumberValue(a + b);
-                case Pair(Value.StringValue(var a), Value.StringValue(var b)) -> new Value.StringValue(a + b);
+                case Pair(ConstantValue.Number(var a), ConstantValue.Number(var b)) -> new ConstantValue.Number(a + b);
+                case Pair(ConstantValue.String(var a), ConstantValue.String(var b)) -> new ConstantValue.String(a + b);
                 default -> null;
             };
-            case MINUS -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? new Value.NumberValue(a - b) : null;
+            case MINUS -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? new ConstantValue.Number(a - b) : null;
             case MULTIPLY -> switch (pair) {
-                case Pair(Value.NumberValue(var a), Value.NumberValue(var b)) -> new Value.NumberValue(a * b);
-                case Pair(Value.StringValue(var a), Value.NumberValue(var b)) -> new Value.StringValue(a.repeat((int) b));
+                case Pair(ConstantValue.Number(var a), ConstantValue.Number(var b)) -> new ConstantValue.Number(a * b);
+                case Pair(ConstantValue.String(var a), ConstantValue.Number(var b)) -> new ConstantValue.String(a.repeat((int) b));
                 default -> null;
             };
-            case DIVIDE -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? new Value.NumberValue(a / b) : null;
-            case MODULO -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? new Value.NumberValue(a % b) : null;
-            case EXPONENT -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? new Value.NumberValue(Math.pow(a, b)) : null;
+            case DIVIDE -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? new ConstantValue.Number(a / b) : null;
+            case MODULO -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? new ConstantValue.Number(a % b) : null;
+            case EXPONENT -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? new ConstantValue.Number(Math.pow(a, b)) : null;
             case AND -> switch (pair) {
-                case Pair(Value.NumberValue(var a), Value.NumberValue(var b)) -> new Value.NumberValue((int) a & (int) b);
-                case Pair(Value.BooleanValue a, Value.BooleanValue b) -> Value.BooleanValue.of(a.value() && b.value());
+                case Pair(ConstantValue.Number(var a), ConstantValue.Number(var b)) -> new ConstantValue.Number((int) a & (int) b);
+                case Pair(ConstantValue.Boolean a, ConstantValue.Boolean b) -> ConstantValue.Boolean.of(a.value() && b.value());
                 default -> null;
             };
             case OR -> switch (pair) {
-                case Pair(Value.NumberValue(var a), Value.NumberValue(var b)) -> new Value.NumberValue((int) a | (int) b);
-                case Pair(Value.BooleanValue a, Value.BooleanValue b) -> Value.BooleanValue.of(a.value() || b.value());
+                case Pair(ConstantValue.Number(var a), ConstantValue.Number(var b)) -> new ConstantValue.Number((int) a | (int) b);
+                case Pair(ConstantValue.Boolean a, ConstantValue.Boolean b) -> ConstantValue.Boolean.of(a.value() || b.value());
                 default -> null;
             };
             case XOR -> switch (pair) {
-                case Pair(Value.NumberValue(var a), Value.NumberValue(var b)) -> new Value.NumberValue((int) a ^ (int) b);
-                case Pair(Value.BooleanValue a, Value.BooleanValue b) -> Value.BooleanValue.of(a.value() ^ b.value());
+                case Pair(ConstantValue.Number(var a), ConstantValue.Number(var b)) -> new ConstantValue.Number((int) a ^ (int) b);
+                case Pair(ConstantValue.Boolean a, ConstantValue.Boolean b) -> ConstantValue.Boolean.of(a.value() ^ b.value());
                 default -> null;
             };
-            case EQUALS -> Value.BooleanValue.of(first.equals(second));
-            case NOT_EQUALS -> Value.BooleanValue.of(!first.equals(second));
-            case LESS_THAN -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? Value.BooleanValue.of(a < b) : null;
-            case GREATER_THAN -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? Value.BooleanValue.of(a > b) : null;
-            case LESS_THAN_EQUAL -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? Value.BooleanValue.of(a <= b) : null;
-            case GREATER_THAN_EQUAL -> pair instanceof Pair(Value.NumberValue(var a), Value.NumberValue(var b))
-                    ? Value.BooleanValue.of(a >= b) : null;
+            case EQUALS -> ConstantValue.Boolean.of(first.equals(second));
+            case NOT_EQUALS -> ConstantValue.Boolean.of(!first.equals(second));
+            case LESS_THAN -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? ConstantValue.Boolean.of(a < b) : null;
+            case GREATER_THAN -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? ConstantValue.Boolean.of(a > b) : null;
+            case LESS_THAN_EQUAL -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? ConstantValue.Boolean.of(a <= b) : null;
+            case GREATER_THAN_EQUAL -> pair instanceof Pair(ConstantValue.Number(var a), ConstantValue.Number(var b))
+                    ? ConstantValue.Boolean.of(a >= b) : null;
             case IN, ASSIGN -> null;
         };
     }
 
-    private static Value.@Nullable Primitive computeUnary(UnaryExpression.Operator op, Value.Primitive value) {
+    private static @Nullable ConstantValue computeUnary(UnaryExpression.Operator op, ConstantValue value) {
         return switch (op) {
-            case NOT -> value instanceof Value.BooleanValue booleanValue
-                    ? Value.BooleanValue.of(!booleanValue.value()) : null;
-            case MINUS -> value instanceof Value.NumberValue(var numberValue)
-                    ? new Value.NumberValue(-numberValue) : null;
-            case BITWISE_NOT -> value instanceof Value.NumberValue(var numberValue)
-                    ? new Value.NumberValue(~(int) numberValue) : null;
+            case NOT -> value instanceof ConstantValue.Boolean booleanValue
+                    ? ConstantValue.Boolean.of(!booleanValue.value()) : null;
+            case MINUS -> value instanceof ConstantValue.Number(var Number)
+                    ? new ConstantValue.Number(-Number) : null;
+            case BITWISE_NOT -> value instanceof ConstantValue.Number(var Number)
+                    ? new ConstantValue.Number(~(int) Number) : null;
             default -> null;
         };
     }

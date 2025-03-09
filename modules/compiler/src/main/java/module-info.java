@@ -2,7 +2,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.lang.compiler {
-    requires transitive jsonpatcher.lang.runtime.shared;
+    //requires transitive jsonpatcher.lang.runtime.shared;
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.analysis;
     requires org.jetbrains.annotations;

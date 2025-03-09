@@ -8,7 +8,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.objectweb.asm.*;
 
 import java.util.*;
@@ -44,7 +43,7 @@ public class FunctionCompiler implements Opcodes {
         // Method header
         var visitor = classVisitor.visitMethod(ACC_PUBLIC,
                 "run",
-                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.ObjectValue.class), Type.getType(Map.class)),
+                Type.getMethodDescriptor(Types.VALUE, Types.OBJECT_VALUE, Type.getType(Map.class)),
                 null,
                 null);
         visitor.visitParameter("$", 0);
@@ -103,11 +102,11 @@ public class FunctionCompiler implements Opcodes {
         for (int i = 0; i < scope.captures().size(); i++) {
             args.add(Type.getType(Types.BOX.getDescriptor()));
         }
-        if (capturesRoot) args.add(Type.getType(Value.ObjectValue.class));
+        if (capturesRoot) args.add(Types.OBJECT_VALUE);
         for (int i = 0; i < functionArgs.size(); i++) {
-            args.add(Type.getType(Value.class));
+            args.add(Types.VALUE);
         }
-        return Type.getMethodDescriptor(Type.getType(Value.class), args.toArray(Type[]::new));
+        return Type.getMethodDescriptor(Types.VALUE, args.toArray(Type[]::new));
     }
 
     private void allocateLambdaCaptures(FunctionScope scope, MethodVisitor visitor, boolean capturesRoot) {
@@ -153,7 +152,7 @@ public class FunctionCompiler implements Opcodes {
             }
 
             if (captured) {
-                visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+                visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
             }
 
             this.visitor.visitVarInsn(ASTORE, varIndex);
@@ -168,7 +167,7 @@ public class FunctionCompiler implements Opcodes {
     private void addGlobalMetadata(Program program, Scope scope, MethodVisitor visitor, Label startLabel, Label endLabel) {
         for (var variable : scope.variables()) {
             if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
-            visitor.visitLocalVariable(variable.name(), variable.isCaptured() ? Types.BOX.getDescriptor() : Type.getDescriptor(Value.class), null, startLabel, endLabel, getOrAllocateVariable(variable));
+            visitor.visitLocalVariable(variable.name(), variable.isCaptured() ? Types.BOX.getDescriptor() : Types.VALUE.getDescriptor(), null, startLabel, endLabel, getOrAllocateVariable(variable));
         }
     }
 
@@ -225,7 +224,7 @@ public class FunctionCompiler implements Opcodes {
         if (variable.isCaptured()) {
             visitor.visitVarInsn(ALOAD, index);
             valueExpressionInserter.run();
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
         } else {
             valueExpressionInserter.run();
             visitor.visitVarInsn(ASTORE, index);

@@ -10,8 +10,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -72,7 +70,7 @@ public class StatementCompiler implements Opcodes {
         if (expression.isPresent()) {
             functionCompiler.compileExpression(expression.get());
         } else {
-            visitor.visitFieldInsn(GETSTATIC, Types.NULL_VALUE.getInternalName(), "NULL", Type.getDescriptor(Value.NullValue.class));
+            visitor.visitFieldInsn(GETSTATIC, Types.NULL_VALUE.getInternalName(), "NULL", Types.NULL_VALUE.getDescriptor());
         }
         visitor.visitInsn(ARETURN);
     }
@@ -99,7 +97,7 @@ public class StatementCompiler implements Opcodes {
         visitor.visitLabel(endLabel);
 
         for (var variable : scope.variables()) {
-            var type = variable.isCaptured() ? Types.BOX.getDescriptor() : Type.getDescriptor(Value.class);
+            var type = variable.isCaptured() ? Types.BOX.getDescriptor() : Types.VALUE.getDescriptor();
             visitor.visitLocalVariable(variable.name(), type, null, startLabel, endLabel, functionCompiler.getOrAllocateVariable(variable));
         }
     }
@@ -175,7 +173,7 @@ public class StatementCompiler implements Opcodes {
 
         visitor.visitJumpInsn(GOTO, continueLabel);
         visitor.visitLabel(endLabel);
-        visitor.visitLocalVariable(statement.variableName(), Type.getDescriptor(Value.class), null, startLabel, endLabel, varIndex);
+        visitor.visitLocalVariable(statement.variableName(), Types.VALUE.getDescriptor(), null, startLabel, endLabel, varIndex);
     }
 
     private void compileContinue() {
@@ -223,7 +221,7 @@ public class StatementCompiler implements Opcodes {
         compile(statement.action());
         var toLabel = new Label();
         visitor.visitLabel(toLabel);
-        visitor.visitLocalVariable(functionCompiler.allocateRootName(), Type.getDescriptor(Value.ObjectValue.class), null, fromLabel, toLabel, varIndex);
+        visitor.visitLocalVariable(functionCompiler.allocateRootName(), Types.OBJECT_VALUE.getDescriptor(), null, fromLabel, toLabel, varIndex);
     }
 
     private void compileFuncDecl(FunctionDeclarationStatement statement) {
@@ -234,7 +232,7 @@ public class StatementCompiler implements Opcodes {
         if (variable.isCaptured()) {
             visitor.visitVarInsn(ALOAD, varIndex);
             visitor.visitInsn(SWAP);
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
         } else {
             visitor.visitVarInsn(ASTORE, varIndex);
         }
@@ -245,12 +243,12 @@ public class StatementCompiler implements Opcodes {
         var varIndex = functionCompiler.getOrAllocateVariable(variable);
         functionCompiler.loadContext();
         visitor.visitLdcInsn(statement.libraryName());
-        visitor.visitMethodInsn(INVOKEVIRTUAL, Types.EVALUATION_CONTEXT.getInternalName(), "findLibrary", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class)), false);
+        visitor.visitMethodInsn(INVOKEVIRTUAL, Types.EVALUATION_CONTEXT.getInternalName(), "findLibrary", Type.getMethodDescriptor(Types.VALUE, Type.getType(String.class)), false);
 
         if (variable.isCaptured()) {
             visitor.visitVarInsn(ALOAD, varIndex);
             visitor.visitInsn(SWAP);
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
         } else {
             visitor.visitVarInsn(ASTORE, varIndex);
         }
@@ -263,13 +261,13 @@ public class StatementCompiler implements Opcodes {
                 functionCompiler.compileExpression(parent);
                 visitor.visitLdcInsn(name);
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "deleteProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "deleteProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Types.PLATFORM_CONTEXT), true);
             }
             case IndexExpression(var parent, var index) -> {
                 functionCompiler.compileExpression(parent);
                 functionCompiler.compileExpression(index);
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "delete", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "delete", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
             }
             default -> throw new UnsupportedOperationException("Deleting " + statement.getClass().getSimpleName() + " is not supported");
         }

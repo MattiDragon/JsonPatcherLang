@@ -4,6 +4,5 @@ plugins {
 
 dependencies {
     api(project(":ast"))
-    api(project(":shared-runtime"))
     testImplementation(testFixtures(project(":shared-runtime")))
 }

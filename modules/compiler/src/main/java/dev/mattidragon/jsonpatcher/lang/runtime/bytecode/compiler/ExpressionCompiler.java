@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
+import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
@@ -9,8 +10,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.objectweb.asm.*;
 
 import java.lang.invoke.CallSite;
@@ -64,12 +63,12 @@ public class ExpressionCompiler implements Opcodes {
         }
     }
 
-    private void compileValue(Value.Primitive value) {
+    private void compileValue(ConstantValue value) {
         switch (value) {
-            case Value.BooleanValue booleanValue -> compileBoolean(booleanValue.value());
-            case Value.NullValue.NULL -> compileNull();
-            case Value.NumberValue(var number) -> compileNumber(number);
-            case Value.StringValue(var string) -> compileString(string);
+            case ConstantValue.Boolean booleanValue -> compileBoolean(booleanValue.value());
+            case ConstantValue.Null.NULL -> compileNull();
+            case ConstantValue.Number(var number) -> compileNumber(number);
+            case ConstantValue.String(var string) -> compileString(string);
         }
     }
 
@@ -83,7 +82,7 @@ public class ExpressionCompiler implements Opcodes {
                     Type.getType(String.class)
             );
             visitor.visitLdcInsn(new ConstantDynamic("string",
-                    Type.getDescriptor(Value.StringValue.class),
+                    Types.STRING_VALUE.getDescriptor(), 
                     new Handle(H_INVOKESTATIC,
                             Types.CONSTANT_HOOKS.getInternalName(),
                             "string",
@@ -108,7 +107,7 @@ public class ExpressionCompiler implements Opcodes {
                     Type.DOUBLE_TYPE
             );
             visitor.visitLdcInsn(new ConstantDynamic("number",
-                    Type.getDescriptor(Value.NumberValue.class),
+                    Types.NUMBER_VALUE.getDescriptor(),
                     new Handle(H_INVOKESTATIC,
                             Types.CONSTANT_HOOKS.getInternalName(),
                             "number",
@@ -237,7 +236,7 @@ public class ExpressionCompiler implements Opcodes {
         visitor.visitInsn(ICONST_0);
         
         visitor.visitLabel(endLabel);
-        visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE.getInternalName(), "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
+        visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE.getInternalName(), "of", Type.getMethodDescriptor(Types.BOOLEAN_VALUE, Type.BOOLEAN_TYPE), false);
     }
 
     private void compileUnaryModification(UnaryModificationExpression expression) {
@@ -255,7 +254,7 @@ public class ExpressionCompiler implements Opcodes {
                 if (variable.isCaptured()) {
                     visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
                     visitor.visitInsn(SWAP);
-                    visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class)), false);
+                    visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
                 } else {
                     visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
                 }
@@ -266,14 +265,14 @@ public class ExpressionCompiler implements Opcodes {
 
                 visitor.visitInsn(DUP2);
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Types.VALUE, Type.getType(String.class), Types.PLATFORM_CONTEXT), true);
                 
                 if (expression.postfix()) visitor.visitInsn(DUP_X2);
                 compileUnaryOp(op);
                 if (!expression.postfix()) visitor.visitInsn(DUP_X2);
 
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Types.VALUE, Types.PLATFORM_CONTEXT), true);
             }
             case IndexExpression e -> {
                 compile(e.parent());
@@ -281,14 +280,14 @@ public class ExpressionCompiler implements Opcodes {
                 
                 visitor.visitInsn(DUP2);
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Types.VALUE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
 
                 if (expression.postfix()) visitor.visitInsn(DUP_X2);
                 compileUnaryOp(op);
                 if (!expression.postfix()) visitor.visitInsn(DUP_X2);
 
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "set", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "set", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
             }
             default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
         }
@@ -298,7 +297,7 @@ public class ExpressionCompiler implements Opcodes {
         var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
         if (variable.isCaptured()) {
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "getValue", Type.getMethodDescriptor(Type.getType(Value.class)), false);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "getValue", Type.getMethodDescriptor(Types.VALUE), false);
         }
     }
 
@@ -306,14 +305,14 @@ public class ExpressionCompiler implements Opcodes {
         compile(expression.parent());
         visitor.visitLdcInsn(expression.name());
         functionCompiler.loadContext();
-        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Types.VALUE, Type.getType(String.class), Types.PLATFORM_CONTEXT), true);
     }
 
     private void compileIndex(IndexExpression expression) {
         compile(expression.parent());
         compile(expression.index());
         functionCompiler.loadContext();
-        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+        visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Types.VALUE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
     }
 
     private void compileAssignment(AssignmentExpression expression) {
@@ -346,7 +345,7 @@ public class ExpressionCompiler implements Opcodes {
                 } else {
                     visitor.visitInsn(DUP2);
                     functionCompiler.loadContext();
-                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(String.class), Type.getType(PlatformContext.class)), true);
+                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "getProperty", Type.getMethodDescriptor(Types.VALUE, Type.getType(String.class), Types.PLATFORM_CONTEXT), true);
                     compile(expression.value());
                     compileBinaryOp(op);
                 }
@@ -354,7 +353,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(DUP_X2);
 
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "setProperty", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Types.VALUE, Types.PLATFORM_CONTEXT), true);
             }
             case IndexExpression e -> {
                 compile(e.parent());
@@ -365,7 +364,7 @@ public class ExpressionCompiler implements Opcodes {
                 } else {
                     visitor.visitInsn(DUP2);
                     functionCompiler.loadContext();
-                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                    visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "get", Type.getMethodDescriptor(Types.VALUE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
                     compile(expression.value());
                     compileBinaryOp(op);
                 }
@@ -373,7 +372,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitInsn(DUP_X2);
 
                 functionCompiler.loadContext();
-                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "set", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Value.class), Type.getType(Value.class), Type.getType(PlatformContext.class)), true);
+                visitor.visitMethodInsn(INVOKEINTERFACE, Types.VALUE.getInternalName(), "set", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE, Types.VALUE, Types.PLATFORM_CONTEXT), true);
             }
             default -> throw new IllegalStateException("Unsupported assignment target: " + expression.target());
         }
@@ -397,7 +396,7 @@ public class ExpressionCompiler implements Opcodes {
                 visitor.visitLabel(midLabel);
                 visitor.visitInsn(ICONST_0);
                 visitor.visitLabel(endLabel);
-                visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE.getInternalName(), "of", Type.getMethodDescriptor(Type.getType(Value.BooleanValue.class), Type.BOOLEAN_TYPE), false);
+                visitor.visitMethodInsn(INVOKESTATIC, Types.BOOLEAN_VALUE.getInternalName(), "of", Type.getMethodDescriptor(Types.BOOLEAN_VALUE, Type.BOOLEAN_TYPE), false);
             }
             case MINUS -> {
                 visitor.visitTypeInsn(CHECKCAST, Types.NUMBER_VALUE.getInternalName()); // TODO: custom cast logic?
@@ -523,12 +522,10 @@ public class ExpressionCompiler implements Opcodes {
         }
 
         var invokerType = new StringBuilder("(");
-        invokerType.append(Type.getDescriptor(PlatformContext.class));
-        invokerType.append(Type.getDescriptor(Value.class));
-        for (int i = 0; i < expression.arguments().size(); i++) {
-            invokerType.append(Type.getDescriptor(Value.class));
-        }
-        invokerType.append(")").append(Type.getDescriptor(Value.class));
+        invokerType.append(Types.PLATFORM_CONTEXT);
+        invokerType.append(Types.VALUE);
+        invokerType.append(String.valueOf(Types.VALUE).repeat(expression.arguments().size()));
+        invokerType.append(")").append(Types.VALUE);
 
         visitor.visitInvokeDynamicInsn("function",
                 invokerType.toString(),
@@ -542,7 +539,7 @@ public class ExpressionCompiler implements Opcodes {
     private void compileBinaryOp(BinaryExpression.Operator op) {
         var descriptor = Type.getMethodDescriptor(Type.getType(CallSite.class), Type.getType(MethodHandles.Lookup.class), Type.getType(String.class), Type.getType(MethodType.class));
         visitor.visitInvokeDynamicInsn(op.name().toLowerCase(Locale.ROOT),
-                Type.getMethodDescriptor(Type.getType(Value.class), Type.getType(Value.class), Type.getType(Value.class)),
+                Type.getMethodDescriptor(Types.VALUE, Types.VALUE, Types.VALUE),
                 new Handle(H_INVOKESTATIC, Types.BINARY_EXPRESSION_HOOKS.getInternalName(), "hook", descriptor, false));
     }
 }

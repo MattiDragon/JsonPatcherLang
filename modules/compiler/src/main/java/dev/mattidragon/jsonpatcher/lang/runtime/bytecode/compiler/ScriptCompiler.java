@@ -11,26 +11,15 @@ import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PreparationContextBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ScriptCompiler {
-    public static byte[] compile(Program program, TreeMetadata metadata, CompilerOptions options, Consumer<PreparationContextBuilder> contextBuilder, String scriptName, String className) {
-        var globals = new HashSet<String>();
-        contextBuilder.accept(new PreparationContextBuilder() {
-            @Override
-            public PreparationContextBuilder declareVariable(String name) {
-                globals.add(name);
-                return this;
-            }
-        });
-
+    public static byte[] compile(Program program, TreeMetadata metadata, CompilerOptions options, Set<String> globals, String scriptName, String className) {
         var diagnosticsBuilder = new DiagnosticsBuilder();
         VariableAnalyser.analyse(program, metadata, diagnosticsBuilder, globals);
         checkErrors(options.langConfig, diagnosticsBuilder.build());
@@ -39,12 +28,12 @@ public class ScriptCompiler {
         findLambdas(program, functions, "");
 
         ConstantAnalyser.analyse(program, metadata);
-        
+
         var compiler = new ClassCompiler(program, metadata, functions, scriptName, className, options);
         compiler.compileStart();
         compiler.compileMain();
         functions.keySet().forEach(compiler::compileLambda);
-        
+
         return compiler.getBytes();
     }
 

@@ -7,16 +7,15 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PreparationContextBuilder;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.Stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.reflection.ReflectionInternalsLibrary;
+import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.LibraryBuilder;
 import org.jspecify.annotations.Nullable;
 
@@ -167,8 +166,8 @@ public class EvaluationEnvironment {
         return new AddedProgram(instance);
     }
 
-    private void configureCompiler(PreparationContextBuilder builder) {
-        builder.declareVariables(Stdlib.GLOBAL_LIBRARY_NAMES);
+    private Set<String> getNamesGlobal() {
+        return Set.of(Stdlib.GLOBAL_LIBRARY_NAMES);
     }
 
     private Value.ObjectValue locateLibrary(String name, Collection<LibraryGroup> libraryGroups) {
@@ -199,7 +198,7 @@ public class EvaluationEnvironment {
         public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
             byte[] bytes;
             try {
-                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, EvaluationEnvironment.this::configureCompiler, scriptName, className);
+                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, getNamesGlobal(), scriptName, className);
             } catch (CompilationException e) {
                 throw e;
             } catch (RuntimeException e) {
