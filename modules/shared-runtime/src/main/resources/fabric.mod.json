@@ -1,0 +1,17 @@
+{
+  "id": "jsonpatcherlang-shared-runtime",
+  "name": "JsonPatcherLang Shared Runtime Code",
+  "description": "Part of the JsonPatcher language libraries. Contains code needed by other components.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  },
+  "schemaVersion": 1
+}

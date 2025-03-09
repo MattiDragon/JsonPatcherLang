@@ -1,7 +1,7 @@
 {
-  "id": "jsonpatcherlang-shared-runtime",
-  "name": "JsonPatcherLang Shared Runtime Code",
-  "description": "Part of the JsonPatcher language libraries. Contains code needed by both runtimes.",
+  "id": "jsonpatcherlang-runtime",
+  "name": "JsonPatcherLang Runtime",
+  "description": "Part of the JsonPatcher language libraries. Contains code used by patches at runtime.",
   "version": "$version",
   "authors": ["MattiDragon"],
   "depends": {
