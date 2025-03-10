@@ -142,24 +142,6 @@ public class EvaluationEnvironment {
     public void enableDumping(String path) {
         dumpPath = path;
     }
-    
-    public AddedProgram addProgram(String code, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
-        var diagnosticsBuilder = new DiagnosticsBuilder();
-
-        var lex = Lexer.lex(code, scriptName, diagnosticsBuilder);
-        var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
-
-        var diagnostics = diagnosticsBuilder.build();
-        var errors = diagnostics.errorsAndWarnings();
-        if (!errors.isEmpty()) {
-            throw new IllegalStateException("Failed to parse script %s:\n%s".formatted(
-                    scriptName,
-                    errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n"))
-            ));
-        }
-
-        return addProgram(parse.program(), parse.treeMetadata(), scriptName, className, allowedLibraries);
-    }
 
     public AddedProgram addProgram(Program program, TreeMetadata metadata, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
         var instance = classLoader.addScript(program, metadata, compilerOptions, scriptName, className, allowedLibraries);
