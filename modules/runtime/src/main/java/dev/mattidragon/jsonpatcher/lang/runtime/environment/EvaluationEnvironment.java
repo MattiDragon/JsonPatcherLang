@@ -31,7 +31,7 @@ public class EvaluationEnvironment {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private final Map<String, Value> globals = new HashMap<>();
-    private final Map<String, Library> libraries = new HashMap<>();
+    private final Map<String, Library> libraries = Collections.synchronizedMap(new HashMap<>());
     private final PropertyHolder propertyHolder = new PropertyHolder();
     private final ScriptClassLoader classLoader = new ScriptClassLoader();
     private final CompilerOptions compilerOptions;

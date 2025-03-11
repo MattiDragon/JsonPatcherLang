@@ -1,12 +1,12 @@
 package dev.mattidragon.jsonpatcher.lang.runtime;
 
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryLookup;
 import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyLookup;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.Libraries;
 import org.jspecify.annotations.Nullable;
 
@@ -48,9 +48,6 @@ public record EvaluationContext(LangConfig config,
     public Value findLibrary(String libraryName) {
         if (Libraries.LOOKUP.containsKey(libraryName)) {
             return Libraries.LOOKUP.get(libraryName).get();
-        }
-        if (Libraries.BUILTIN.containsKey(libraryName)) {
-            throw createException("Cannot load builtin library %s. You don't need to import it.".formatted(libraryName));
         }
 
         try {

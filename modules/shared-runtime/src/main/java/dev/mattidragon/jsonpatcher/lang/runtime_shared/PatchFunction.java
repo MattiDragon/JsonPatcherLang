@@ -1,12 +1,16 @@
 package dev.mattidragon.jsonpatcher.lang.runtime_shared;
 
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.Libraries;
-
+import java.util.ArrayList;
 import java.util.List;
 
 public sealed interface PatchFunction {
     default PatchFunction bind(Value value) {
-        return Libraries.FunctionsLibrary.bind(new Value.FunctionValue(this), value).function();
+        Value.FunctionValue function = new Value.FunctionValue(this);
+        return (BuiltInPatchFunction) (context, args) -> {
+            var newArgs = new ArrayList<>(args);
+            newArgs.addFirst(value);
+            return context.execute(function.function(), newArgs);
+        };
     }
 
     @FunctionalInterface

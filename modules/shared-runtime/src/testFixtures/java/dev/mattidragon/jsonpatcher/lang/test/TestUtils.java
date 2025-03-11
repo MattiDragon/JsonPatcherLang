@@ -1,7 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.test;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
-import dev.mattidragon.jsonpatcher.lang.ast.*;
+import dev.mattidragon.jsonpatcher.lang.ast.Program;
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
@@ -13,8 +14,7 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.*;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Runtime;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import org.junit.jupiter.api.AssertionFailureBuilder;
 import org.junit.jupiter.api.Assertions;
 
@@ -23,19 +23,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class TestUtils {
-    public static final SourceFile FILE = new SourceFile("test file", "00");
-    public static final SourceSpan POS = new SourceSpan(new SourcePos(FILE, 1, 1), new SourcePos(FILE, 1, 2));
     public static final LangConfig CONFIG = new LangConfig(LangConfig.StackTraceMode.SHORT);
     public static final Consumer<Value> EMPTY_DEBUG_CONSUMER = (value) -> {};
-    public static final Consumer<RuntimeContextBuilder> RUNTIME_CONTEXT_BUILDER_CONSUMER = builder -> builder.addStdlib().debugConsumer(EMPTY_DEBUG_CONSUMER);
-    public static final Consumer<PreparationContextBuilder> PREPARE_CONTEXT_BUILDER_CONSUMER = PreparationContextBuilder::declareStdlib;
-
-    public static void testCode(Runtime runtime, String code) {
-        var result = parseFull(code);
-        var program = result.program();
-
-        Assertions.assertDoesNotThrow(() -> runtime.prepare(program, result.treeMetadata(), PREPARE_CONTEXT_BUILDER_CONSUMER).run(RUNTIME_CONTEXT_BUILDER_CONSUMER, CONFIG));
-    }
     
     public static void testCode(TestRunner runtime, String code) {
         var result = parseFull(code);
@@ -50,7 +39,6 @@ public class TestUtils {
         
         Assertions.assertDoesNotThrow(() -> runtime.executeCode(program, result.treeMetadata(), libs), "Failed to run test code");
     }
-
     
     public static void runCode(TestRunner runtime, String code) {
         var result = parseFull(code);
@@ -64,29 +52,6 @@ public class TestUtils {
         var program = result.program();
         
         runtime.executeCode(program, result.treeMetadata(), libs);
-    }
-
-    public static void testCode(Runtime runtime, String code, Value expected) {
-        var result = parseFull(code);
-        var output = new Value[1];
-
-        Assertions.assertDoesNotThrow(() -> {
-            runtime.prepare(result.program(), result.treeMetadata(), builder -> builder.declareVariable("testResult")).run(
-                    builder -> builder.debugConsumer(EMPTY_DEBUG_CONSUMER)
-                            .fillVariable("testResult", new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (ctx, args) -> {
-                                output[0] = args.getFirst();
-                                return Value.NullValue.NULL;
-                            })),
-                    CONFIG
-            );
-        });
-
-        Assertions.assertNotNull(output[0], "testResult should be called");
-        assertEquals(expected, output[0]);
-    }
-
-    public static void testExpression(Runtime runtime, String code, Value expected) {
-        testCode(runtime, "testResult(" + code + ");", expected);
     }
 
     public static void assertEquals(Value expected, Value actual) {
@@ -205,34 +170,5 @@ public class TestUtils {
             first.addSuppressed(iter.next());
         }
         return first;
-    }
-
-    public static PlatformContext createTestFunctionContext() {
-        return new PlatformContext() {
-            @Override
-            public RuntimeException createException(String message) {
-                return new RuntimeException("Error in test: " + message);
-            }
-
-            @Override
-            public RuntimeException createException(String message, Exception cause) {
-                return new RuntimeException("Error in test: " + message, cause);
-            }
-
-            @Override
-            public LangConfig config() {
-                return CONFIG;
-            }
-
-            @Override
-            public Value execute(PatchFunction function, List<Value> args) {
-                throw new UnsupportedOperationException("execute");
-            }
-
-            @Override
-            public void log(Value value) {
-                throw new UnsupportedOperationException("log");
-            }
-        };
     }
 }
