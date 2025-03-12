@@ -69,12 +69,26 @@ class JavaValueUtil {
 
         var children = new ArrayList<ClassChild>();
         Arrays.stream(clazz.getMethods())
-                .filter(m -> Remapper.COMBINED.remapMethodToNamed(className, m.getName(), getMethodDesc(m)).equals(name))
+                .filter(m -> {
+                    var runtimeName = Remapper.COMBINED.remapMethodToRuntime(
+                            Remapper.COMBINED.remapClassToNamed(clazz.getName()),
+                            name,
+                            Remapper.COMBINED.remapMethodDescToNamed(getMethodDesc(m))
+                    );
+                    return m.getName().equals(runtimeName);
+                })
                 .map(ClassChild.MethodChild::new)
                 .forEach(children::add);
 
         Arrays.stream(clazz.getFields())
-                .filter(f -> Remapper.COMBINED.remapFieldToNamed(className, f.getName(), f.getType().descriptorString()).equals(name))
+                .filter(f -> {
+                    var runtimeName = Remapper.COMBINED.remapFieldToRuntime(
+                            Remapper.COMBINED.remapClassToNamed(className),
+                            name,
+                            Remapper.COMBINED.remapFieldDescToNamed(f.getType().descriptorString())
+                    );
+                    return f.getName().equals(runtimeName);
+                })
                 .map(ClassChild.FieldChild::new)
                 .forEach(children::add);
 

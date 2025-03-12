@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection;
 
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
 import java.lang.reflect.Array;
@@ -13,7 +14,7 @@ public class ReflectionInternalsLibrary {
     public Value findClass(Value.StringValue value) {
         Class<?> clazz;
         try {
-            clazz = Class.forName(value.value());
+            clazz = Class.forName(Remapper.COMBINED.remapClassToRuntime(value.value().replace('.', '/')).replace('/', '.'));
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }

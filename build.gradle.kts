@@ -1,5 +1,5 @@
 plugins {
-    `base`
+    base
 }
 
 version = project.property("version")!!

@@ -182,6 +182,7 @@ public class EvaluationEnvironment {
         public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
             byte[] bytes;
             try {
+                // TODO: propagate diagnostics
                 bytes = ScriptCompiler.compile(program, metadata, compilerOptions, getNamesGlobal(), scriptName, className, new DiagnosticsBuilder());
             } catch (CompilationException e) {
                 throw e;
