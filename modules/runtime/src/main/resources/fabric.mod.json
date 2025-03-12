@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "id": "jsonpatcherlang-runtime",
   "name": "JsonPatcherLang Runtime",
   "description": "Part of the JsonPatcher language libraries. Contains code used by patches at runtime.",
@@ -12,6 +13,5 @@
       "badges": ["library"],
       "parent": "jsonpatcher"
     }
-  },
-  "schemaVersion": 1
+  }
 }

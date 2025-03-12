@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "id": "jsonpatcherlang-parser",
   "name": "JsonPatcherLang Parser",
   "description": "Part of the JsonPatcher language libraries. Contains the parser, lexer and related code.",
@@ -12,6 +13,5 @@
       "badges": ["library"],
       "parent": "jsonpatcher"
     }
-  },
-  "schemaVersion": 1
+  }
 }
