@@ -23,6 +23,15 @@ function assert(value, message = "Asserting failed") {
     }
 }
 
+#| value debug.assertEquals: (first: any, second: any) -> null
+#| Checks if the two values are equal. If they are nothing happens. If they aren't, then an error is thrown.
+function assertEquals(first, second) {
+    if (first != second) {
+        throw("Assertion failed: " + strings.asString(first) + " != " + strings.asString(second));
+    }
+}
+
 $log = log;
 $throw = throw;
 $assert = assert;
+$assertEquals = assertEquals;

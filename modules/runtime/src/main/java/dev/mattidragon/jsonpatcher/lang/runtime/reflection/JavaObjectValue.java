@@ -2,11 +2,10 @@ package dev.mattidragon.jsonpatcher.lang.runtime.reflection;
 
 import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
 import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionHooks;
-import org.jspecify.annotations.Nullable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessFlag;
+import java.lang.reflect.Array;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -23,8 +22,8 @@ public class JavaObjectValue implements Value.SpecialValue {
 
     @Override
     public Value getProperty(String property, PlatformContext context) {
-        if (object instanceof @Nullable Object[] array && property.equals("length")) {
-            return new NumberValue(array.length);
+        if (object.getClass().isArray() && property.equals("length")) {
+            return new NumberValue(Array.getLength(object));
         }
 
         if (propertyGetterCache.containsKey(property)) {
@@ -62,12 +61,11 @@ public class JavaObjectValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflect(method).bindTo(object));
+                    handle = JavaValueUtil.LOOKUP.unreflect(method).bindTo(object);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public method", e);
                 }
-                var argCount = handle.type().parameterCount();
-                var value = new FunctionValue(new FunctionHooks.DefinedFunction(handle, argCount, argCount, false));
+                var value = new JavaMethodValue(handle);
                 yield () -> value;
             }
         };
@@ -116,26 +114,26 @@ public class JavaObjectValue implements Value.SpecialValue {
 
     @Override
     public Value get(Value index, PlatformContext context) {
-        if (!(object instanceof Object[] array)) {
+        if (!(object.getClass().isArray())) {
             throw context.createException("Can only index arrays, not arbitrary objects (" + object + ")");
         }
         if (!(index instanceof NumberValue(var number))) {
             throw context.createException("Array index must be number, was " + index);
         }
 
-        return JavaValueUtil.objectToValue(array[(int) number]);
+        return JavaValueUtil.objectToValue(Array.get(object, (int) number));
     }
 
     @Override
     public void set(Value index, Value value, PlatformContext context) {
-        if (!(object instanceof @Nullable Object[] array)) {
+        if (!(object.getClass().isArray())) {
             throw context.createException("Can only index arrays, not arbitrary objects (" + object + ")");
         }
         if (!(index instanceof NumberValue(var number))) {
             throw context.createException("Array index must be number, was " + index);
         }
 
-        array[(int) number] = JavaValueUtil.valueToObject(value, array.getClass().componentType());
+        Array.set(object, (int) number, JavaValueUtil.valueToObject(value, object.getClass().getComponentType()));
     }
 
     public Object object() {

@@ -1,12 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.reflection;
 
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.reflection.JavaValueUtil.ClassChild.ConstructorChild;
 import dev.mattidragon.jsonpatcher.lang.runtime.reflection.JavaValueUtil.ClassChild.FieldChild;
 import dev.mattidragon.jsonpatcher.lang.runtime.reflection.JavaValueUtil.ClassChild.InnerClass;
 import dev.mattidragon.jsonpatcher.lang.runtime.reflection.JavaValueUtil.ClassChild.MethodChild;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessFlag;
@@ -41,12 +40,11 @@ public class JavaClassValue implements Value.SpecialValue {
             case ConstructorChild(var constructor) -> {
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectConstructor(constructor));
+                    handle = JavaValueUtil.LOOKUP.unreflectConstructor(constructor);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public constructor", e);
                 }
-                var argCount = handle.type().parameterCount();
-                var value = new FunctionValue(new FunctionHooks.DefinedFunction(handle, argCount, argCount, false));
+                var value = new JavaMethodValue(handle);
                 yield () -> value;
             }
             case FieldChild(var field) -> {
@@ -75,12 +73,11 @@ public class JavaClassValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflect(method));
+                    handle = JavaValueUtil.LOOKUP.unreflect(method);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public method", e);
                 }
-                var argCount = handle.type().parameterCount();
-                var value = new FunctionValue(new FunctionHooks.DefinedFunction(handle, argCount, argCount, false));
+                var value = new JavaMethodValue(handle);
                 yield () -> value;
             }
             case InnerClass(var innerClass) -> {
@@ -135,7 +132,7 @@ public class JavaClassValue implements Value.SpecialValue {
 
         if (constructorsByArgCount.containsKey(argCount)) {
             try {
-                return (Value) constructorsByArgCount.get(argCount).invoke((Object[]) args);
+                return (Value) constructorsByArgCount.get(argCount).invokeWithArguments((Object[]) args);
             } catch (Error | RuntimeException e) {
                 throw e;
             } catch (Throwable e) {

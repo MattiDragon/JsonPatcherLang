@@ -1,14 +1,12 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.environment;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchException;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.DisableErrorWrapping;
 import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.DontBind;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.Libraries;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.LibraryBuilder;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.Method;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -24,6 +22,7 @@ public class BytecodeInternalsLibrary {
         this.propertyHolder = propertyHolder;
     }
 
+    @DisableErrorWrapping
     public void _throw(Value value) {
         throw new PatchException(value.toString());
     }
@@ -108,11 +107,6 @@ public class BytecodeInternalsLibrary {
             var result = context.execute(function.function(), args);
             return context.execute(next.function(), List.of(result));
         }));
-    }
-
-    public void loadStringLib(Value.ObjectValue object) {
-        // Strings require tons of bindings into java code, so it's easier to just reuse the old stdlib
-        new LibraryBuilder(Libraries.StringsLibrary.class, Method.class).build(object);
     }
 
     public Value freeze(Value value) {

@@ -34,11 +34,13 @@ class JavaValueUtil {
     private static final MethodHandles.Lookup PRIVATE_LOOKUP = MethodHandles.lookup();
 
     private static final MethodHandle OBJECT_TO_VALUE_HANDLE;
+    private static final MethodHandle OBJECT_VALUE_CONSTRUCTOR_HANDLE;
     private static final MethodHandle VALUE_TO_OBJECT_HANDLE;
 
     static {
         try {
             OBJECT_TO_VALUE_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "objectToValue", MethodType.methodType(Value.class, Object.class));
+            OBJECT_VALUE_CONSTRUCTOR_HANDLE = PRIVATE_LOOKUP.findConstructor(JavaObjectValue.class, MethodType.methodType(void.class, Object.class));
             VALUE_TO_OBJECT_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "valueToObject", MethodType.methodType(Object.class, Value.class, Class.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new IllegalStateException("Cannot find required methods", e);
@@ -138,7 +140,38 @@ class JavaValueUtil {
         }
     }
 
+    /**
+     * Wraps a method handle to jsonpatcher values.
+     * @param original The method handle to wrap, can be anything.
+     * @return A method handle that only deals in {@link Value}s
+     * @see #wrapMethodHandleWeakly(MethodHandle)
+     */
     public static MethodHandle wrapMethodHandle(MethodHandle original) {
+        var withArgsModified = wrapMethodHandleArgs(original);
+        if (original.type().returnType() == void.class) {
+            return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
+        } else {
+            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_TO_VALUE_HANDLE.asType(MethodType.methodType(Value.class, original.type().returnType())));
+        }
+    }
+
+    /**
+     * Wraps a method handle to jsonpatcher values. Unlike {@link #wrapMethodHandle(MethodHandle) wrapMethodHandle}
+     * the handle returned from here always yields {@link JavaObjectValue}s
+     * @param original The method handle to wrap, can be anything.
+     * @return A method handle that only deals in {@link Value}s
+     * @see #wrapMethodHandle(MethodHandle)
+     */
+    public static MethodHandle wrapMethodHandleWeakly(MethodHandle original) {
+        var withArgsModified = wrapMethodHandleArgs(original);
+        if (original.type().returnType() == void.class) {
+            return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
+        } else {
+            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_VALUE_CONSTRUCTOR_HANDLE.asType(MethodType.methodType(Value.class, original.type().returnType())));
+        }
+    }
+
+    private static MethodHandle wrapMethodHandleArgs(MethodHandle original) {
         var originalType = original.type();
         var argCount = originalType.parameterCount();
         var filterArray = new MethodHandle[argCount];
@@ -147,12 +180,7 @@ class JavaValueUtil {
             filterArray[i] = MethodHandles.insertArguments(VALUE_TO_OBJECT_HANDLE, 1, expectedType)
                     .asType(MethodType.methodType(expectedType, Object.class));
         }
-        var withArgsModified = MethodHandles.filterArguments(original, 0, filterArray);
-        if (originalType.returnType() == void.class) {
-            return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
-        } else {
-            return MethodHandles.filterReturnValue(withArgsModified, OBJECT_TO_VALUE_HANDLE.asType(MethodType.methodType(Value.class, originalType.returnType())));
-        }
+        return MethodHandles.filterArguments(original, 0, filterArray);
     }
 
     /**
@@ -164,6 +192,7 @@ class JavaValueUtil {
         return switch (object) {
             case Value value -> value;
             case String s -> new Value.StringValue(s);
+            case Character c -> new Value.StringValue(String.valueOf(c));
             case Number n -> new Value.NumberValue(n.doubleValue());
             case Boolean b -> Value.BooleanValue.of(b);
             case null -> Value.NullValue.NULL;
@@ -194,7 +223,7 @@ class JavaValueUtil {
         }
 
         return switch (value) {
-            case Value.StringValue(var s) when clazz == String.class -> clazz.cast(s);
+            case Value.StringValue(var s) when clazz.isAssignableFrom(String.class) -> clazz.cast(s);
             case Value.BooleanValue booleanValue when clazz == boolean.class || clazz == Boolean.class -> clazz.cast(booleanValue.value());
             case Value.NullValue nullValue when !clazz.isPrimitive() -> null;
 
@@ -210,18 +239,47 @@ class JavaValueUtil {
             }
             case Value.NumberValue(var n) when clazz == float.class || clazz == Float.class -> (T) (Float) (float) n;
             case Value.NumberValue(var n) when clazz == double.class || clazz == Double.class -> (T) (Double) n;
+
             default -> throw new ClassCastException(value + " cannot be cast to " + clazz.getSimpleName());
         };
     }
 
     sealed interface ClassChild {
         record InnerClass(Class<?> clazz) implements ClassChild {
+            @Override
+            public String toString() {
+                return "Inner class '%s'".formatted(clazz.getSimpleName());
+            }
         }
+
         record MethodChild(Method method) implements ClassChild {
+            @Override
+            public String toString() {
+                return "Method '%s(%s)%s'".formatted(
+                        method.getName(),
+                        Arrays.stream(method.getParameterTypes()).map(Class::descriptorString).collect(Collectors.joining()),
+                        method.getReturnType().descriptorString()
+                );
+            }
         }
+
         record FieldChild(Field field) implements ClassChild {
+            @Override
+            public String toString() {
+                return "Field '%s %s'".formatted(
+                        field.getType().descriptorString(),
+                        field.getName()
+                );
+            }
         }
+
         record ConstructorChild(Constructor<?> constructor) implements ClassChild {
+            @Override
+            public String toString() {
+                return "Constructor '<init>(%s)V'".formatted(
+                        Arrays.stream(constructor.getParameterTypes()).map(Class::descriptorString).collect(Collectors.joining())
+                );
+            }
         }
     }
 }
