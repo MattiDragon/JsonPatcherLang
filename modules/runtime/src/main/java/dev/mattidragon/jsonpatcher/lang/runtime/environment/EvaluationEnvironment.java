@@ -175,6 +175,10 @@ public class EvaluationEnvironment {
     }
     
     private class ScriptClassLoader extends ClassLoader {
+        protected ScriptClassLoader() {
+            super(ScriptClassLoader.class.getClassLoader());
+        }
+
         public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
             byte[] bytes;
             try {
