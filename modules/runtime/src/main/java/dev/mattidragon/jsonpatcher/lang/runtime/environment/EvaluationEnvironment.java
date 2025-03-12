@@ -13,10 +13,10 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOption
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.generated.GeneratedProgram;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.BytecodeInternalsLibrary;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.LibraryBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.ReflectionInternalsLibrary;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.LibraryBuilder;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;

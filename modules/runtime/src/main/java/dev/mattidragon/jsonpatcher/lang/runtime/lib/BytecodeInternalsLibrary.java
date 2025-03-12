@@ -2,11 +2,11 @@ package dev.mattidragon.jsonpatcher.lang.runtime.lib;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchException;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DisableErrorWrapping;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DontBind;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DisableErrorWrapping;
-import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DontBind;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;

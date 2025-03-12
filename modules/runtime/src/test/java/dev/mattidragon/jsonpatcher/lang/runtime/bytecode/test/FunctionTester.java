@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionBody;
 import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionHooks;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
 public class FunctionTester {
     public static void main(String[] args) {

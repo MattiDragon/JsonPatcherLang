@@ -155,15 +155,4 @@ public class TestUtils {
                 .reason(wholeString.toString())
                 .buildAndThrow();
     }
-
-    private static <T extends Throwable> T combineErrors(Iterable<T> errors) {
-        var iter = errors.iterator();
-        if (!iter.hasNext()) throw new IllegalStateException("No errors provided");
-
-        T first = iter.next();
-        while (iter.hasNext()) {
-            first.addSuppressed(iter.next());
-        }
-        return first;
-    }
 }

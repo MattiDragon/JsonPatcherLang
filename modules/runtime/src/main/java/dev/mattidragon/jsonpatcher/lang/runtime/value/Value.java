@@ -2,7 +2,6 @@ package dev.mattidragon.jsonpatcher.lang.runtime.value;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
-import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -30,39 +29,42 @@ public sealed interface Value {
         };
     }
 
+    @SuppressWarnings("unused")
     boolean asBoolean();
     
     ValueType type();
-    
+
+    @SuppressWarnings("unused")
     default Value get(Value index, EvaluationContext context) {
         throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
     }
-    
+
+    @SuppressWarnings("unused")
     default void set(Value index, Value value, EvaluationContext context) {
         throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
     }
-    
+
+    @SuppressWarnings("unused")
     default void delete(Value index, EvaluationContext context) {
         throw context.createException("Tried to index %s, but it can't be indexed".formatted(this));
     }
-    
+
+    @SuppressWarnings("unused")
     default Value getProperty(String property, EvaluationContext context) {
         var libProp = context.getLibraryProperty(this, property);
         if (libProp != null) return libProp;
         
         throw context.createException("Tried to read invalid property %s of %s.".formatted(property, this));
     }
-    
+
+    @SuppressWarnings("unused")
     default void setProperty(String property, Value value, EvaluationContext context) {
         throw context.createException("%s does not have mutable properties (tried to set %s)".formatted(this, property));
     }
-    
+
+    @SuppressWarnings("unused")
     default void deleteProperty(String property, EvaluationContext context) {
         throw context.createException("%s does not have mutable properties (tried to set %s)".formatted(this, property));
-    }
-
-    static Value convertNull(@Nullable Value value) {
-        return value == null ? NullValue.NULL : value;
     }
 
     record ObjectValue(Map<String, Value> value, boolean frozen) implements Value {

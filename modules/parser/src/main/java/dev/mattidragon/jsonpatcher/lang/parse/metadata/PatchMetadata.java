@@ -1,11 +1,11 @@
 package dev.mattidragon.jsonpatcher.lang.parse.metadata;
 
+import dev.mattidragon.jsonpatcher.lang.parse.Parser;
+import dev.mattidragon.jsonpatcher.lang.parse.Token;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.lang.parse.Token;
 
 public class PatchMetadata {
     private final Map<String, MetadataElement> values = new LinkedHashMap<>();

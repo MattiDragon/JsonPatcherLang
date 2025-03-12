@@ -26,10 +26,6 @@ public record EvaluationContext(PropertyLookup propertyLookup, LibraryLookup lib
         return FunctionHooks.call(this, function, args.toArray(new Value[0]));
     }
 
-    public void log(Value value) {
-        // TODO: impl
-    }
-
     public @Nullable Value getLibraryProperty(Value value, String property) {
         return propertyLookup.getProperty(value, property);
     }

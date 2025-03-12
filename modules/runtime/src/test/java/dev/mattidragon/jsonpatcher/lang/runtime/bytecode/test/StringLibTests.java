@@ -219,7 +219,7 @@ public class StringLibTests {
                 debug.assert(result1 is array);
                 debug.assertEquals(result1.length, 1);
                 debug.assertEquals(result1[0], "");
-
+                
                 var result2 = strings.split("abc", ",");
                 debug.assert(result2 is array);
                 debug.assertEquals(result2.length, 1);
@@ -229,37 +229,32 @@ public class StringLibTests {
 
     @Test
     public void testCharAtCornerCases() {
-        assertThrows(IndexOutOfBoundsException.class, () -> {
-            TestUtils.runCode(runner, """
-                    strings.charAt("hello", -1);
-                    """);
-        });
+        assertThrows(IndexOutOfBoundsException.class, () ->
+                TestUtils.runCode(runner, """
+                        strings.charAt("hello", -1);
+                        """));
 
-        assertThrows(IndexOutOfBoundsException.class, () -> {
-            TestUtils.runCode(runner, """
-                    strings.charAt("hello", 5);
-                    """);
-        });
+        assertThrows(IndexOutOfBoundsException.class, () ->
+                TestUtils.runCode(runner, """
+                        strings.charAt("hello", 5);
+                        """));
     }
 
     @Test
     public void testSubstringCornerCases() {
-        assertThrows(IndexOutOfBoundsException.class, () -> {
-            TestUtils.runCode(runner, """
-                    strings.substring("hello", -1, 4);
-                    """);
-        });
+        assertThrows(IndexOutOfBoundsException.class, () ->
+                TestUtils.runCode(runner, """
+                        strings.substring("hello", -1, 4);
+                        """));
 
-        assertThrows(IndexOutOfBoundsException.class, () -> {
-            TestUtils.runCode(runner, """
-                    strings.substring("hello", 1, 6);
-                    """);
-        });
+        assertThrows(IndexOutOfBoundsException.class, () ->
+                TestUtils.runCode(runner, """
+                        strings.substring("hello", 1, 6);
+                        """));
 
-        assertThrows(IndexOutOfBoundsException.class, () -> {
-            TestUtils.runCode(runner, """
-                    strings.substring("hello", 4, 1);
-                    """);
-        });
+        assertThrows(IndexOutOfBoundsException.class, () ->
+                TestUtils.runCode(runner, """
+                        strings.substring("hello", 4, 1);
+                        """));
     }
 }

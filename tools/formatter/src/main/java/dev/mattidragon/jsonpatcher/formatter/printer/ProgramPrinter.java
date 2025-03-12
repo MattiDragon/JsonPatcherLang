@@ -1,10 +1,10 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.KeywordToken;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.SimpleToken;
+import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
 
 public class ProgramPrinter {
     public static void prettyPrint(Program program, PatchMetadata metadata, PrintTarget target) {

@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.hooks;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.IncompatibleOperandsException;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime.IncompatibleOperandsException;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.invoke.*;
