@@ -6,7 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.EvaluationEnvironment;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryGroup;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;

@@ -1,11 +1,15 @@
 plugins {
     id("shared")
+    id("java-test-fixtures")
 }
 
 dependencies {
-    api(project(":shared-runtime"))
     implementation(project(":compiler"))
     implementation(project(":parser"))
 
-    testImplementation(testFixtures(project(":shared-runtime")))
+    testFixturesImplementation(libs.junit.jupiter)
+    testFixturesImplementation(libs.jspecify)
+    testFixturesApi(project(":parser"))
+    testFixturesApi(project(":analysis"))
+    //testFixturesApi(project(":runtime"))
 }

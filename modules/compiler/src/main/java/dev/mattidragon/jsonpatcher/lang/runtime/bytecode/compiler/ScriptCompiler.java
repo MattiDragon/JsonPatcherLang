@@ -7,22 +7,19 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
-import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ScriptCompiler {
-    public static byte[] compile(Program program, TreeMetadata metadata, CompilerOptions options, Set<String> globals, String scriptName, String className) {
-        var diagnosticsBuilder = new DiagnosticsBuilder();
+    public static byte[] compile(Program program, TreeMetadata metadata, CompilerOptions options, Set<String> globals, String scriptName, String className, DiagnosticsBuilder diagnosticsBuilder) {
         VariableAnalyser.analyse(program, metadata, diagnosticsBuilder, globals);
-        checkErrors(options.langConfig, diagnosticsBuilder.build());
+        // If there are any errors from variable analysis (or previous step) then we can't safely compile the code.
+        checkErrors(diagnosticsBuilder.build());
 
         var functions = new HashMap<FunctionExpression, String>();
         findLambdas(program, functions, "");
@@ -54,13 +51,10 @@ public class ScriptCompiler {
         }
     }
 
-    private static void checkErrors(LangConfig config, Diagnostics diagnostics) {
+    private static void checkErrors(Diagnostics diagnostics) {
         var errors = diagnostics.errors();
         if (!errors.iterator().hasNext()) return;
 
-        var errorMsg = errors.stream()
-                .map(Diagnostic::toDisplay)
-                .collect(Collectors.joining("\n"));
-        throw new CompilationException(config, "Variable analysis failed:\n" + errorMsg, null);
+        throw new CompilationException(errors);
     }
 }

@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.environment;
 
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import org.jspecify.annotations.Nullable;
 
 import java.util.function.Supplier;

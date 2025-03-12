@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.hooks;
 
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PatchFunction;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.PlatformContext;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.PatchFunction;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.IncompatibleOperandsException;
 import org.jspecify.annotations.Nullable;
 
@@ -43,12 +43,12 @@ public class FunctionHooks {
             INSTANCEOF_CHECK = MethodHandles.permuteArguments(LOOKUP.findVirtual(Class.class, "isInstance",
                             MethodType.methodType(boolean.class, Object.class)),
                     MethodType.methodType(boolean.class, Object.class, Class.class), 1, 0);
-            CALL_BUILTIN_FUNCTION = LOOKUP.findVirtual(PatchFunction.BuiltInPatchFunction.class, "execute", MethodType.methodType(Value.class, PlatformContext.class, List.class));
+            CALL_BUILTIN_FUNCTION = LOOKUP.findVirtual(PatchFunction.BuiltInPatchFunction.class, "execute", MethodType.methodType(Value.class, EvaluationContext.class, List.class));
             ARRAY_AS_LIST = LOOKUP.findStatic(Arrays.class, "asList", MethodType.methodType(List.class, Object[].class));
             DEFINED_FUNCTION_HANDLE = LOOKUP.findVirtual(DefinedFunction.class, "handle", MethodType.methodType(MethodHandle.class));
             GET_WRONG_RUNTIME_ERROR = LOOKUP.findStatic(FunctionHooks.class, "getWrongRuntimeError", MethodType.methodType(IllegalStateException.class, PatchFunction.class));
 
-            INVOKE_SPECIAL = LOOKUP.findVirtual(Value.SpecialValue.class, "invoke", MethodType.methodType(Value.class, PlatformContext.class, Value[].class));
+            INVOKE_SPECIAL = LOOKUP.findVirtual(Value.SpecialValue.class, "invoke", MethodType.methodType(Value.class, EvaluationContext.class, Value[].class));
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot resolve method", e);
         }
@@ -97,7 +97,7 @@ public class FunctionHooks {
                                     String methodName,
                                     MethodType methodType) {
         if (methodType.returnType() != Value.class) throw new IllegalArgumentException("Return type must be Value");
-        if (methodType.parameterCount() == 0 || methodType.parameterType(0) != PlatformContext.class) throw new IllegalArgumentException("First argument must be EvaluationContext");
+        if (methodType.parameterCount() == 0 || methodType.parameterType(0) != EvaluationContext.class) throw new IllegalArgumentException("First argument must be EvaluationContext");
         if (methodType.parameterCount() == 1 || methodType.parameterType(1) != Value.class) throw new IllegalArgumentException("Second argument must be Value");
         if (Arrays.stream(methodType.parameterArray()).skip(1).anyMatch(argClass -> argClass != Value.class)) {
             throw new IllegalArgumentException("Argument types must be Value");
@@ -107,11 +107,11 @@ public class FunctionHooks {
 
         // Helper types for the big method handle
         // The type of the function implementation handles
-        var targetType = MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.class, Value[].class);
+        var targetType = MethodType.methodType(Value.class, EvaluationContext.class, PatchFunction.class, Value[].class);
         // The type of the instanceof handles
-        var testType = MethodType.methodType(boolean.class, PlatformContext.class, PatchFunction.class, Value[].class);
+        var testType = MethodType.methodType(boolean.class, EvaluationContext.class, PatchFunction.class, Value[].class);
 
-        var genericMethodType = MethodType.methodType(Value.class, PlatformContext.class, Value.class, Value[].class);
+        var genericMethodType = MethodType.methodType(Value.class, EvaluationContext.class, Value.class, Value[].class);
 
         // We build this spaghetti method handle instead of using a normal method because this doesn't show up on stacktraces
         // It's a lot nicer for end users when it looks like their functions are directly calling each other
@@ -135,7 +135,7 @@ public class FunctionHooks {
                 // If builtin, first wrap args array into a list
                 MethodHandles.filterArguments(
                         // Then call the execute method, shuffling some args around
-                        MethodHandles.permuteArguments(CALL_BUILTIN_FUNCTION, MethodType.methodType(Value.class, PlatformContext.class, PatchFunction.BuiltInPatchFunction.class, List.class), 1, 0, 2),
+                        MethodHandles.permuteArguments(CALL_BUILTIN_FUNCTION, MethodType.methodType(Value.class, EvaluationContext.class, PatchFunction.BuiltInPatchFunction.class, List.class), 1, 0, 2),
                         2,
                         ARRAY_AS_LIST
                 ).asType(targetType),
@@ -152,7 +152,7 @@ public class FunctionHooks {
                                         DEFINED_FUNCTION_HANDLE
                                 ),
                                 0,
-                                PlatformContext.class
+                                EvaluationContext.class
                         ).asType(targetType),
                         // Else we have someone else's function -> throw informative error
                         MethodHandles.permuteArguments( // Drop all args except function
@@ -170,10 +170,10 @@ public class FunctionHooks {
         return new ConstantCallSite(MethodHandles.guardWithTest(
                 MethodHandles.permuteArguments(
                         MethodHandles.insertArguments(INSTANCEOF_CHECK, 1, Value.SpecialValue.class).asType(MethodType.methodType(boolean.class, Value.class)),
-                        MethodType.methodType(boolean.class, PlatformContext.class, Value.class),
+                        MethodType.methodType(boolean.class, EvaluationContext.class, Value.class),
                         1),
                 MethodHandles.permuteArguments(INVOKE_SPECIAL,
-                        MethodType.methodType(Value.class, PlatformContext.class, Value.SpecialValue.class, Value[].class),
+                        MethodType.methodType(Value.class, EvaluationContext.class, Value.SpecialValue.class, Value[].class),
                         1, 0, 2)
                         .asType(genericMethodType),
                 functionValueHandler
@@ -184,7 +184,7 @@ public class FunctionHooks {
         return new IllegalStateException("Tried to call function from another runtime: " + function);
     }
     
-    public static Value call(PlatformContext context, PatchFunction function, Value... args) {
+    public static Value call(EvaluationContext context, PatchFunction function, Value... args) {
         return switch (function) {
             case PatchFunction.BuiltInPatchFunction builtIn -> builtIn.execute(context, Arrays.asList(args));
             case DefinedFunction definedFunction -> definedFunction.call(args);

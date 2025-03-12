@@ -4,7 +4,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
@@ -13,10 +12,11 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.Stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.generated.GeneratedProgram;
-import dev.mattidragon.jsonpatcher.lang.runtime.reflection.ReflectionInternalsLibrary;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.BytecodeInternalsLibrary;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.ReflectionInternalsLibrary;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.stdlib.LibraryBuilder;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.LibraryBuilder;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -35,14 +35,12 @@ public class EvaluationEnvironment {
     private final PropertyHolder propertyHolder = new PropertyHolder();
     private final ScriptClassLoader classLoader = new ScriptClassLoader();
     private final CompilerOptions compilerOptions;
-    private final LangConfig config;
 
     @Nullable
     private String dumpPath = null;
 
     public EvaluationEnvironment(CompilerOptions compilerOptions) {
         this.compilerOptions = compilerOptions;
-        this.config = compilerOptions.langConfig();
     }
 
     public void bootstrap() {
@@ -180,7 +178,7 @@ public class EvaluationEnvironment {
         public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
             byte[] bytes;
             try {
-                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, getNamesGlobal(), scriptName, className);
+                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, getNamesGlobal(), scriptName, className, new DiagnosticsBuilder());
             } catch (CompilationException e) {
                 throw e;
             } catch (RuntimeException e) {
@@ -201,7 +199,7 @@ public class EvaluationEnvironment {
             try {
                 var constructor = LOOKUP.findConstructor(clazz, MethodType.methodType(void.class, EvaluationContext.class));
                 LibraryLookup libraryLocator = (name) -> EvaluationEnvironment.this.locateLibrary(name, allowedLibraries);
-                var instance = constructor.invoke(new EvaluationContext(config, propertyHolder, libraryLocator));
+                var instance = constructor.invoke(new EvaluationContext(propertyHolder, libraryLocator));
                 return (GeneratedProgram) instance;
             } catch (Throwable e) {
                 throw new IllegalStateException("Failed to instantiate script", e);

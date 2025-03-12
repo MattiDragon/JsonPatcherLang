@@ -5,7 +5,6 @@ fun module(name: String) {
     project(":$name").projectDir = file("modules/$name")
 }
 
-module("shared-runtime")
 module("benchmark")
 module("parser")
 module("compiler")

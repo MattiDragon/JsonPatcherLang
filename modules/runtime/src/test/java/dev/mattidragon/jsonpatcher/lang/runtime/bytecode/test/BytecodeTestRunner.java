@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.EvaluationEnvironment;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.Library;

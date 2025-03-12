@@ -1,25 +1,22 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
 
-import dev.mattidragon.jsonpatcher.lang.error.LangConfig;
-import dev.mattidragon.jsonpatcher.lang.error.PositionedException;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
-import org.jspecify.annotations.Nullable;
+import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 
-public class CompilationException extends PositionedException {
-    private final @Nullable SourceSpan pos;
-    
-    public CompilationException(LangConfig config, String message, @Nullable SourceSpan pos) {
-        super(config, message);
-        this.pos = pos;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
+public class CompilationException extends RuntimeException {
+    private final Collection<Diagnostic> errors;
+
+    public CompilationException(Collection<Diagnostic> errors) {
+        this.errors = errors;
     }
 
     @Override
-    protected String getBaseMessage() {
-        return "Failed to compile";
-    }
-
-    @Override
-    public @Nullable SourceSpan getPos() {
-        return pos;
+    public String getMessage() {
+        var errorMsg = errors.stream()
+                .map(Diagnostic::toDisplay)
+                .collect(Collectors.joining("\n"));
+        return "Compilation failed due to errors:\n" + errorMsg;
     }
 }

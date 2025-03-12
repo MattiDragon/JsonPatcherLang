@@ -4,9 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":shared-runtime"))
+    implementation(project(":runtime"))
     implementation(project(":parser"))
-    testImplementation(testFixtures(project(":shared-runtime")))
+    testImplementation(testFixtures(project(":runtime")))
 }
 
 tasks.jar {

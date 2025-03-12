@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.hooks;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BinaryExpression;
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.runtime.IncompatibleOperandsException;
 
 import java.lang.invoke.*;

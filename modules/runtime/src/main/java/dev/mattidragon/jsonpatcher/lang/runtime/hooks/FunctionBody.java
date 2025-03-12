@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.hooks;
 
-import dev.mattidragon.jsonpatcher.lang.runtime_shared.Value;
+import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
 @SuppressWarnings("unused")
 public sealed interface FunctionBody {
