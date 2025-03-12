@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection;
 
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import org.intellij.lang.annotations.Language;
 import org.jspecify.annotations.Nullable;
@@ -10,6 +11,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -63,19 +65,28 @@ class JavaValueUtil {
     }
 
     private static ClassChild resolveSimple(Class<?> clazz, String name, EvaluationContext context) {
+        var className = clazz.getName();
+
         var children = new ArrayList<ClassChild>();
         Arrays.stream(clazz.getMethods())
-                .filter(m -> m.getName().equals(name))
+                .filter(m -> Remapper.COMBINED.remapMethodToNamed(className, m.getName(), getMethodDesc(m)).equals(name))
                 .map(ClassChild.MethodChild::new)
                 .forEach(children::add);
 
         Arrays.stream(clazz.getFields())
-                .filter(f -> f.getName().equals(name))
+                .filter(f -> Remapper.COMBINED.remapFieldToNamed(className, f.getName(), f.getType().descriptorString()).equals(name))
                 .map(ClassChild.FieldChild::new)
                 .forEach(children::add);
 
         Arrays.stream(clazz.getClasses())
-                .filter(c -> c.getName().equals(name))
+                .filter(c -> {
+                    var remappedName = Remapper.COMBINED.remapClassToNamed(c.getName());
+                    // We remap the full binary name of the inner class, but we select it by the last part.
+                    // The last part should usually be separated by a $, but some mappings might not respect inner classes,
+                    // and thus we also check for packages.
+                    var innerName = remappedName.substring(Math.max(remappedName.lastIndexOf('/'), remappedName.lastIndexOf('$')));
+                    return innerName.equals(name);
+                })
                 .map(ClassChild.InnerClass::new)
                 .forEach(children::add);
 
@@ -89,9 +100,27 @@ class JavaValueUtil {
         return children.getFirst();
     }
 
+    private static String getMethodDesc(Executable m) {
+        var returnType = switch (m) {
+            case Constructor<?> c -> void.class;
+            case Method method -> method.getReturnType();
+        };
+        return "("
+               + Arrays.stream(m.getParameterTypes()).map(Class::descriptorString).collect(Collectors.joining())
+               + ")"
+               + returnType.descriptorString();
+    }
+
     private static ClassChild resolveField(Class<?> clazz, String fullName, Matcher fieldMatcher, EvaluationContext context) {
         var desc = fieldMatcher.group(1);
         var name = fieldMatcher.group(2);
+
+        name = Remapper.COMBINED.remapFieldToRuntime(
+                Remapper.COMBINED.remapClassToNamed(clazz.getName()),
+                name,
+                desc
+        );
+        desc = Remapper.COMBINED.remapFieldDescToRuntime(desc);
 
         var type = resolveFieldDesc(desc, context);
         for (var field : clazz.getFields()) {
@@ -106,6 +135,8 @@ class JavaValueUtil {
     private static ClassChild resolveConstructor(Class<?> clazz, String fullName, Matcher matcher, EvaluationContext context) {
         var desc = matcher.group(1);
 
+        desc = Remapper.COMBINED.remapMethodDescToRuntime(desc);
+
         var methodType = MethodType.fromMethodDescriptorString(desc, JavaValueUtil.class.getClassLoader());
         for (var constructor : clazz.getConstructors()) {
             if (Arrays.equals(constructor.getParameterTypes(), methodType.parameterArray())) {
@@ -119,6 +150,13 @@ class JavaValueUtil {
     private static ClassChild resolveMethod(Class<?> clazz, String fullName, Matcher matcher, EvaluationContext context) {
         var name = matcher.group(1);
         var desc = matcher.group(2);
+
+        name = Remapper.COMBINED.remapMethodToRuntime(
+                Remapper.COMBINED.remapClassToNamed(clazz.getName()),
+                name,
+                desc
+        );
+        desc = Remapper.COMBINED.remapMethodDescToRuntime(desc);
 
         var methodType = MethodType.fromMethodDescriptorString(desc, JavaValueUtil.class.getClassLoader());
         for (var method : clazz.getMethods()) {

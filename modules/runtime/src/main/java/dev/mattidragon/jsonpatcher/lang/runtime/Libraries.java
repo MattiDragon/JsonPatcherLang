@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.runtime;
 
-
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
 import java.util.Map;

@@ -2,6 +2,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.lang.runtime {
+    uses dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
     requires org.jspecify;
     requires org.jetbrains.annotations;
 
@@ -13,5 +14,6 @@ module jsonpatcher.lang.runtime {
     exports dev.mattidragon.jsonpatcher.lang.runtime.generated;
     exports dev.mattidragon.jsonpatcher.lang.runtime.hooks;
     exports dev.mattidragon.jsonpatcher.lang.runtime.lib.builder;
+    exports dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap;
     exports dev.mattidragon.jsonpatcher.lang.runtime.value;
 }
