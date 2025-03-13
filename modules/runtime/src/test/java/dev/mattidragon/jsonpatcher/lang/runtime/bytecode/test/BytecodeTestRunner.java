@@ -21,6 +21,7 @@ public class BytecodeTestRunner implements TestRunner {
     public BytecodeTestRunner(CompilerOptions compilerOptions) {
         environment = new EvaluationEnvironment(compilerOptions);
         environment.enableDumping("build/tmp/test-class-dump/env");
+        environment.enableLogging(v -> System.out.println("Debug from test: " + v));
         environment.bootstrap();
     }
 

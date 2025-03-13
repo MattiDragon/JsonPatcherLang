@@ -13,12 +13,15 @@ import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @SuppressWarnings("unused")
 public class BytecodeInternalsLibrary {
+    private final Consumer<Value> logConsumer;
     private final PropertyHolder propertyHolder;
 
-    public BytecodeInternalsLibrary(PropertyHolder propertyHolder) {
+    public BytecodeInternalsLibrary(Consumer<Value> logConsumer, PropertyHolder propertyHolder) {
+        this.logConsumer = logConsumer;
         this.propertyHolder = propertyHolder;
     }
 
@@ -28,7 +31,7 @@ public class BytecodeInternalsLibrary {
     }
 
     public void log(Value value) {
-        // TODO: implement logging
+        logConsumer.accept(value);
     }
 
     @DontBind

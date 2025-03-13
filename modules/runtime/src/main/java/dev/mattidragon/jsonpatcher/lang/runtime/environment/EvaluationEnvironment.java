@@ -23,6 +23,7 @@ import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class EvaluationEnvironment {
@@ -36,6 +37,7 @@ public class EvaluationEnvironment {
 
     @Nullable
     private String dumpPath = null;
+    private Consumer<Value> logConsumer = v -> {};
 
     public EvaluationEnvironment(CompilerOptions compilerOptions) {
         this.compilerOptions = compilerOptions;
@@ -47,7 +49,7 @@ public class EvaluationEnvironment {
                 "@internals",
                 () -> {
                     var obj = new Value.ObjectValue();
-                    new LibraryBuilder(BytecodeInternalsLibrary.class, new BytecodeInternalsLibrary(propertyHolder))
+                    new LibraryBuilder(BytecodeInternalsLibrary.class, new BytecodeInternalsLibrary(v -> this.logConsumer.accept(v), propertyHolder))
                             .build(obj);
                     return obj;
                 }
@@ -138,6 +140,10 @@ public class EvaluationEnvironment {
 
     public void enableDumping(String path) {
         dumpPath = path;
+    }
+
+    public void enableLogging(Consumer<Value> consumer) {
+        logConsumer = consumer;
     }
 
     public AddedProgram addProgram(ProgramData data) {
