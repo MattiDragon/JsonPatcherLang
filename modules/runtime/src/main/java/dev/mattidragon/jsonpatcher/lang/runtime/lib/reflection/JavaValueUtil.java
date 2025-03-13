@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection;
 
-import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
+import dev.mattidragon.jsonpatcher.lang.runtime.PatchException;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import org.intellij.lang.annotations.Language;
@@ -14,8 +14,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -39,6 +38,9 @@ class JavaValueUtil {
     private static final MethodHandle OBJECT_VALUE_CONSTRUCTOR_HANDLE;
     private static final MethodHandle VALUE_TO_OBJECT_HANDLE;
 
+    // Global cache of class child lookups. Use weak keys in case someone loads classes that end up unloading
+    private static final Map<Class<?>, Map<String, ClassChild>> CACHE = new WeakHashMap<>();
+
     static {
         try {
             OBJECT_TO_VALUE_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "objectToValue", MethodType.methodType(Value.class, Object.class));
@@ -49,65 +51,89 @@ class JavaValueUtil {
         }
     }
 
-    public static ClassChild resolveClassChild(Class<?> clazz, String name, EvaluationContext context) {
-        if (SIMPLE_REFERENCE.matcher(name).matches()) return resolveSimple(clazz, name, context);
+    static ClassChild resolveClassChild(Class<?> clazz, String name) {
+        var map = CACHE.computeIfAbsent(clazz, c -> new HashMap<>());
+        if (map.containsKey(name)) {
+            return map.get(name);
+        }
+
+        if (SIMPLE_REFERENCE.matcher(name).matches()) {
+            var child = resolveSimple(clazz, name);
+            map.put(name, child);
+            return child;
+        }
 
         var constructorMatcher = CONSTRUCTOR_REFERENCE.matcher(name);
-        if (constructorMatcher.matches()) return resolveConstructor(clazz, name, constructorMatcher, context);
+        if (constructorMatcher.matches()) {
+            var child = resolveConstructor(clazz, name, constructorMatcher);
+            map.put(name, child);
+            return child;
+        }
 
         var methodMatcher = METHOD_REFERENCE.matcher(name);
-        if (methodMatcher.matches()) return resolveMethod(clazz, name, methodMatcher, context);
+        if (methodMatcher.matches()) {
+            var child = resolveMethod(clazz, name, methodMatcher);
+            map.put(name, child);
+            return child;
+        }
 
         var fieldMatcher = FIELD_REFERENCE.matcher(name);
-        if (fieldMatcher.matches()) return resolveField(clazz, name, fieldMatcher, context);
+        if (fieldMatcher.matches()) {
+            var child = resolveField(clazz, name, fieldMatcher);
+            map.put(name, child);
+            return child;
+        }
 
-        throw context.createException("Invalid java member reference");
+        throw new PatchException("Invalid java member reference");
     }
 
-    private static ClassChild resolveSimple(Class<?> clazz, String name, EvaluationContext context) {
+    private static ClassChild resolveSimple(Class<?> clazz, String name) {
         var className = clazz.getName();
 
         var children = new ArrayList<ClassChild>();
-        Arrays.stream(clazz.getMethods())
-                .filter(m -> {
-                    var runtimeName = Remapper.COMBINED.remapMethodToRuntime(
-                            Remapper.COMBINED.remapClassToNamed(clazz.getName()),
-                            name,
-                            Remapper.COMBINED.remapMethodDescToNamed(getMethodDesc(m))
-                    );
-                    return m.getName().equals(runtimeName);
-                })
-                .map(ClassChild.MethodChild::new)
-                .forEach(children::add);
+        for (Method method : clazz.getMethods()) {
+            var runtimeName = Remapper.COMBINED.remapMethodToRuntime(
+                    Remapper.COMBINED.remapClassToNamed(clazz.getName()),
+                    name,
+                    Remapper.COMBINED.remapMethodDescToNamed(getMethodDesc(method))
+            );
+            if (method.getName().equals(runtimeName)) {
+                ClassChild.MethodChild methodChild = new ClassChild.MethodChild(method);
+                children.add(methodChild);
+            }
+        }
 
-        Arrays.stream(clazz.getFields())
-                .filter(f -> {
-                    var runtimeName = Remapper.COMBINED.remapFieldToRuntime(
-                            Remapper.COMBINED.remapClassToNamed(className),
-                            name,
-                            Remapper.COMBINED.remapFieldDescToNamed(f.getType().descriptorString())
-                    );
-                    return f.getName().equals(runtimeName);
-                })
-                .map(ClassChild.FieldChild::new)
-                .forEach(children::add);
+        for (Field field : clazz.getFields()) {
+            var runtimeName = Remapper.COMBINED.remapFieldToRuntime(
+                    Remapper.COMBINED.remapClassToNamed(className),
+                    name,
+                    Remapper.COMBINED.remapFieldDescToNamed(field.getType().descriptorString())
+            );
+            if (field.getName().equals(runtimeName)) {
+                ClassChild.FieldChild fieldChild = new ClassChild.FieldChild(field);
+                children.add(fieldChild);
+            }
+        }
 
-        Arrays.stream(clazz.getClasses())
-                .filter(c -> {
-                    var remappedName = Remapper.COMBINED.remapClassToNamed(c.getName());
-                    // We remap the full binary name of the inner class, but we select it by the last part.
-                    // The last part should usually be separated by a $, but some mappings might not respect inner classes,
-                    // and thus we also check for packages.
-                    var innerName = remappedName.substring(Math.max(remappedName.lastIndexOf('/'), remappedName.lastIndexOf('$')));
-                    return innerName.equals(name);
-                })
-                .map(ClassChild.InnerClass::new)
-                .forEach(children::add);
+        // We remap the full binary name of the inner class, but we select it by the last part.
+        // The last part should usually be separated by a $, but some mappings might not respect inner classes,
+        // and thus we also check for packages.
+        for (Class<?> aClass : clazz.getClasses()) {
+            var remappedName = Remapper.COMBINED.remapClassToNamed(aClass.getName());
+            // We remap the full binary name of the inner class, but we select it by the last part.
+            // The last part should usually be separated by a $, but some mappings might not respect inner classes,
+            // and thus we also check for packages.
+            var innerName = remappedName.substring(Math.max(remappedName.lastIndexOf('/'), remappedName.lastIndexOf('$')));
+            if (innerName.equals(name)) {
+                ClassChild.InnerClass innerClass = new ClassChild.InnerClass(aClass);
+                children.add(innerClass);
+            }
+        }
 
         if (children.isEmpty()) {
-            throw context.createException("Cannot find public member by the name '" + name + "'");
+            throw new PatchException("Cannot find public member by the name '" + name + "'");
         } else if (children.size() > 1) {
-            throw context.createException("Multiple public members with the name '" + name + "' found, please specify descriptor:\n"
+            throw new PatchException("Multiple public members with the name '" + name + "' found, please specify descriptor:\n"
                 + children.stream().map(ClassChild::toString).collect(Collectors.joining("\n")));
         }
 
@@ -119,13 +145,17 @@ class JavaValueUtil {
             case Constructor<?> c -> void.class;
             case Method method -> method.getReturnType();
         };
-        return "("
-               + Arrays.stream(m.getParameterTypes()).map(Class::descriptorString).collect(Collectors.joining())
-               + ")"
-               + returnType.descriptorString();
+        StringBuilder builder = new StringBuilder();
+        builder.append("(");
+        for (var type : m.getParameterTypes()) {
+            builder.append(type.descriptorString());
+        }
+        builder.append(")");
+        builder.append(returnType.descriptorString());
+        return builder.toString();
     }
 
-    private static ClassChild resolveField(Class<?> clazz, String fullName, Matcher fieldMatcher, EvaluationContext context) {
+    private static ClassChild resolveField(Class<?> clazz, String fullName, Matcher fieldMatcher) {
         var desc = fieldMatcher.group(1);
         var name = fieldMatcher.group(2);
 
@@ -136,17 +166,17 @@ class JavaValueUtil {
         );
         desc = Remapper.COMBINED.remapFieldDescToRuntime(desc);
 
-        var type = resolveFieldDesc(desc, context);
+        var type = resolveFieldDesc(desc);
         for (var field : clazz.getFields()) {
             if (field.getName().equals(name) && field.getType() == type) {
                 return new ClassChild.FieldChild(field);
             }
         }
 
-        throw context.createException("Cannot find field " + fullName);
+        throw new PatchException("Cannot find field " + fullName);
     }
 
-    private static ClassChild resolveConstructor(Class<?> clazz, String fullName, Matcher matcher, EvaluationContext context) {
+    private static ClassChild resolveConstructor(Class<?> clazz, String fullName, Matcher matcher) {
         var desc = matcher.group(1);
 
         desc = Remapper.COMBINED.remapMethodDescToRuntime(desc);
@@ -158,10 +188,10 @@ class JavaValueUtil {
             }
         }
 
-        throw context.createException("Cannot find constructor " + fullName);
+        throw new PatchException("Cannot find constructor " + fullName);
     }
 
-    private static ClassChild resolveMethod(Class<?> clazz, String fullName, Matcher matcher, EvaluationContext context) {
+    private static ClassChild resolveMethod(Class<?> clazz, String fullName, Matcher matcher) {
         var name = matcher.group(1);
         var desc = matcher.group(2);
 
@@ -181,14 +211,14 @@ class JavaValueUtil {
             }
         }
 
-        throw context.createException("Cannot find method " + fullName);
+        throw new PatchException("Cannot find method " + fullName);
     }
 
-    private static Class<?> resolveFieldDesc(String desc, EvaluationContext context) {
+    private static Class<?> resolveFieldDesc(String desc) {
         try {
             return ClassDesc.ofDescriptor(desc).resolveConstantDesc(LOOKUP);
         } catch (ReflectiveOperationException e) {
-            throw context.createException("Failed to resolve field descriptor " + desc, e);
+            throw new PatchException("Failed to resolve field descriptor " + desc, e);
         }
     }
 

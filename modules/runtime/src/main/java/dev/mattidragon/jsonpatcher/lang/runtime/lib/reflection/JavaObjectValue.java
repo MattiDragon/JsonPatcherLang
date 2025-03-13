@@ -30,7 +30,7 @@ public class JavaObjectValue implements Value.SpecialValue {
             return propertyGetterCache.get(property).get();
         }
 
-        Supplier<Value> supplier = switch (JavaValueUtil.resolveClassChild(object.getClass(), property, context)) {
+        Supplier<Value> supplier = switch (JavaValueUtil.resolveClassChild(object.getClass(), property)) {
             case JavaValueUtil.ClassChild.ConstructorChild(var constructor) -> throw context.createException("Cannot use constructor on existing instances");
             case JavaValueUtil.ClassChild.InnerClass(var innerClass) -> throw context.createException("Cannot access inner classes of instances");
             case JavaValueUtil.ClassChild.FieldChild(var field) -> {
@@ -81,7 +81,7 @@ public class JavaObjectValue implements Value.SpecialValue {
             return;
         }
 
-        var classChild = JavaValueUtil.resolveClassChild(object.getClass(), property, context);
+        var classChild = JavaValueUtil.resolveClassChild(object.getClass(), property);
 
         if (!(classChild instanceof JavaValueUtil.ClassChild.FieldChild(var field))) {
             throw context.createException("Can only set fields on java objects (tried to set " + property + ")");

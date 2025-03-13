@@ -36,7 +36,7 @@ public class JavaClassValue implements Value.SpecialValue {
             return propertyGetterCache.get(property).get();
         }
 
-        Supplier<Value> supplier = switch (JavaValueUtil.resolveClassChild(clazz, property, context)) {
+        Supplier<Value> supplier = switch (JavaValueUtil.resolveClassChild(clazz, property)) {
             case ConstructorChild(var constructor) -> {
                 MethodHandle handle;
                 try {
@@ -97,7 +97,7 @@ public class JavaClassValue implements Value.SpecialValue {
             return;
         }
 
-        var classChild = JavaValueUtil.resolveClassChild(clazz, property, context);
+        var classChild = JavaValueUtil.resolveClassChild(clazz, property);
 
         if (!(classChild instanceof FieldChild(var field))) {
             throw context.createException("Can only set fields on java objects (tried to set " + property + ")");
