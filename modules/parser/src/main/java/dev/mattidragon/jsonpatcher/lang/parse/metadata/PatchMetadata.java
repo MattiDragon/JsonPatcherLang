@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.parse.metadata;
 
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 
@@ -11,8 +12,14 @@ public class PatchMetadata {
     private final Map<String, MetadataElement> values = new LinkedHashMap<>();
 
     public void add(String key, Parser parser) {
-        var MetadataElement = parser.hasNext(Token.SimpleToken.SEMICOLON) ? MetadataNull.INSTANCE : new JsonParser(parser).parse();
-        values.put(key, MetadataElement);
+        MetadataElement element;
+        if (parser.hasNext(Token.SimpleToken.SEMICOLON)) {
+            element = new MetadataNull();
+            parser.setMetadata(element, MetadataKey.FULL_POS, parser.previous().pos());
+        } else {
+            element = new JsonParser(parser).parse();
+        }
+        values.put(key, element);
     }
 
     public boolean has(String key) {

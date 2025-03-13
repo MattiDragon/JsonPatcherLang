@@ -46,7 +46,7 @@ public class ProgramPrinter {
             case MetadataNumber(var number) -> target.write(new Token.NumberToken(number));
             case MetadataString(var string) -> target.write(new Token.StringToken(string));
             case MetadataBoolean(boolean bool) -> target.write(bool ? KeywordToken.TRUE : KeywordToken.FALSE);
-            case MetadataNull.INSTANCE -> target.write(KeywordToken.NULL);
+            case MetadataNull() -> target.write(KeywordToken.NULL);
             default -> throw new IllegalStateException("Illegal value in metadata: " + value);
         }
     }

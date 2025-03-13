@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.ErrorExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
@@ -118,16 +119,16 @@ public class Parser {
         return left;
     }
 
-    public <N extends ProgramNode, T> N setMetadata(N node, MetadataKey<T> key, T value) {
+    public <N extends MetadataHolder, T> N setMetadata(N node, MetadataKey<T> key, T value) {
         treeMetadata.put(node, key, value);
         return node;
     }
     
-    public <T> void copyMetadata(ProgramNode from, ProgramNode to, MetadataKey<T> key) {
+    public <T> void copyMetadata(MetadataHolder from, MetadataHolder to, MetadataKey<T> key) {
         treeMetadata.get(from, key).ifPresent(value -> treeMetadata.put(to, key, value));
     }
     
-    public <T> Optional<T> getMetadata(ProgramNode from, MetadataKey<T> key) {
+    public <T> Optional<T> getMetadata(MetadataHolder from, MetadataKey<T> key) {
         return treeMetadata.get(from, key);
     }
 

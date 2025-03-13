@@ -6,4 +6,9 @@ public record MetadataArray(List<MetadataElement> values) implements MetadataEle
     public MetadataArray {
         values = List.copyOf(values);
     }
+
+    @Override
+    public Iterable<? extends MetadataElement> getChildren() {
+        return values;
+    }
 }

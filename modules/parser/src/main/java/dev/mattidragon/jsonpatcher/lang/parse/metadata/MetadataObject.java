@@ -6,4 +6,9 @@ public record MetadataObject(Map<String, MetadataElement> values) implements Met
     public MetadataObject {
         values = Map.copyOf(values);
     }
+
+    @Override
+    public Iterable<? extends MetadataElement> getChildren() {
+        return values.values();
+    }
 }
