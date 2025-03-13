@@ -6,11 +6,10 @@ import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.Library;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryGroup;
+import dev.mattidragon.jsonpatcher.lang.runtime.environment.ProgramData;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 public class ReflectionTests {
     private final BytecodeTestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT);
@@ -30,12 +29,11 @@ public class ReflectionTests {
         var lex = Lexer.lex(driverCode, "assertions", diagnostics);
         var parse = Parser.parse(lex.tokens(), diagnostics);
 
-        var program = runner.environment().addProgram(
-                parse.program(),
-                parse.treeMetadata(),
-                "assertions",
-                "jsonpatcher_generated/assertions",
-                List.of(LibraryGroup.DEFAULT, LibraryGroup.REFLECTION)
+        var program = runner.environment().addProgram(ProgramData.builder(parse)
+                .scriptName("assertions")
+                .className("jsonpatcher_generated/assertions")
+                .allowLibraryGroup(LibraryGroup.REFLECTION)
+                .build()
         );
         var libObject = new Value.ObjectValue();
         program.run(libObject);

@@ -1,7 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.environment;
 
-import dev.mattidragon.jsonpatcher.lang.ast.Program;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -77,12 +75,12 @@ public class EvaluationEnvironment {
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
             var instance = classLoader.addScript(
-                    parse.program(),
-                    parse.treeMetadata(),
-                    compilerOptions,
-                    "stdlib/" + name + ".jsonpatch",
-                    "jsonpatcher_generated/stdlib/" + name,
-                    List.of(LibraryGroup.DEFAULT, LibraryGroup.INTERNALS)
+                    ProgramData.builder(parse)
+                            .scriptName("stdlib/" + name + ".jsonpatch")
+                            .className("jsonpatcher_generated/stdlib/" + name)
+                            .allowLibraryGroup(LibraryGroup.INTERNALS)
+                            .build(),
+                    compilerOptions
             );
 
             instance.run((Value.ObjectValue) globals.get(name), globals);
@@ -100,19 +98,20 @@ public class EvaluationEnvironment {
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
             var instance = classLoader.addScript(
-                    parse.program(),
-                    parse.treeMetadata(),
-                    compilerOptions,
-                    "stdlib/" + name + ".jsonpatch",
-                    "jsonpatcher_generated/stdlib/" + name,
-                    List.of(LibraryGroup.DEFAULT, LibraryGroup.INTERNALS)
+                    ProgramData.builder(parse)
+                            .scriptName("stdlib/" + name + ".jsonpatch")
+                            .className("jsonpatcher_generated/stdlib/" + name)
+                            .allowLibraryGroup(LibraryGroup.INTERNALS)
+                            .build(),
+                    compilerOptions
             );
 
             var libraryGroup = switch (parse.metadata().has("libgroup") ? parse.metadata().getString("libgroup") : null) {
                 case "reflection" -> LibraryGroup.REFLECTION;
                 case "default" -> LibraryGroup.DEFAULT;
                 case null -> LibraryGroup.DEFAULT;
-                case String group -> throw new IllegalArgumentException("Unsupported library group in stdlib: " + group);
+                case String group ->
+                        throw new IllegalArgumentException("Unsupported library group in stdlib: " + group);
             };
 
             var object = new Value.ObjectValue();
@@ -129,7 +128,7 @@ public class EvaluationEnvironment {
         var errors = diagnostics.errorsAndWarnings();
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Failed to bootstrap evaluation environment:\n"
-                + errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n")));
+                                            + errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n")));
         }
     }
 
@@ -141,9 +140,8 @@ public class EvaluationEnvironment {
         dumpPath = path;
     }
 
-    public AddedProgram addProgram(Program program, TreeMetadata metadata, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
-        var instance = classLoader.addScript(program, metadata, compilerOptions, scriptName, className, allowedLibraries);
-        return new AddedProgram(instance);
+    public AddedProgram addProgram(ProgramData data) {
+        return new AddedProgram(classLoader.addScript(data, compilerOptions));
     }
 
     private Set<String> getNamesGlobal() {
@@ -161,7 +159,7 @@ public class EvaluationEnvironment {
         }
         return lib.contents();
     }
-    
+
     public final class AddedProgram {
         private final GeneratedProgram program;
 
@@ -173,26 +171,33 @@ public class EvaluationEnvironment {
             return program.run(root, globals);
         }
     }
-    
+
     private class ScriptClassLoader extends ClassLoader {
         protected ScriptClassLoader() {
             super(ScriptClassLoader.class.getClassLoader());
         }
 
-        public GeneratedProgram addScript(Program program, TreeMetadata metadata, CompilerOptions compilerOptions, String scriptName, String className, Collection<LibraryGroup> allowedLibraries) {
+        public GeneratedProgram addScript(ProgramData data, CompilerOptions compilerOptions) {
             byte[] bytes;
             try {
                 // TODO: propagate diagnostics
-                bytes = ScriptCompiler.compile(program, metadata, compilerOptions, getNamesGlobal(), scriptName, className, new DiagnosticsBuilder());
+                bytes = ScriptCompiler.compile(
+                        data.program(),
+                        data.metadata(),
+                        compilerOptions,
+                        getNamesGlobal(),
+                        data.scriptName(),
+                        data.className(),
+                        new DiagnosticsBuilder());
             } catch (CompilationException e) {
                 throw e;
             } catch (RuntimeException e) {
-                throw new IllegalStateException("Failed to compile script " + scriptName, e);
+                throw new IllegalStateException("Failed to compile script " + data.scriptName(), e);
             }
 
             if (dumpPath != null) {
                 try {
-                    var path = Path.of(dumpPath, className + ".class");
+                    var path = Path.of(dumpPath, data.className() + ".class");
                     Files.createDirectories(path.getParent());
                     Files.write(path, bytes);
                 } catch (IOException e) {
@@ -203,13 +208,12 @@ public class EvaluationEnvironment {
             var clazz = defineClass(null, bytes, 0, bytes.length);
             try {
                 var constructor = LOOKUP.findConstructor(clazz, MethodType.methodType(void.class, EvaluationContext.class));
-                LibraryLookup libraryLocator = (name) -> EvaluationEnvironment.this.locateLibrary(name, allowedLibraries);
+                LibraryLookup libraryLocator = (name) -> EvaluationEnvironment.this.locateLibrary(name, data.allowedLibraries());
                 var instance = constructor.invoke(new EvaluationContext(propertyHolder, libraryLocator));
                 return (GeneratedProgram) instance;
             } catch (Throwable e) {
                 throw new IllegalStateException("Failed to instantiate script", e);
             }
         }
-
     }
 }

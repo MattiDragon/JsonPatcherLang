@@ -6,10 +6,10 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOption
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.EvaluationEnvironment;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.Library;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryGroup;
+import dev.mattidragon.jsonpatcher.lang.runtime.environment.ProgramData;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.test.TestRunner;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -36,7 +36,11 @@ public class BytecodeTestRunner implements TestRunner {
     @Override
     public void executeCode(Program program, TreeMetadata metadata, Map<String, Value.ObjectValue> libraries) {
         libraries.forEach((name, contents) -> environment.addLibrary(new Library(LibraryGroup.DEFAULT, name, () -> contents)));
-        var added = environment.addProgram(program, metadata, "test_script", "jsonpatcher_generated/test" + CLASS_COUNTER.getAndIncrement(), List.of(LibraryGroup.DEFAULT, LibraryGroup.REFLECTION));
+        var added = environment.addProgram(ProgramData.builder(program, metadata)
+                .scriptName("test_script")
+                .className("jsonpatcher_generated/test" + CLASS_COUNTER.getAndIncrement())
+                .allowLibraryGroup(LibraryGroup.REFLECTION)
+                .build());
         added.run(new Value.ObjectValue());
     }
 }
