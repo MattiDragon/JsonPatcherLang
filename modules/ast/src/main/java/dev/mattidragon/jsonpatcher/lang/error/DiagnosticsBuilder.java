@@ -8,11 +8,11 @@ public class DiagnosticsBuilder {
 
     public DiagnosticsBuilder() {}
 
-    public void addDiagnostic(Diagnostic diagnostic) {
+    public synchronized void addDiagnostic(Diagnostic diagnostic) {
         diagnostics.add(diagnostic);
     }
 
-    public Diagnostics build() {
+    public synchronized Diagnostics build() {
         return new Diagnostics(List.copyOf(diagnostics));
     }
 }

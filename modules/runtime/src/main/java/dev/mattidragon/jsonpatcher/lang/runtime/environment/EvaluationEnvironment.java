@@ -36,7 +36,7 @@ public class EvaluationEnvironment {
     private final CompilerOptions compilerOptions;
 
     @Nullable
-    private String dumpPath = null;
+    private Path dumpPath = null;
     private Consumer<Value> logConsumer = v -> {};
 
     public EvaluationEnvironment(CompilerOptions compilerOptions) {
@@ -139,6 +139,10 @@ public class EvaluationEnvironment {
     }
 
     public void enableDumping(String path) {
+        enableDumping(Path.of(path));
+    }
+
+    public void enableDumping(Path path) {
         dumpPath = path;
     }
 
@@ -203,7 +207,7 @@ public class EvaluationEnvironment {
 
             if (dumpPath != null) {
                 try {
-                    var path = Path.of(dumpPath, data.className() + ".class");
+                    var path = dumpPath.resolve(data.className() + ".class");
                     Files.createDirectories(path.getParent());
                     Files.write(path, bytes);
                 } catch (IOException e) {
