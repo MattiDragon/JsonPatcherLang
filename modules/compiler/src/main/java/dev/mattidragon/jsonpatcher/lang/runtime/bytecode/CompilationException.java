@@ -19,4 +19,8 @@ public class CompilationException extends RuntimeException {
                 .collect(Collectors.joining("\n"));
         return "Compilation failed due to errors:\n" + errorMsg;
     }
+
+    public Collection<Diagnostic> getErrors() {
+        return errors;
+    }
 }
