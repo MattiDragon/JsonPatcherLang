@@ -15,7 +15,7 @@ dependencies {
     val libs = versionCatalogs.named("libs")
     
     compileOnly(libs.findLibrary("annotations").orElseThrow())
-    implementation(libs.findLibrary("jspecify").orElseThrow())
+    compileOnly(libs.findLibrary("jspecify").orElseThrow())
 
     // Use junit
     testImplementation(libs.findLibrary("junit-jupiter").orElseThrow())
