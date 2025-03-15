@@ -22,7 +22,7 @@ public class ClassCompiler {
     private final CompilerOptions options;
 
     public ClassCompiler(Program program, TreeMetadata metadata, Map<FunctionExpression, String> lambdaNames, String scriptName, String className, CompilerOptions options) {
-        classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        classWriter = new CustomClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         this.scriptName = scriptName;
         this.className = className;
         this.program = program;
