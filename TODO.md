@@ -9,4 +9,5 @@
 * ~~Get rid of error wrapping for errors thrown through `debug.throw`~~
 * Implement support for both types of stdlib in lang server
 * ~~Implement test toolkit for jsonpatch code~~
-* Add remapping support to reflection
+* ~~Add remapping support to reflection~~
+* Fix diagnostic printing on last line of file (with not extra newline)
