@@ -11,6 +11,7 @@ module("compiler")
 module("runtime")
 module("ast")
 module("analysis")
+module("stdlib")
 
 fun tool(name: String) {
     include(":$name")

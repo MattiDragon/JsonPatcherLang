@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation(project(":compiler"))
     implementation(project(":parser"))
+    implementation(project(":stdlib"))
 
     testFixturesImplementation(libs.junit.jupiter)
     testFixturesImplementation(libs.jspecify)

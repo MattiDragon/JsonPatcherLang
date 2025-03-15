@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
+package dev.mattidragon.jsonpatcher.lang.stdlib;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class Stdlib {
     }
 
     private static void loadLibraryContent(String name, HashMap<String, String> contents) {
-        var filename = "/bytecode-runtime-files/stdlib/" + name + ".jsonpatch";
+        var filename = "/stdlib/" + name + ".jsonpatch";
 
         try (var stream = Stdlib.class.getResourceAsStream(filename)) {
             if (stream == null) {
@@ -56,7 +56,7 @@ public class Stdlib {
     }
 
     private static String[] loadLibList(String name) {
-        try (var stream = Stdlib.class.getResourceAsStream("/bytecode-runtime-files/" + name + ".liblist")) {
+        try (var stream = Stdlib.class.getResourceAsStream("/" + name + ".liblist")) {
             if (stream == null) {
                 throw new IllegalStateException("Cannot find stdlib list");
             }

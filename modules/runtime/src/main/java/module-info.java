@@ -8,6 +8,7 @@ module jsonpatcher.lang.runtime {
 
     requires jsonpatcher.lang.compiler;
     requires jsonpatcher.lang.parser;
+    requires jsonpatcher.lang.stdlib;
 
     exports dev.mattidragon.jsonpatcher.lang.runtime;
     exports dev.mattidragon.jsonpatcher.lang.runtime.environment;

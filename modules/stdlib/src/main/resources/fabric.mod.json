@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "jsonpatcherlang-stdlib",
+  "name": "JsonPatcherLang Stdlib",
+  "description": "Part of the JsonPatcher language libraries. Contains the standard libraries and code for loading them.",
+  "version": "$version",
+  "authors": ["MattiDragon"],
+  "depends": {
+    "java": ">=21"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": "jsonpatcher"
+    }
+  }
+}

@@ -6,7 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
-import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.Stdlib;
+import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.ScriptCompiler;
 import dev.mattidragon.jsonpatcher.lang.runtime.generated.GeneratedProgram;

@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     implementation(project(":analysis"))
-    implementation(project(":parser"))
+    api(project(":parser"))
+    implementation(project(":stdlib"))
+
     runtimeOnly(project(":runtime"))
     implementation(libs.bundles.asm)
 }
