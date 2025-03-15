@@ -41,6 +41,12 @@ jobs:
           name: "${{ steps.versions.outputs.version }}"
           body_path: changelog/${{ steps.versions.outputs.version }}.md
           files: |
-            ./build/libs/*.jar
-            ./tools/doctool/build/libs/*.jar
-            ./tools/lang-server/build/libs/*.jar
+            ./modules/parser/build/libs/*.jar
+            ./modules/compiler/build/libs/*.jar
+            ./modules/runtime/build/libs/*.jar
+            ./modules/ast/build/libs/*.jar
+            ./modules/analysis/build/libs/*.jar
+            ./modules/stdlib/build/libs/*.jar
+            ./tools/doctool/build/libs/*jar
+            ./tools/lang-server/build/libs/*jar
+            ./tools/formatter/build/libs/*jar
