@@ -19,6 +19,7 @@ dependencies {
 
     // Use junit
     testImplementation(libs.findLibrary("junit-jupiter").orElseThrow())
+    testCompileOnly(libs.findLibrary("jspecify").orElseThrow())
     testRuntimeOnly(libs.findLibrary("junit-platform").orElseThrow())
 }
 
