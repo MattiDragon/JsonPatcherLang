@@ -6,7 +6,9 @@ public class DocTypeWriter {
     public static String write(NewDocType type) {
         return switch (type) {
             case ArrayDocType(var inner)
-                    -> "[" + write(inner) + "]";
+                    -> writeSuffix(inner, "[]");
+            case MapDocType(var inner)
+                    -> writeSuffix(inner, "{}");
             case ErrorDocType(var message)
                     -> "%error: " + message + "%";
             case FunctionDocType functionDocType
@@ -18,6 +20,18 @@ public class DocTypeWriter {
             case UnionDocType unionDocType
                     -> writeUnion(unionDocType);
         };
+    }
+
+    private static String writeSuffix(NewDocType inner, String suffix) {
+        var needsParens = inner instanceof FunctionDocType || inner instanceof UnionDocType;
+
+        var builder = new StringBuilder();
+        if (needsParens) builder.append('{');
+        builder.append(write(inner));
+        if (needsParens) builder.append('}');
+        builder.append(suffix);
+
+        return builder.toString();
     }
 
     private static String writeFunction(FunctionDocType function) {

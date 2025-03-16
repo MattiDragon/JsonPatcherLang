@@ -56,6 +56,8 @@ public class Tokenizer {
             case '=' -> DocToken.Symbol.EQUAL;
             case '^' -> DocToken.Symbol.CARET;
             case '~' -> DocToken.Symbol.TILDE;
+            case '*' -> DocToken.Symbol.STAR;
+            case '?' -> DocToken.Symbol.QUESTION_MARK;
             case '-' -> {
                 var c2 = nextChar();
                 if (c2 == '>') yield DocToken.Symbol.ARROW;
@@ -71,8 +73,41 @@ public class Tokenizer {
                 }
                 yield new DocToken.VarName(word.toString());
             }
+            case '"' -> {
+                var string = new StringBuilder();
+                while (peekChar() != '"') {
+                    if (peekChar() == '\\') {
+                        nextChar();
+                        string.append(switch (nextChar()) {
+                            case 'n' -> '\n';
+                            case 't' -> '\t';
+                            case 'r' -> '\r';
+                            case 'b' -> '\b';
+                            case 'f' -> '\f';
+                            case '"' -> '"';
+                            case '\\' -> '\\';
+                            case 'u' -> readUnicode(4);
+                            case 'x' -> readUnicode(2);
+                            default ->
+                                    throw new IllegalStateException("Unexpected escape character: '" + peekChar() + "'");
+                        });
+                    } else {
+                        string.append(nextChar());
+                    }
+                }
+                nextChar();
+                yield new DocToken.Quoted(string.toString());
+            }
             default -> new DocToken.Error("Unexpected character: '" + c + "'", "DOC-0", firstPos.offset(index).toSpan());
         };
+    }
+
+    private char readUnicode(int count) {
+        var string = new StringBuilder();
+        for (var i = 0; i < count; i++) {
+            string.append(next());
+        }
+        return (char) Integer.parseInt(string.toString(), 16);
     }
 
     DocToken peek() {

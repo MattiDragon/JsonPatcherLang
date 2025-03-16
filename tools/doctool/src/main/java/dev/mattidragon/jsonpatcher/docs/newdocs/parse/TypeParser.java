@@ -21,7 +21,7 @@ public class TypeParser {
     }
 
     public static NewDocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
-        final TypeParser typeParser = new TypeParser(metadata, tokens, diagnostics);
+        var typeParser = new TypeParser(metadata, tokens, diagnostics);
         return typeParser.root(typeParser.tokens.next());
     }
 
@@ -43,6 +43,41 @@ public class TypeParser {
                 yield errorType;
             }
         };
+
+        loop:
+        while (tokens.hasNext()) {
+            switch (tokens.peek()) {
+                case DocToken.Symbol.BEGIN_SQUARE -> {
+                    tokens.next();
+                    var beginPos = tokens.lastPos();
+                    var prevPos = metadata.get(type, MetadataKey.FULL_POS).orElseThrow();
+
+                    if (tokens.next() != DocToken.Symbol.END_SQUARE) {
+                        addDiagnostic(tokens.lastPos(), "Expected ']");
+                    }
+
+                    type = new ArrayDocType(type);
+                    metadata.put(type, MetadataKey.FULL_POS, SourceSpan.between(prevPos, tokens.lastPos()));
+                    metadata.put(type, MetadataKey.KEYWORD_POS, SourceSpan.between(beginPos, tokens.lastPos()));
+                }
+                case DocToken.Symbol.BEGIN_CURLY -> {
+                    tokens.next();
+                    var beginPos = tokens.lastPos();
+                    var prevPos = metadata.get(type, MetadataKey.FULL_POS).orElseThrow();
+
+                    if (tokens.next() != DocToken.Symbol.END_CURLY) {
+                        addDiagnostic(tokens.lastPos(), "Expected '}");
+                    }
+
+                    type = new MapDocType(type);
+                    metadata.put(type, MetadataKey.FULL_POS, SourceSpan.between(prevPos, tokens.lastPos()));
+                    metadata.put(type, MetadataKey.KEYWORD_POS, SourceSpan.between(beginPos, tokens.lastPos()));
+                }
+                default -> {
+                    break loop;
+                }
+            }
+        }
 
         while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.BAR) {
             tokens.next();
@@ -152,7 +187,20 @@ public class TypeParser {
 
             var type = root(token);
 
-            var arg = new FunctionDocType.Argument(type, Optional.ofNullable(argName));
+            FunctionDocType.Argument.Kind kind;
+            switch (tokens.peek()) {
+                case DocToken.Symbol.STAR -> {
+                    tokens.next();
+                    kind = FunctionDocType.Argument.Kind.VARARGS;
+                }
+                case DocToken.Symbol.QUESTION_MARK -> {
+                    tokens.next();
+                    kind = FunctionDocType.Argument.Kind.OPTIONAL;
+                }
+                default -> kind = FunctionDocType.Argument.Kind.REGULAR;
+            }
+
+            var arg = new FunctionDocType.Argument(type, Optional.ofNullable(argName), kind);
             if (argNamePos != null) {
                 metadata.put(arg, MetadataKey.NAME_POS, argNamePos);
             }

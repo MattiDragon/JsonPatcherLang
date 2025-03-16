@@ -9,6 +9,9 @@ sealed interface DocToken {
     record Name(String value) implements DocToken {
     }
 
+    record Quoted(String value) implements DocToken {
+    }
+
     record VarName(String value) implements DocToken {
     }
 
@@ -37,6 +40,8 @@ sealed interface DocToken {
         GREATER,
         EQUAL,
         CARET,
+        QUESTION_MARK,
+        STAR,
         TILDE
     }
 

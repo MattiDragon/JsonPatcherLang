@@ -131,6 +131,30 @@ public class NewDocParser {
                 expectEol();
                 yield new NewDocEntry.NamespaceEntry(new NamespaceDescription(dottedNames), name, condition, body);
             }
+            // Legacy syntax for compatibility
+            case "module" -> {
+                var name = expectName();
+                String location = null;
+                if (tokens.hasNext()
+                    && tokens.peek() instanceof DocToken.Name(var atString)
+                    && atString.equals("at")) {
+                    tokens.next();
+                    location = expectQuotedString();
+                }
+                var condition = checkCondition();
+                expectEol();
+                yield new NewDocEntry.LibraryEntry(NamespaceDescription.EMPTY, name, Optional.ofNullable(location), condition, body);
+            }
+            case "value" -> {
+                var owner = expectName();
+                expectSymbol(DocToken.Symbol.DOT);
+                var name = expectName();
+                expectSymbol(DocToken.Symbol.COLON);
+                var type = OldTypeParser.parse(tokens, metadata, diagnostics);
+                var condition = checkCondition();
+                expectEol();
+                yield new NewDocEntry.PropertyEntry(NamespaceDescription.EMPTY, owner, name, type, condition, body);
+            }
             default -> {
                 var pos = tokens.lastPos();
                 diagnostics.addDiagnostic(new DocParseError(pos, "Unknown doc comment type: " + firstToken, DocParseError.Type.DOC_PARSE));
@@ -266,6 +290,16 @@ public class NewDocParser {
         var lastPos = tokens.lastPos();
         var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
         diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected number", DocParseError.Type.DOC_PARSE));
+        throw new FailException();
+    }
+
+    private String expectQuotedString() throws FailException {
+        if (tokens.hasNext() && tokens.next() instanceof DocToken.Quoted(var string)) {
+            return string;
+        }
+        var lastPos = tokens.lastPos();
+        var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
+        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected string", DocParseError.Type.DOC_PARSE));
         throw new FailException();
     }
 

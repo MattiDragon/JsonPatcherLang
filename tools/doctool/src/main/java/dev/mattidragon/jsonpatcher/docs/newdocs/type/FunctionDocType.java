@@ -19,10 +19,14 @@ public record FunctionDocType(List<TypeArgument> typeArguments, List<Argument> a
         }
     }
 
-    public record Argument(NewDocType type, Optional<String> name) implements MetadataHolder {
+    public record Argument(NewDocType type, Optional<String> name, Kind kind) implements MetadataHolder {
         @Override
         public Iterable<? extends MetadataHolder> getChildren() {
             return List.of(type);
+        }
+
+        public enum Kind {
+            REGULAR, OPTIONAL, VARARGS
         }
     }
 }
