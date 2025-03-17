@@ -2,7 +2,7 @@ package dev.mattidragon.jsonpatcher.docs.newdocs.write;
 
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.DocCondition;
 
-public class DocConditionWriter {
+class DocConditionWriter {
     public static String write(DocCondition condition) {
         return switch (condition) {
             case DocCondition.AndCondition andCondition
