@@ -1,22 +1,32 @@
 package dev.mattidragon.jsonpatcher.docs.newdocs.data;
 
 import dev.mattidragon.jsonpatcher.docs.newdocs.type.NewDocType;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 
+import java.util.List;
 import java.util.Optional;
 
-public sealed interface NewDocEntry {
+public sealed interface NewDocEntry extends MetadataHolder {
     Optional<DocCondition> condition();
     NamespaceDescription namespace();
     String name();
     String body();
 
+    @Override
+    default Iterable<? extends NewDocEntry> getChildren() {
+        return List.of();
+    }
+
     record LibraryEntry(NamespaceDescription namespace, String name, Optional<String> location, Optional<DocCondition> condition, String body) implements NewDocEntry {
     }
 
-    record GlobalLibraryEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    sealed interface GlobalEntry extends NewDocEntry {
     }
 
-    record GlobalValueEntry(NamespaceDescription namespace, String name, NewDocType type, Optional<DocCondition> condition, String body) implements NewDocEntry {
+    record GlobalLibraryEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements GlobalEntry {
+    }
+
+    record GlobalValueEntry(NamespaceDescription namespace, String name, NewDocType type, Optional<DocCondition> condition, String body) implements GlobalEntry {
     }
 
     record PropertyEntry(NamespaceDescription namespace, String owner, String name, NewDocType type, Optional<DocCondition> condition, String body) implements NewDocEntry {

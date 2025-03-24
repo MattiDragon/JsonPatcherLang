@@ -62,6 +62,7 @@ public class PrefixParser {
 
     private static Expression variable(Parser parser, SourceSpan pos, Token.WordToken token) {
         var expression = new VariableAccessExpression(token.value());
+        parser.setMetadata(expression, MetadataKey.NAME_POS, pos);
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         return expression;
     }

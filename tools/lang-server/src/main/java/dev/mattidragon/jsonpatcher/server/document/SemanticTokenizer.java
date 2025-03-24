@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
+import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -181,7 +182,7 @@ public class SemanticTokenizer {
                         case FunctionArgument __ -> SemanticTokenTypes.Parameter;
                         case Program __ -> {
                             var globalDocData = docHolder.getGlobal(variable.name()).orElse(null);
-                            if (globalDocData instanceof DocHolder.GlobalModuleData) {
+                            if (globalDocData != null && globalDocData.entry() instanceof NewDocEntry.GlobalLibraryEntry) {
                                 yield SemanticTokenTypes.Namespace;
                             }
                             yield SemanticTokenTypes.Variable;

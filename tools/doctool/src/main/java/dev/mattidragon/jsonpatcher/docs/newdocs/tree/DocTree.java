@@ -41,4 +41,24 @@ public class DocTree {
     public Map<NamespaceDescription, DocTreeNamespace> namespaces() {
         return Collections.unmodifiableMap(namespaces);
     }
+
+    public void addAll(DocTree docTree) {
+        docTree.namespaces.forEach((description, namespace) -> {
+            var existingNamespace = getOrCreateNamespace(description);
+            var oldEntry = namespace.entry();
+            if (oldEntry != null) {
+                existingNamespace.setEntry(oldEntry);
+            }
+            namespace.objects().forEach((name, object) -> {
+                var existingObject = existingNamespace.getOrCreateObject(name);
+                var oldObjectEntry = object.entry();
+                if (oldObjectEntry != null) {
+                    existingObject.setEntry(oldObjectEntry);
+                }
+                object.properties()
+                        .values()
+                        .forEach(existingObject::addProperty);
+            });
+        });
+    }
 }

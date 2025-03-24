@@ -1,10 +1,17 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
+import org.jspecify.annotations.NonNull;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,10 +37,8 @@ public class DocHolder {
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final CompletableFuture<Void> stdlibFuture;
-    private Map<String, ModuleData> moduleLookup = new HashMap<>();
-    private Map<String, TypeData> typeLookup = new HashMap<>();
-    private Map<String, OwnerData> ownerLookup = new HashMap<>();
-    private Map<String, GlobalData> globalLookup = new HashMap<>();
+    private DocTree completeTree = new DocTree(List.of());
+    private final Map<String, ObjectData<NewDocEntry.GlobalEntry>> globals = new HashMap<>();
 
     public DocHolder() {
         stdlibFuture = loadStdlib();
@@ -86,9 +91,11 @@ public class DocHolder {
                 // We ignore diagnostics here, but still need to collect them
                 var diagnosticBuilder = new DiagnosticsBuilder();
                 var docParser = new DocParser(diagnosticBuilder);
-                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), diagnosticBuilder, docParser);
-                
-                return buildFile(path.toUri().toASCIIString(), docParser.getEntries());
+                var commentHandler = new DocCommentHandler(diagnosticBuilder, new TreeMetadata());
+                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), diagnosticBuilder, CommentHandler.allOf(docParser, commentHandler));
+
+                String uri = path.toUri().toASCIIString();
+                return new FileData(uri, new DocTree(commentHandler.entries()));
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to extract stdlib docs", e);
             }
@@ -98,10 +105,9 @@ public class DocHolder {
     /**
      * Notifies the doc holder that a file has changed and its docs need to be reevaluated.
      * @param uri The uri of the changed file.
-     * @param entries The new doc entries from the file.
      */
-    public synchronized void updateFile(String uri, List<DocEntry> entries) {
-        var file = buildFile(uri, entries);
+    public synchronized void updateFile(String uri, DocTree newEntries) {
+        var file = new FileData(uri, newEntries);
         files.put(uri, file);
         rebuildLookups();
     }
@@ -124,76 +130,59 @@ public class DocHolder {
         stdlibFiles.forEach((name, file) -> files.put("stdlib::" + name, file));
         rebuildLookups();
     }
-    
-    private static FileData buildFile(String uri, List<DocEntry> entries) {
-        var file = new FileData(uri, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
 
-        for (var entry : entries) {
-            switch (entry) {
-                case DocEntry.Module module -> file.modules.put(module.name(), new ModuleData(file, module, new HashMap<>()));
-                case DocEntry.Type type -> file.types.put(type.name(), new TypeData(file, type, new HashMap<>()));
-                case DocEntry.Value value -> {}
-                case DocEntry.GlobalModule module -> file.globalModules.put(module.name(), new GlobalModuleData(file, module, new HashMap<>()));
-                case DocEntry.GlobalValue value -> file.globalValues.put(value.name(), new GlobalValueData(file, value));
-            }
-        }
+//    public synchronized Optional<DocHolder.GlobalData> getGlobal(String name) {
+//        return Optional.ofNullable(globalLookup.get(name));
+//    }
+//
+//    public synchronized Map<String, DocHolder.GlobalData> getGlobals() {
+//        return Collections.unmodifiableMap(globalLookup);
+//    }
 
-        for (var entry : entries) {
-            if (!(entry instanceof DocEntry.Value value)) continue;
-            var module = file.modules.get(value.owner());
-            if (module != null) {
-                module.values.put(value.name(), value);
-            }
-            var type = file.modules.get(value.owner());
-            if (type != null) {
-                type.values.put(value.name(), value);
-            }
-            var globalModule = file.globalModules.get(value.owner());
-            if (globalModule != null) {
-                globalModule.values.put(value.name(), value);
-            }
-        }
-        return file;
+    public synchronized Optional<ObjectData<NewDocEntry.GlobalEntry>> getGlobal(String name) {
+        return Optional.ofNullable(globals.get(name));
     }
 
-    public synchronized Optional<DocHolder.GlobalData> getGlobal(String name) {
-        return Optional.ofNullable(globalLookup.get(name));
+    public synchronized Map<String, ObjectData<NewDocEntry.GlobalEntry>> getGlobals() {
+        return Collections.unmodifiableMap(globals);
     }
 
-    public synchronized Map<String, DocHolder.GlobalData> getGlobals() {
-        return Collections.unmodifiableMap(globalLookup);
-    }
-
-    /**
-     * Gets the data of a doc entry able to own values (type or module).
-     * Modules are looked up by their name, unlike in {@link #getModuleData}.
-     * @param name The name of the type or module.
-     * @return The data of the type or module, or {@link Optional#empty()} if not found.
-     */
-    public synchronized Optional<DocHolder.OwnerData> getOwnerData(String name) {
-        return Optional.ofNullable(ownerLookup.get(name));
-    }
-    
-    public synchronized Optional<DocHolder.ModuleData> getModuleData(String name) {
-        return Optional.ofNullable(moduleLookup.get(name));
-    }
-    
-    public synchronized Optional<DocHolder.TypeData> getTypeData(String name) {
-        return Optional.ofNullable(typeLookup.get(name));
-    }
+//    /**
+//     * Gets the data of a doc entry able to own values (type or module).
+//     * Modules are looked up by their name, unlike in {@link #getModuleData}.
+//     * @param name The name of the type or module.
+//     * @return The data of the type or module, or {@link Optional#empty()} if not found.
+//     */
+//    public synchronized Optional<DocHolder.OwnerData> getOwnerData(String name) {
+//        return Optional.ofNullable(ownerLookup.get(name));
+//    }
+//
+//    public synchronized Optional<DocHolder.ModuleData> getModuleData(String name) {
+//        return Optional.ofNullable(moduleLookup.get(name));
+//    }
+//
+//    public synchronized Optional<DocHolder.TypeData> getTypeData(String name) {
+//        return Optional.ofNullable(typeLookup.get(name));
+//    }
     
     private synchronized void rebuildLookups() {
-        moduleLookup = new HashMap<>();
-        ownerLookup = new HashMap<>();
-        globalLookup = new HashMap<>();
-        typeLookup = new HashMap<>();
-        for (var file : files.values()) {
-            file.modules.values().forEach(module -> moduleLookup.put(module.entry.location(), module));
-            ownerLookup.putAll(file.modules);
-            ownerLookup.putAll(file.types);
-            typeLookup.putAll(file.types);
-            globalLookup.putAll(file.globalModules);
-            globalLookup.putAll(file.globalValues);
+        for (var value : files.values()) {
+            completeTree.addAll(value.newData());
+        }
+
+        for (var namespace : completeTree.namespaces().values()) {
+            for (var object : namespace.objects().values()) {
+                var entry = object.entry();
+                if (entry == null) continue;
+
+                switch (entry) {
+                    case NewDocEntry.GlobalEntry globalEntry -> {
+                        var data = new ObjectData<>(globalEntry, object);
+                        globals.put(globalEntry.name(), data);
+                    }
+                    default -> {}
+                }
+            }
         }
     }
 
@@ -205,10 +194,7 @@ public class DocHolder {
      */
     public record FileData(
             String uri,
-            Map<String, ModuleData> modules,
-            Map<String, GlobalModuleData> globalModules,
-            Map<String, TypeData> types,
-            Map<String, GlobalValueData> globalValues
+            DocTree newData
     ) {
         @Override
         public String toString() {
@@ -275,5 +261,11 @@ public class DocHolder {
     }
 
     public record GlobalValueData(FileData file, DocEntry.GlobalValue entry) implements GlobalData {
+    }
+
+    public record ObjectData<T extends NewDocEntry>(T entry, DocTreeObject treeObject) {
+        public String name() {
+            return entry.name();
+        }
     }
 }

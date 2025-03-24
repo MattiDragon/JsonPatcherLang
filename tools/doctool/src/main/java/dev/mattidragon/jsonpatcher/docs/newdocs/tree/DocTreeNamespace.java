@@ -36,8 +36,8 @@ public class DocTreeNamespace {
         return description;
     }
 
-    public DocTreeObject getOrCreateObject(String owner) {
-        return objects.computeIfAbsent(owner, DocTreeObject::new);
+    public DocTreeObject getOrCreateObject(String name) {
+        return objects.computeIfAbsent(name, DocTreeObject::new);
     }
 
     public Map<String, DocTreeObject> objects() {

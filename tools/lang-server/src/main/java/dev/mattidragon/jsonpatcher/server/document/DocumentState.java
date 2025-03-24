@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
+import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -26,7 +27,7 @@ public class DocumentState {
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
-    private final Supplier<Map<String, DocHolder.GlobalData>> globalsGetter;
+    private final Supplier<Map<String, DocHolder.ObjectData<NewDocEntry.GlobalEntry>>> globalsGetter;
     private final DocHolder docHolder;
 
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
@@ -56,7 +57,7 @@ public class DocumentState {
             var globals = globalsGetter.get()
                     .entrySet()
                     .stream()
-                    .filter(entry -> entry.getValue().entry().requiredMetadata().stream().allMatch(metadata::has))
+//                    .filter(entry -> entry.getValue().entry().requiredMetadata().stream().allMatch(metadata::has))
                     .map(Map.Entry::getKey)
                     .toList();
             VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
@@ -104,7 +105,8 @@ public class DocumentState {
     }
 
     public CompletableFuture<Hover> getHover(Position position) {
-        return definitionFinder.getHover(position);
+        return CompletableFuture.completedFuture(new Hover(List.of()));
+//        return definitionFinder.getHover(position);
     }
 
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> autoComplete(Position position) {

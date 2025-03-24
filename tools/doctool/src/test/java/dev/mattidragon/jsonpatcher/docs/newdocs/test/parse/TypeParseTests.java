@@ -28,8 +28,8 @@ public class TypeParseTests {
         Assertions.assertEquals(
                 new FunctionDocType(
                         List.of(),
-                        List.of(new FunctionDocType.Argument(new ReferenceDocType("string"), Optional.of("s")),
-                                new FunctionDocType.Argument(new ReferenceDocType("string"), Optional.empty())),
+                        List.of(new FunctionDocType.Argument(new ReferenceDocType("string"), Optional.of("s"), FunctionDocType.Argument.Kind.REGULAR),
+                                new FunctionDocType.Argument(new ReferenceDocType("string"), Optional.empty(), FunctionDocType.Argument.Kind.REGULAR)),
                         new ReferenceDocType("string")),
                 parse("(s: string, string) -> string")
         );

@@ -1,7 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
-import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
@@ -94,21 +95,21 @@ public class WorkspaceDocManager {
         }
         
         private void update() {
-            var docs = CompletableFuture.<List<DocEntry>>supplyAsync(() -> {
+            var docs = CompletableFuture.supplyAsync(() -> {
                 try {
                     var code = Files.readString(file);
                     // We ignore diagnostics, but still have to collect them
                     var diagnosticsBuilder = new DiagnosticsBuilder();
-                    var docParser = new DocParser(diagnosticsBuilder);
-                    Lexer.lex(code, uri, diagnosticsBuilder, docParser);
-                    return docParser.getEntries();
+                    var commentHandler = new DocCommentHandler(diagnosticsBuilder, new TreeMetadata());
+                    Lexer.lex(code, uri, diagnosticsBuilder, commentHandler);
+                    return new DocTree(commentHandler.entries());
                 } catch (IOException e) {
-                    return List.of();
+                    return new DocTree(List.of());
                 }
             }, Util.EXECUTOR);
-            docs.thenAccept(entries -> {
+            docs.thenAccept(tree -> {
                 if (alive) {
-                    holder.updateFile(uri, entries);
+                    holder.updateFile(uri, tree);
                 }
             });
         }
