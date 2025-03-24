@@ -115,15 +115,12 @@ class JavaValueUtil {
             }
         }
 
-        // We remap the full binary name of the inner class, but we select it by the last part.
-        // The last part should usually be separated by a $, but some mappings might not respect inner classes,
-        // and thus we also check for packages.
         for (Class<?> aClass : clazz.getClasses()) {
             var remappedName = Remapper.COMBINED.remapClassToNamed(aClass.getName());
             // We remap the full binary name of the inner class, but we select it by the last part.
             // The last part should usually be separated by a $, but some mappings might not respect inner classes,
             // and thus we also check for packages.
-            var innerName = remappedName.substring(Math.max(remappedName.lastIndexOf('/'), remappedName.lastIndexOf('$')));
+            var innerName = remappedName.substring(Math.max(remappedName.lastIndexOf('/'), remappedName.lastIndexOf('$')) + 1);
             if (innerName.equals(name)) {
                 ClassChild.InnerClass innerClass = new ClassChild.InnerClass(aClass);
                 children.add(innerClass);
