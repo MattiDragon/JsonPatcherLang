@@ -79,7 +79,7 @@ public class EvaluationEnvironment {
             var instance = classLoader.addScript(
                     ProgramData.builder(parse)
                             .scriptName("stdlib/" + name + ".jsonpatch")
-                            .className("jsonpatcher_generated/stdlib/" + name)
+                            .className("jsonpatcher_builtin/global/" + name)
                             .allowLibraryGroup(LibraryGroup.INTERNALS)
                             .build(),
                     compilerOptions
@@ -102,7 +102,7 @@ public class EvaluationEnvironment {
             var instance = classLoader.addScript(
                     ProgramData.builder(parse)
                             .scriptName("stdlib/" + name + ".jsonpatch")
-                            .className("jsonpatcher_generated/stdlib/" + name)
+                            .className("jsonpatcher_builtin/libraries/" + name)
                             .allowLibraryGroup(LibraryGroup.INTERNALS)
                             .build(),
                     compilerOptions
@@ -164,7 +164,7 @@ public class EvaluationEnvironment {
         }
         var lib = libraries.get(name);
         if (!libraryGroups.contains(lib.group())) {
-            throw new IllegalStateException("Library %s is not available to the current program. It is in group %s and the current program has access to the groups %s"
+            throw new IllegalStateException("Library %s is not available to the current program. It is in group %s and the current program has access to the groups [%s]"
                     .formatted(name, lib.group().name(), libraryGroups.stream().map(LibraryGroup::name).collect(Collectors.joining(", "))));
         }
         return lib.contents();
@@ -183,11 +183,19 @@ public class EvaluationEnvironment {
     }
 
     private class ScriptClassLoader extends ClassLoader {
+        private final List<String> usedNames = new ArrayList<>();
+
         protected ScriptClassLoader() {
             super(ScriptClassLoader.class.getClassLoader());
         }
 
         public GeneratedProgram addScript(ProgramData data, CompilerOptions compilerOptions) {
+            var className = data.className();
+            while (usedNames.contains(className)) {
+                className += "_" + usedNames.size();
+            }
+            usedNames.add(className);
+
             byte[] bytes;
             try {
                 // TODO: propagate diagnostics
@@ -197,7 +205,7 @@ public class EvaluationEnvironment {
                         compilerOptions,
                         getNamesGlobal(),
                         data.scriptName(),
-                        data.className(),
+                        className,
                         new DiagnosticsBuilder());
             } catch (CompilationException e) {
                 throw e;
@@ -207,7 +215,7 @@ public class EvaluationEnvironment {
 
             if (dumpPath != null) {
                 try {
-                    var path = dumpPath.resolve(data.className() + ".class");
+                    var path = dumpPath.resolve(className + ".class");
                     Files.createDirectories(path.getParent());
                     Files.write(path, bytes);
                 } catch (IOException e) {
