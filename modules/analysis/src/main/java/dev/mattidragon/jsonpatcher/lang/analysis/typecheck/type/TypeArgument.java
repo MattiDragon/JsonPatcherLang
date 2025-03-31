@@ -5,4 +5,9 @@ public record TypeArgument(String name, Type bound) implements Type {
     public String toString() {
         return name + ": " + bound;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
 }
