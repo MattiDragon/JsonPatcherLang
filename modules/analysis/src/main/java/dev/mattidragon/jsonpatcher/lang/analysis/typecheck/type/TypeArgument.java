@@ -7,6 +7,11 @@ public record TypeArgument(String name, Type bound) implements Type {
     }
 
     @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
         return this == obj;
     }

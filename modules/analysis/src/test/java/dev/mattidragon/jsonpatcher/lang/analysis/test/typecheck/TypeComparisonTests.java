@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.test.typecheck;
 
-import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeArgEqualityStack;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeComparison;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import org.junit.jupiter.api.Test;

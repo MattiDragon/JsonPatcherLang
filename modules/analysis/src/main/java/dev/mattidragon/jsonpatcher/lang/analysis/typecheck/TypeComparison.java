@@ -52,6 +52,9 @@ public class TypeComparison {
             // Type arguments are considered equal if in this map
             case TypeArgument typeArgument when superType instanceof TypeArgument superTypeArgument -> equalTypeArgs.isEqual(typeArgument, superTypeArgument);
             case TypeArgument typeArgument -> isSubtype(typeArgument.bound(), superType, equalTypeArgs);
+
+            // TODO: Consider shortcut for union supertype
+            case UnionType(var children) -> children.stream().allMatch(child -> isSubtype(child, superType, equalTypeArgs));
         };
     }
 
