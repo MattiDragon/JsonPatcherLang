@@ -46,7 +46,7 @@ public class TypeChecker {
                         .ifPresent(variable -> variableTypes.put(variable, type));
             }
 
-            case ReturnStatement(Optional<Expression> value) -> {
+            case ReturnStatement(var value) -> {
                 var type = value.map(this::checkExpression).orElse(PrimitiveType.NULL);
                 var consumer = returnTypeConsumers.peek();
                 if (consumer != null) {
@@ -76,7 +76,7 @@ public class TypeChecker {
                             .flatMap(variable -> Optional.ofNullable(variableTypes.get(variable)))
                             .orElse(SpecialType.UNKNOWN);
 
-            case FunctionExpression(Statement body, FunctionArguments args) -> checkFunctionDeclaration(body, args);
+            case FunctionExpression(var body, var args) -> checkFunctionDeclaration(body, args);
             case FunctionCallExpression(var function, var arguments) -> checkFunctionCall(function, arguments);
 
             case AssignmentExpression(var target, var value, var operator) -> {
@@ -100,6 +100,8 @@ public class TypeChecker {
                 checkExpression(input);
                 yield PrimitiveType.BOOLEAN;
             }
+            case PropertyAccessExpression(var parent, var name) ->
+                checkPropertyAccess(parent, expression, name);
 
             case BinaryExpression(var first, var second, var op) ->
                     checkBinaryOp(op, checkExpression(first), checkExpression(second));
@@ -129,6 +131,44 @@ public class TypeChecker {
                 yield SpecialType.UNKNOWN;
             }
         };
+    }
+
+    private Type checkPropertyAccess(Expression parent, Expression expression, String name) {
+        var parentType = checkExpression(parent);
+        return switch (parentType) {
+            case ObjectType(var component) -> component;
+
+            case ArrayType(var component) -> checkArrayProperty(expression, name);
+            case PrimitiveType.ARRAY -> checkArrayProperty(expression, name);
+
+            // TODO: primitives with stdlib
+
+            case NamedType(var supertype, var properties, var callSignature) -> {
+                var propType = properties.get(name);
+                if (propType != null) {
+                    yield propType;
+                } else {
+                    addError(expression, "Unknown property " + name + " on type " + supertype);
+                    yield SpecialType.UNKNOWN;
+                }
+            }
+
+            case PrimitiveType.OBJECT, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            default -> {
+                addError(expression, "");
+                yield SpecialType.UNKNOWN;
+            }
+        };
+    }
+
+    private Type checkArrayProperty(Expression expression, String name) {
+        // TODO: stdlib
+        if (name.equals("length")) {
+            return PrimitiveType.NUMBER;
+        } else {
+            addError(expression, "Array does not have property " + name);
+            return SpecialType.UNKNOWN;
+        }
     }
 
     private Type checkFunctionDeclaration(Statement body, FunctionArguments args) {
@@ -191,6 +231,7 @@ public class TypeChecker {
 
     private static Type checkBinaryOp(BinaryExpression.Operator op, Type firstType, Type secondType) {
         // TODO: Actual type checking
+        // TODO: Prefer TypeComparison more
         return switch (op) {
             case EQUALS, NOT_EQUALS, LESS_THAN, LESS_THAN_EQUAL, GREATER_THAN, GREATER_THAN_EQUAL, IN ->
                     PrimitiveType.BOOLEAN;

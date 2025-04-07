@@ -11,6 +11,7 @@ public class TypeComparison {
         if (subType.equals(superType)) return true;
 
         switch (superType) {
+            case LazyType lazyType -> isSubtype(subType, lazyType.get(), equalTypeArgs);
             case SpecialType.ANY, SpecialType.UNKNOWN -> {
                 return true;
             }
@@ -18,11 +19,28 @@ public class TypeComparison {
                 // Unknown is always valid
                 return subType == SpecialType.UNKNOWN;
             }
+            case UnionType(var superChildren) -> {
+                outer:
+                for (var subChild : UnionType.flatten(subType).toList()) {
+                    // If any child of the supertype is a supertype of the current subChild, we move one
+                    for (var superChild : superChildren) {
+                        if (isSubtype(subChild, superChild, equalTypeArgs)) {
+                            continue outer;
+                        }
+                    }
+                    // If none of the supertype children match the current subChild, we fail
+                    return false;
+                }
+                // If all subtype children have supertype children, we succeed
+                return true;
+            }
             default -> {
             }
         }
 
         return switch (subType) {
+            case LazyType lazyType -> isSubtype(lazyType.get(), superType, equalTypeArgs);
+
             case SpecialType.NEVER, SpecialType.UNKNOWN -> true;
             case SpecialType.ANY -> false;
 
@@ -55,6 +73,13 @@ public class TypeComparison {
 
             // TODO: Consider shortcut for union supertype
             case UnionType(var children) -> children.stream().allMatch(child -> isSubtype(child, superType, equalTypeArgs));
+
+            case NamedType(var namedSuperType, var properties, var callSignature) -> {
+                if (isSubtype(namedSuperType, superType, equalTypeArgs)) {
+                    yield true;
+                }
+                yield callSignature.isPresent() && isSubtype(callSignature.get(), superType);
+            }
         };
     }
 
@@ -120,7 +145,7 @@ public class TypeComparison {
         }
         // Match our end args with super varargs
         if (superArgs.size() < args.size() && superVarargs) {
-            for (int i = superArgs.size(); i < args.size(); i++) {
+            for (var i = superArgs.size(); i < args.size(); i++) {
                 var arg = args.get(i);
                 if (!isSubtype(superArgs.getLast(), arg, equalTypeArgs)) {
                     return false;
