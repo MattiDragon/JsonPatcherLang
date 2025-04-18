@@ -4,6 +4,10 @@ import java.util.Map;
 import java.util.Optional;
 
 public record NamedType(Type supertype, Map<String, Type> properties, Optional<FunctionType> callSignature) implements Type {
+    public NamedType {
+        properties = Map.copyOf(properties);
+    }
+
     @Override
     public int hashCode() {
         return System.identityHashCode(this);

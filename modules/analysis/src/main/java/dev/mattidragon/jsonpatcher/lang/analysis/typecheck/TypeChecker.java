@@ -8,6 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
@@ -39,6 +40,13 @@ public class TypeChecker {
             case Expression expression -> {
                 expression.getChildren().forEach(this::typeCheck);
                 metadata.put(expression, TYPE, checkExpression(expression));
+            }
+            case ImportStatement statement -> {
+                // Copy type from statement to variable, setting to unknown if missing
+                // The language server will set the types of import statements before type checking based on doc comments
+                var type = metadata.get(statement, TYPE).orElse(SpecialType.UNKNOWN);
+                metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
+                        .ifPresent(variable -> variableTypes.put(variable, type));
             }
             case VariableCreationStatement statement -> {
                 var type = checkExpression(statement.initializer());

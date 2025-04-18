@@ -21,4 +21,8 @@ public final class LazyType implements Type {
         }
         return value;
     }
+
+    public boolean isSet() {
+        return value != null;
+    }
 }
