@@ -4,36 +4,38 @@ import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.server.index.symbol.DocEntrySymbol;
+import dev.mattidragon.jsonpatcher.server.index.symbol.GlobalSymbol;
 import dev.mattidragon.jsonpatcher.server.index.symbol.LibrarySymbol;
+import dev.mattidragon.jsonpatcher.server.index.symbol.PropertySymbol;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 
-public class DocsIndex {
-    private final Map<IndexEntry, List<SourceSpan>> positions = new HashMap<>();
-
+public class DocsIndex extends LookupIndex {
     public void index(List<NewDocEntry> docs, TreeMetadata metadata) {
         docs.forEach(entry -> indexEntry(entry, metadata));
     }
 
     private void indexEntry(NewDocEntry entry, TreeMetadata metadata) {
+        addSymbol(entry, new IndexEntry(getDocEntrySymbol(entry), true), metadata);
+
         switch (entry) {
-            case NewDocEntry.GlobalEntry globalEntry -> {
+            case NewDocEntry.GlobalLibraryEntry(var namespace, var name, var condition, var body) -> {
+                var symbol = new GlobalSymbol(name);
+                addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case NewDocEntry.LibraryEntry libraryEntry -> {
-                var indexEntry = new IndexEntry(new LibrarySymbol(libraryEntry.location().orElse(libraryEntry.name())), true);
-                metadata.get(libraryEntry, MetadataKey.NAME_POS)
-                        .ifPresent(buildPosConsumer(indexEntry));
+            case NewDocEntry.GlobalValueEntry(var namespace, var name, var type, var condition, var body) -> {
+                var symbol = new GlobalSymbol(name);
+                addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
+            case NewDocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) ->
+                    addSymbol(entry, new IndexEntry(new LibrarySymbol(location.orElse(name)), true), metadata);
             case NewDocEntry.MetadataEntry metadataEntry -> {
             }
             case NewDocEntry.NamespaceEntry namespaceEntry -> {
             }
-            case NewDocEntry.PropertyEntry propertyEntry -> {
-            }
+            case NewDocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) ->
+                    addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
             case NewDocEntry.TypeAliasEntry typeAliasEntry -> {
             }
             case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
@@ -41,16 +43,19 @@ public class DocsIndex {
         }
     }
 
-    private Consumer<SourceSpan> buildPosConsumer(IndexEntry entry) {
-        return pos -> positions.computeIfAbsent(entry, e -> new ArrayList<>())
-                .add(pos);
+    private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata) {
+        addSymbol(docEntry, entry, metadata, MetadataKey.NAME_POS);
     }
 
-    public void clear() {
-        positions.clear();
+    private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata, MetadataKey<SourceSpan> metadataKey) {
+        metadata.get(docEntry, metadataKey)
+                .ifPresent(pos -> lookup.add(pos, entry));
     }
 
-    public List<SourceSpan> getPositions(IndexEntry entry) {
-        return positions.getOrDefault(entry, List.of());
+    private static DocEntrySymbol getDocEntrySymbol(NewDocEntry entry) {
+        if (entry instanceof NewDocEntry.PropertyEntry propertyEntry) {
+            return new DocEntrySymbol(propertyEntry.namespace().withLast(propertyEntry.owner()), propertyEntry.name());
+        }
+        return new DocEntrySymbol(entry.namespace(), entry.name());
     }
 }

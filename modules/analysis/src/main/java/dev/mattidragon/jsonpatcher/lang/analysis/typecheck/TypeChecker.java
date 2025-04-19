@@ -151,12 +151,12 @@ public class TypeChecker {
 
             // TODO: primitives with stdlib
 
-            case NamedType(var supertype, var properties, var callSignature) -> {
+            case NamedType(var supertype, var properties, var callSignature, var typeName) -> {
                 var propType = properties.get(name);
                 if (propType != null) {
                     yield propType;
                 } else {
-                    addError(expression, "Unknown property " + name + " on type " + supertype);
+                    addError(expression, "Unknown property " + name + " on type " + typeName);
                     yield SpecialType.UNKNOWN;
                 }
             }

@@ -28,17 +28,22 @@ public class Parser {
     private final List<PositionedToken> tokens;
     // We use a list instead of a DiagnosticsBuilder as we sometimes have to roll back previous errors
     private final List<Diagnostic> diagnostics = new ArrayList<>();
-    private final TreeMetadata treeMetadata = new TreeMetadata();
+    private final TreeMetadata treeMetadata;
     private final PatchMetadata metadata;
     private int current = 0;
 
-    private Parser(List<PositionedToken> tokens) {
+    private Parser(List<PositionedToken> tokens, TreeMetadata treeMetadata) {
         this.tokens = tokens;
         this.metadata = new PatchMetadata();
+        this.treeMetadata = treeMetadata;
     }
 
     public static Result parse(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics) {
-        var parser = new Parser(tokens);
+        return parse(tokens, diagnostics, new TreeMetadata());
+    }
+
+    public static Result parse(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics, TreeMetadata treeMetadata) {
+        var parser = new Parser(tokens, treeMetadata);
         var result = parser.program();
         parser.diagnostics.forEach(diagnostics::addDiagnostic);
         return result;
@@ -46,7 +51,7 @@ public class Parser {
 
     @VisibleForTesting
     public static Expression parseExpression(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics) throws ParseException {
-        var parser = new Parser(tokens);
+        var parser = new Parser(tokens, new TreeMetadata());
         Expression expression = null;
         try {
             expression = parser.expression();

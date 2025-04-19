@@ -24,12 +24,12 @@ public class DocTypeConverter {
                     case NewDocEntry.GlobalValueEntry globalEntry ->
                             globals.put(globalEntry.name(), convert(globalEntry.type()));
                     case NewDocEntry.GlobalLibraryEntry globalEntry -> {
-                        var type = buildNamedType(PrimitiveType.OBJECT, object.properties().values());
+                        var type = buildNamedType(fullName, PrimitiveType.OBJECT, object.properties().values());
                         getOrComputeType(fullName).set(type);
                         globals.put(globalEntry.name(), type);
                     }
                     case NewDocEntry.LibraryEntry libraryEntry -> {
-                        var type = buildNamedType(PrimitiveType.OBJECT, object.properties().values());
+                        var type = buildNamedType(fullName, PrimitiveType.OBJECT, object.properties().values());
                         getOrComputeType(fullName).set(type);
                         libraries.put(fullName, type);
                     }
@@ -48,7 +48,7 @@ public class DocTypeConverter {
                             case OBJECT -> PrimitiveType.OBJECT;
                             case SPECIAL -> PrimitiveType.SPECIAL;
                         };
-                        getOrComputeType(fullName).set(buildNamedType(superType, object.properties().values()));
+                        getOrComputeType(fullName).set(buildNamedType(fullName, superType, object.properties().values()));
                     }
                     case null -> {}
                 }
@@ -61,6 +61,10 @@ public class DocTypeConverter {
         }
     }
 
+    public Collection<String> getGlobalNames() {
+        return globals.keySet();
+    }
+
     public Optional<Type> getLibraryType(String location) {
         return Optional.ofNullable(libraries.get(location));
     }
@@ -69,7 +73,7 @@ public class DocTypeConverter {
         return Optional.ofNullable(globals.get(name));
     }
 
-    private NamedType buildNamedType(PrimitiveType superType, Collection<DocTreeProperty> docProperties) {
+    private NamedType buildNamedType(String name, PrimitiveType superType, Collection<DocTreeProperty> docProperties) {
         var properties = new HashMap<String, Type>();
         for (var property : docProperties) {
             var propertyName = property.entry().name();
@@ -78,7 +82,7 @@ public class DocTypeConverter {
         }
 
         // TODO: add option to declare call signature and use that
-        return new NamedType(superType, properties, Optional.empty());
+        return new NamedType(superType, properties, Optional.empty(), name);
     }
 
     private Type convert(NewDocType docType) {
