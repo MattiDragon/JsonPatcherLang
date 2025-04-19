@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module arrays
+#| global library arrays
 #| The arrays library contains functions for manipulating arrays.
 #| All of them can be used as methods on arrays.
 

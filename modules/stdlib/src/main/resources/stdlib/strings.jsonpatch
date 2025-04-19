@@ -14,7 +14,7 @@ function sbAppend(sb, value) {
     return sb.'append(Ljava/lang/CharSequence;)Ljava/lang/StringBuilder;'(value);
 }
 
-#| module strings
+#| global library strings
 #| Provides utilities for manipulating strings. Many of the methods in this module can be used as methods.
 
 #| value strings.matches: (string: string, regex: string) -> boolean

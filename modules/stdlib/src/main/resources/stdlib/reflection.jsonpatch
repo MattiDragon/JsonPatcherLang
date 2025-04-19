@@ -2,7 +2,7 @@
 
 import "@internals/reflection" as internal;
 
-#| module reflection
+#| global library reflection when #reflection
 #| A library containing utilities for interacting with the parent JVM.
 #|
 #| This module can be dangerous if given to untrusted code, and is thus placed in its own library group: `reflection`

@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module objects
+#| global library objects
 #| Provides utilities for working with objects.
 
 #| value objects.keys: (object: object) -> [string]

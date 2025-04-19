@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module debug
+#| global library debug
 #| Provides various functions for debugging code.
 
 #| value debug.log: (message: any) -> null

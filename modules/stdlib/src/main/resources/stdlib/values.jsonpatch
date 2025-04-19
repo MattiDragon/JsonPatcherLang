@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module values
+#| global library values
 #| Provides utilities for working with values.
 
 #| value values.freeze: (value: any) -> any

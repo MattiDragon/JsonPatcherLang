@@ -46,6 +46,7 @@ public class DefinitionFinder {
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {
         return documentData.get().thenApplyAsync(data -> {
+            // TODO: nudge position to the left if we're right after a word token
             var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
             var combinedIndex = new StaticCombinedIndex(data.index(), workspace.getWorkspaceIndex());
 

@@ -30,6 +30,10 @@ public class DocTree {
         }
     }
 
+    public void clear() {
+        namespaces.clear();
+    }
+
     private DocTreeObject getOrCreateObject(NamespaceDescription namespace, String owner) {
         return getOrCreateNamespace(namespace).getOrCreateObject(owner);
     }

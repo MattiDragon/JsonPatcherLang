@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":analysis"))
+    implementation(project(":stdlib"))
     implementation(project(":parser"))
     implementation(project(":doctool"))
     implementation(libs.lsp4j)

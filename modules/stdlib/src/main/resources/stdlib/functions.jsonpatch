@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module functions
+#| global library functions
 #| Provides utilities for working with functions. 
 #| Some of the can be used as methods on function objects.
 

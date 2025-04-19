@@ -1,5 +1,0 @@
-#| global module objects
-#| Provides utilities for working with objects.
-
-#| value objects.keys: (object: object) -> [string]
-#| Returns the list of keys in a object.

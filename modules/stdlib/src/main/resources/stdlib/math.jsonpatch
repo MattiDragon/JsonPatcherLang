@@ -1,6 +1,6 @@
 import "@internals" as internals;
 
-#| module math
+#| global library math
 #| The math library contains many functions for performing mathematical operations.
 
 #| value math.PI: number

@@ -1,8 +1,0 @@
-#| module values
-#| Provides utilities for working with values.
-
-#| value values.freeze: (value: any) -> any
-#| Freezes a value, causing it to be immutable.
-#|
-#| For objects and arrays this function returns a new object or array respectively which forbids mutations by throwing
-#| an error. Numbers, strings, booleans, functions and null are passed through as is.

@@ -10,16 +10,15 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
+import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -30,12 +29,6 @@ import java.util.concurrent.CompletionException;
  * Only one instance of this class should exist and that instance should be managed by the {@link WorkspaceDocManager}.
  */
 public class DocHolder {
-    // TODO: Move stdlib out of compiler and reuse here (requires getting rid of interpreter)
-    private static final List<String> STDLIB_FILES = List.of(
-            "arrays.jsonpatch", "debug.jsonpatch", "functions.jsonpatch",
-            "math.jsonpatch", "objects.jsonpatch", "strings.jsonpatch",
-            "values.jsonpatch"
-    );
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final CompletableFuture<Void> stdlibFuture;
@@ -61,15 +54,13 @@ public class DocHolder {
 
                 List<CompletableFuture<Void>> futures;
 
-                futures = STDLIB_FILES.stream()
-                        .map(fileName -> {
-                            var cleanedName = fileName.substring(0, fileName.length() - ".jsonpatch".length());
-                            return handleStdlibFile(fileName, tempDir).thenAccept(fileData -> {
-                                synchronized (this) {
-                                    stdlibFiles.put(cleanedName, fileData);
-                                }
-                            });
-                        })
+                futures = Stdlib.LIBRARY_CONTENTS.keySet()
+                        .stream()
+                        .map(fileName -> handleStdlibFile(fileName, tempDir).thenAccept(fileData -> {
+                            synchronized (this) {
+                                stdlibFiles.put(fileName, fileData);
+                            }
+                        }))
                         .toList();
                 
                 CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -85,11 +76,9 @@ public class DocHolder {
 
     private CompletableFuture<FileData> handleStdlibFile(String fileName, Path tempDirectory) {
         return CompletableFuture.supplyAsync(() -> {
-            try (var fileStream = DocHolder.class.getClassLoader().getResourceAsStream("stdlib_docs/" + fileName)) {
-                if (fileStream == null) throw new FileNotFoundException("Couldn't find stdlib doc file '%s' in resources".formatted(fileName));
-
-                var path = tempDirectory.resolve(fileName);
-                Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                var path = tempDirectory.resolve(fileName + ".jsonpatch");
+                Files.writeString(path, Stdlib.LIBRARY_CONTENTS.get(fileName));
                 var uri = path.toUri().toASCIIString();
 
                 // We ignore diagnostics here, but still need to collect them
@@ -187,6 +176,7 @@ public class DocHolder {
 //    }
     
     private synchronized void rebuildLookups() {
+        completeTree.clear();
         for (var value : files.values()) {
             completeTree.addAll(value.newData());
         }

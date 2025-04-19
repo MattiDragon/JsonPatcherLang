@@ -46,6 +46,7 @@ public class VariableAnalyser {
 
     private void analyse(Program program, Collection<String> globals) {
         var globalScope = new ProgramScope(program);
+        scopes.add(globalScope);
         metadata.put(program, SCOPE, globalScope);
         for (var global : globals) {
             globalScope.define(new Variable(global, false, program));
@@ -209,6 +210,8 @@ public class VariableAnalyser {
                 var definition = variable.definition();
                 // Unused arguments get a pass as they are api
                 if (definition instanceof FunctionArgument) continue;
+                // Unused globals don't matter
+                if (definition instanceof Program) continue;
 
                 var namePos = metadata.get(definition, MetadataKey.NAME_POS)
                         .or(() -> metadata.get(definition, MetadataKey.MAIN_POS))
