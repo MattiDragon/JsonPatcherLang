@@ -12,6 +12,10 @@ import dev.mattidragon.jsonpatcher.server.index.symbol.PropertySymbol;
 import java.util.List;
 
 public class DocsIndex extends LookupIndex {
+    public DocsIndex(String fileName) {
+        super(fileName);
+    }
+
     public void index(List<NewDocEntry> docs, TreeMetadata metadata) {
         docs.forEach(entry -> indexEntry(entry, metadata));
     }

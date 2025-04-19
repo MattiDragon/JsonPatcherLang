@@ -12,6 +12,10 @@ import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 
 public class BackgroundIndex extends AstIndex {
+    public BackgroundIndex(String fileName) {
+        super(fileName);
+    }
+
     public void index(SourceFile file, DocTypeConverter types) {
         var diagnostics = new DiagnosticsBuilder();
         var metadata = new TreeMetadata();

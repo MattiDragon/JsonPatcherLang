@@ -10,7 +10,12 @@ import java.util.stream.Stream;
  * An {@link Index} implementation based on a {@link PosLookup}
  */
 abstract class LookupIndex implements Index {
+    private final String fileName;
     protected final PosLookup<IndexEntry> lookup = new PosLookup<>();
+
+    LookupIndex(String fileName) {
+        this.fileName = fileName;
+    }
 
     @Override
     public final Stream<SourceSpan> find(IndexEntry entry) {
@@ -19,6 +24,9 @@ abstract class LookupIndex implements Index {
 
     @Override
     public final Stream<IndexEntry> lookupEntries(SourcePos pos) {
+        if (!pos.file().name().equals(fileName)) {
+            return Stream.empty();
+        }
         return lookup.getAllAt(pos);
     }
 }

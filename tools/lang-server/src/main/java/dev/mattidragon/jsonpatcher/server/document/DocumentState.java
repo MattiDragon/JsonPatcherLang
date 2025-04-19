@@ -3,12 +3,14 @@ package dev.mattidragon.jsonpatcher.server.document;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
@@ -60,11 +62,14 @@ public class DocumentState {
 //                    .filter(entry -> entry.getValue().entry().requiredMetadata().stream().allMatch(metadata::has))
                     .map(Map.Entry::getKey)
                     .toList();
-            VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
+            var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
             var lookups = Lookups.get(program, treeMetadata);
 
+            var index = new DocumentIndex(name);
+            index.index(program, treeMetadata, variableAnalysis);
+
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
-            return new DocumentData(program, treeMetadata, docParser.getEntries(), lookups, tokenLookup);
+            return new DocumentData(new SourceFile(name, content), program, treeMetadata, docParser.getEntries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
     }
 

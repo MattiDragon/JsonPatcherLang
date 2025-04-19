@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
+import dev.mattidragon.jsonpatcher.server.index.Index;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.WorkspaceService;
@@ -54,5 +55,9 @@ public class WorkspaceManager implements WorkspaceService {
     @Override
     public CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> symbol(WorkspaceSymbolParams params) {
         return WorkspaceService.super.symbol(params);
+    }
+
+    public Index getWorkspaceIndex() {
+        return docManager.getHolder().getIndex();
     }
 }

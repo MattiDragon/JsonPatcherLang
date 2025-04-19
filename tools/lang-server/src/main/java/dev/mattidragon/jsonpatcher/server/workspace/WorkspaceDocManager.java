@@ -6,6 +6,9 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
+import dev.mattidragon.jsonpatcher.server.index.EmptyIndex;
+import dev.mattidragon.jsonpatcher.server.index.Index;
 
 import java.io.IOException;
 import java.net.URI;
@@ -75,7 +78,11 @@ public class WorkspaceDocManager {
         var path = getPath(uri);
         if (path.isEmpty()) return;
         var removed = entries.remove(path.get());
-        if (removed != null) removed.alive = false;
+        if (removed != null) {
+            synchronized (removed) {
+                removed.alive = false;
+            }
+        }
         holder.deleteFile(uri);
     }
 
@@ -95,21 +102,31 @@ public class WorkspaceDocManager {
         }
         
         private void update() {
+            record TreeAndIndex(DocTree tree, Index index) {}
+
             var docs = CompletableFuture.supplyAsync(() -> {
                 try {
                     var code = Files.readString(file);
                     // We ignore diagnostics, but still have to collect them
                     var diagnosticsBuilder = new DiagnosticsBuilder();
-                    var commentHandler = new DocCommentHandler(diagnosticsBuilder, new TreeMetadata());
+                    var metadata = new TreeMetadata();
+                    var commentHandler = new DocCommentHandler(diagnosticsBuilder, metadata);
                     Lexer.lex(code, uri, diagnosticsBuilder, commentHandler);
-                    return new DocTree(commentHandler.entries());
+
+                    var index = new DocsIndex(uri);
+                    index.index(commentHandler.entries(), metadata);
+
+                    var tree = new DocTree(commentHandler.entries());
+                    return new TreeAndIndex(tree, index);
                 } catch (IOException e) {
-                    return new DocTree(List.of());
+                    return new TreeAndIndex(new DocTree(List.of()), new EmptyIndex());
                 }
             }, Util.EXECUTOR);
-            docs.thenAccept(tree -> {
-                if (alive) {
-                    holder.updateFile(uri, tree);
+            docs.thenAccept(pair -> {
+                synchronized (this) {
+                    if (alive) {
+                        holder.updateFile(uri, pair.tree, pair.index);
+                    }
                 }
             });
         }

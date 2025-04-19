@@ -14,7 +14,11 @@ import dev.mattidragon.jsonpatcher.server.index.symbol.*;
 
 import java.util.Arrays;
 
-public abstract class AstIndex extends LookupIndex {
+abstract class AstIndex extends LookupIndex {
+    AstIndex(String fileName) {
+        super(fileName);
+    }
+
     protected void indexVariables(VariableAnalysis analysis, TreeMetadata metadata) {
         for (var scope : analysis.scopes()) {
             for (var variable : scope.variables()) {

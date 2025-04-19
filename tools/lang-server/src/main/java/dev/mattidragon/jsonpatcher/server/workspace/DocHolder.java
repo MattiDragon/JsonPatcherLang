@@ -11,7 +11,9 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
-import org.jspecify.annotations.NonNull;
+import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
+import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
+import dev.mattidragon.jsonpatcher.server.index.Index;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -39,6 +41,7 @@ public class DocHolder {
     private final CompletableFuture<Void> stdlibFuture;
     private DocTree completeTree = new DocTree(List.of());
     private final Map<String, ObjectData<NewDocEntry.GlobalEntry>> globals = new HashMap<>();
+    private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
 
     public DocHolder() {
         stdlibFuture = loadStdlib();
@@ -87,15 +90,20 @@ public class DocHolder {
 
                 var path = tempDirectory.resolve(fileName);
                 Files.copy(fileStream, path, StandardCopyOption.REPLACE_EXISTING);
+                var uri = path.toUri().toASCIIString();
 
                 // We ignore diagnostics here, but still need to collect them
                 var diagnosticBuilder = new DiagnosticsBuilder();
                 var docParser = new DocParser(diagnosticBuilder);
-                var commentHandler = new DocCommentHandler(diagnosticBuilder, new TreeMetadata());
-                Lexer.lex(Files.readString(path), path.toUri().toASCIIString(), diagnosticBuilder, CommentHandler.allOf(docParser, commentHandler));
+                var metadata = new TreeMetadata();
+                var commentHandler = new DocCommentHandler(diagnosticBuilder, metadata);
+                Lexer.lex(Files.readString(path), uri, diagnosticBuilder, CommentHandler.allOf(docParser, commentHandler));
 
-                String uri = path.toUri().toASCIIString();
-                return new FileData(uri, new DocTree(commentHandler.entries()));
+                var index = new DocsIndex(uri);
+                index.index(commentHandler.entries(), metadata);
+
+
+                return new FileData(uri, new DocTree(commentHandler.entries()), index);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to extract stdlib docs", e);
             }
@@ -106,9 +114,13 @@ public class DocHolder {
      * Notifies the doc holder that a file has changed and its docs need to be reevaluated.
      * @param uri The uri of the changed file.
      */
-    public synchronized void updateFile(String uri, DocTree newEntries) {
-        var file = new FileData(uri, newEntries);
-        files.put(uri, file);
+    public synchronized void updateFile(String uri, DocTree tree, Index index) {
+        var file = new FileData(uri, tree, index);
+        var old = files.put(uri, file);
+        if (old != null) {
+            docIndex.removeChild(old.index);
+        }
+        docIndex.addChild(index);
         rebuildLookups();
     }
 
@@ -118,7 +130,10 @@ public class DocHolder {
      * @param uri The uri of the file.
      */
     public synchronized void deleteFile(String uri) {
-        files.remove(uri);
+        var old = files.remove(uri);
+        if (old != null) {
+            docIndex.removeChild(old.index);
+        }
         rebuildLookups();
     }
 
@@ -127,7 +142,9 @@ public class DocHolder {
      */
     public synchronized void clear() {
         files.clear();
+        docIndex.clear();
         stdlibFiles.forEach((name, file) -> files.put("stdlib::" + name, file));
+        files.values().forEach(file -> docIndex.addChild(file.index));
         rebuildLookups();
     }
 
@@ -145,6 +162,10 @@ public class DocHolder {
 
     public synchronized Map<String, ObjectData<NewDocEntry.GlobalEntry>> getGlobals() {
         return Collections.unmodifiableMap(globals);
+    }
+
+    public Index getIndex() {
+        return docIndex;
     }
 
 //    /**
@@ -186,16 +207,10 @@ public class DocHolder {
         }
     }
 
-    /**
-     * Stores information about docs in a file.
-     * @param uri The uri of the file. Used to tell the language client about which file to open.
-     * @param modules A map of module names to module data.
-     * @param types A map of type names to type data.
-     */
     public record FileData(
             String uri,
-            DocTree newData
-    ) {
+            DocTree newData,
+            Index index) {
         @Override
         public String toString() {
             return "FileData[%s]".formatted(uri);

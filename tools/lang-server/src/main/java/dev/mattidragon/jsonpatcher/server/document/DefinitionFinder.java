@@ -2,15 +2,14 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
-import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.server.Util;
-import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
+import dev.mattidragon.jsonpatcher.server.index.IndexEntry;
+import dev.mattidragon.jsonpatcher.server.index.StaticCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
@@ -19,11 +18,11 @@ import org.commonmark.renderer.markdown.MarkdownRenderer;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class DefinitionFinder {
@@ -46,71 +45,29 @@ public class DefinitionFinder {
     }
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {
-        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
         return documentData.get().thenApplyAsync(data -> {
-            var list = new ArrayList<Location>();
-            addVariableDefinitions(data.lookups(), pos, list);
-//            addImportLocationDefinitions(data.lookups(), pos, list);
-//            addDocDefinitions(data.docs(), pos, list);
-            return list;
+            var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
+            var combinedIndex = new StaticCombinedIndex(data.index(), workspace.getWorkspaceIndex());
+
+            return combinedIndex.lookupEntries(pos)
+                    .filter(Predicate.not(IndexEntry::isDeclaration))
+                    .map(entry -> new IndexEntry(entry.symbol(), true))
+                    .flatMap(combinedIndex::find)
+                    .map(DocumentState::spanToLocation)
+                    .toList();
         }, Util.EXECUTOR);
     }
 
-//    private void addDocDefinitions(List<DocEntry> docs, SourcePos pos, ArrayList<Location> list) {
-//        forDocRefsAt(docs, pos, doc -> {
-//            var span = doc.entry().namePos();
-//            if (span == null) return;
-//            list.add(new Location(doc.file().uri(), spanToRange(span)));
-//        });
-//    }
-//
-//    private void addImportLocationDefinitions(Lookups lookups, SourcePos pos, ArrayList<Location> list) {
-//        lookups.libraryImports()
-//                .getAllAt(pos)
-//                .map(workspace.getDocManager().getHolder()::getModuleData)
-//                .flatMap(Optional::stream)
-//                .map(DocHolder.ModuleData::entry)
-//                .flatMap(module -> Optional.ofNullable(module.locationPos())
-//                        .or(() -> Optional.ofNullable(module.namePos()))
-//                        .stream())
-//                .map(DocumentState::spanToLocation)
-//                .forEach(list::add);
-//    }
-
-    private void addVariableDefinitions(Lookups lookups, SourcePos pos, List<Location> list) {
-        var metadata = lookups.treeMetadata();
-        lookups.variableReferences()
-                .getAllAt(pos)
-                .<Location>mapMulti((variable, consumer) -> {
-                    if (variable.definition() instanceof Program) {
-                        workspace.getDocManager()
-                                .getHolder()
-                                .getGlobal(variable.name())
-                                .map(DocHolder.ObjectData::entry)
-                                .flatMap(entry -> metadata.get(entry, MetadataKey.MAIN_POS))
-                                .map(DocumentState::spanToLocation)
-                                .ifPresent(consumer);
-                    } else {
-                        metadata.get(variable.definition(), MetadataKey.NAME_POS)
-                                .map(DocumentState::spanToLocation)
-                                .ifPresent(consumer);
-                    }
-                })
-                .forEach(list::add);
-    }
-
     public CompletableFuture<List<? extends Location>> getReferences(Position position) {
-        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
         return documentData.get().thenApplyAsync(data -> {
-            var lookups = data.lookups();
-            var variableReferences = lookups.variableReferences();
-            return variableReferences
-                    .getAllAt(pos)
-                    .map(variableReferences::getPositions)
-                    .flatMap(List::stream)
-                    .filter(span -> span.from().row() > pos.row() || span.to().row() < pos.row() || span.from().column() > pos.column() || span.to().column() < pos.column())
-                    .map(DocumentState::spanToRange)
-                    .map(range -> new Location(documentUri, range))
+            var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
+            var combinedIndex = new StaticCombinedIndex(data.index(), workspace.getWorkspaceIndex());
+
+            return combinedIndex.lookupEntries(pos)
+                    .filter(IndexEntry::isDeclaration)
+                    .map(entry -> new IndexEntry(entry.symbol(), false))
+                    .flatMap(combinedIndex::find)
+                    .map(DocumentState::spanToLocation)
                     .toList();
         }, Util.EXECUTOR);
     }
