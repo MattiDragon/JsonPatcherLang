@@ -17,6 +17,10 @@ import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +29,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 public class DocumentState {
-    private final String name;
+    // The URI that the client gave us
+    private final String externalName;
+    // A URI that has passed through java.net.URI#toASCIIString for compatibility with workspace
+    private final String internalName;
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
@@ -35,7 +42,8 @@ public class DocumentState {
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
     public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
-        this.name = name;
+        this.externalName = name;
+        this.internalName = getInternalName(name);
         this.client = client;
         docHolder = workspace.getDocManager().getHolder();
         this.definitionFinder = new DefinitionFinder(() -> data, workspace, name);
@@ -43,11 +51,27 @@ public class DocumentState {
         this.globalsGetter = docHolder::getGlobals;
     }
 
+    /**
+     * Tries to convert a URI given by the language client to a standard form used by java paths.
+     * Upon failure this method returns the original external name.
+     */
+    private String getInternalName(String externalName) {
+        try {
+            return Path.of(new URI(externalName)).toUri().toASCIIString();
+        } catch (URISyntaxException e) {
+            System.err.println("Failed to parse uri: " + e);
+            return externalName;
+        } catch (FileSystemNotFoundException | IllegalArgumentException e) {
+            // ignore, we'll just not use files from unknown uris
+            return externalName;
+        }
+    }
+
     public void updateContent(String content) {
         data = CompletableFuture.supplyAsync(() -> {
             var diagnostics = new DiagnosticsBuilder();
             var docParser = new DocParser(diagnostics);
-            var tokens = Lexer.lex(content, name, diagnostics, docParser).tokens();
+            var tokens = Lexer.lex(content, internalName, diagnostics, docParser).tokens();
 
             var tokenLookup = new TokenLookup(tokens);
 
@@ -65,11 +89,11 @@ public class DocumentState {
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
             var lookups = Lookups.get(program, treeMetadata);
 
-            var index = new DocumentIndex(name);
+            var index = new DocumentIndex(internalName);
             index.index(program, treeMetadata, variableAnalysis);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
-            return new DocumentData(new SourceFile(name, content), program, treeMetadata, docParser.getEntries(), lookups, tokenLookup, index);
+            return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.getEntries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
     }
 
@@ -94,7 +118,7 @@ public class DocumentState {
             lspDiagnostics.add(lspDiagnostic);
         }
 
-        client.publishDiagnostics(new PublishDiagnosticsParams(name, lspDiagnostics));
+        client.publishDiagnostics(new PublishDiagnosticsParams(externalName, lspDiagnostics));
     }
 
     public CompletableFuture<SemanticTokens> getSemanticTokens() {

@@ -33,7 +33,7 @@ public class DocsIndex extends LookupIndex {
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
             case NewDocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) ->
-                    addSymbol(entry, new IndexEntry(new LibrarySymbol(location.orElse(name)), true), metadata);
+                    addSymbol(entry, new IndexEntry(new LibrarySymbol(location.orElse(name)), true), metadata, MetadataKey.IMPORT_LOCATION_POS);
             case NewDocEntry.MetadataEntry metadataEntry -> {
             }
             case NewDocEntry.NamespaceEntry namespaceEntry -> {

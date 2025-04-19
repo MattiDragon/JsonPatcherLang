@@ -1,10 +1,12 @@
 package dev.mattidragon.jsonpatcher.docs.newdocs.parse;
 
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.DocCondition;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import org.jspecify.annotations.Nullable;
@@ -19,6 +21,7 @@ public class NewDocParser {
     private final DiagnosticsBuilder diagnostics;
     private final SourcePos headerStartPos;
     private final TreeMetadata metadata;
+    private List<SourceSpan> dottedNamePositions = List.of();
 
     private NewDocParser(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         this.tokens = new Tokenizer(header, headerStartPos);
@@ -43,17 +46,27 @@ public class NewDocParser {
             diagnostics.addDiagnostic(new DocParseError(pos, "Illegal start of doc comment", DocParseError.Type.DOC_PARSE));
             throw new FailException();
         }
+        var keywordPos = tokens.lastPos();
 
+        // TODO: attach position metadata
         // TODO: handle legacy syntax
         return switch (firstToken) {
             case "library" -> {
                 var dottedNames = readDottedNames();
                 var libName = dottedNames.removeLast();
+                var libNamePos = dottedNamePositions.removeLast();
                 var namespace = new NamespaceDescription(dottedNames);
                 var location = checkLibraryLocation();
+                var locationsPos = location == null ? null : tokens.lastPos();
                 var condition = checkCondition();
                 expectEol();
-                yield new NewDocEntry.LibraryEntry(namespace, libName, Optional.ofNullable(location), condition, body);
+                var entry = new NewDocEntry.LibraryEntry(namespace, libName, Optional.ofNullable(location), condition, body);
+                metadata.put(entry, DocMetadataKeys.NAMESPACE_POSITIONS, dottedNamePositions);
+                metadata.put(entry, MetadataKey.NAME_POS, libNamePos);
+                metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);
+                metadata.put(entry, MetadataKey.IMPORT_LOCATION_POS, locationsPos != null ? locationsPos : libNamePos);
+                metadata.put(entry, MetadataKey.FULL_POS, SourceSpan.between(keywordPos, tokens.lastPos()));
+                yield entry;
             }
             case "global" -> {
                 if (tokens.peek() instanceof DocToken.Name(var libraryString) && libraryString.equals("library")) {
@@ -176,6 +189,7 @@ public class NewDocParser {
         }
     }
 
+    // TODO: make conditions metadata holders and attach positions
     private DocCondition parseCondition() throws FailException {
         var condition = switch (tokens.next()) {
             case DocToken.Symbol.AT -> {
@@ -265,10 +279,13 @@ public class NewDocParser {
 
     private List<String> readDottedNames() throws FailException {
         var names = new ArrayList<String>();
+        dottedNamePositions = new ArrayList<>();
         names.add(expectName());
+        dottedNamePositions.add(tokens.lastPos());
         while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
             tokens.next();
             names.add(expectName());
+            dottedNamePositions.add(tokens.lastPos());
         }
         return names;
     }
