@@ -73,34 +73,56 @@ public class NewDocParser {
                     tokens.next();
                     var dottedNames = readDottedNames();
                     var libName = dottedNames.removeLast();
+                    var libNamePos = dottedNamePositions.removeLast();
                     var condition = checkCondition();
-                    yield new NewDocEntry.GlobalLibraryEntry(new NamespaceDescription(dottedNames), libName, condition, body);
+                    var entry = new NewDocEntry.GlobalLibraryEntry(new NamespaceDescription(dottedNames), libName, condition, body);
+                    metadata.put(entry, DocMetadataKeys.NAMESPACE_POSITIONS, dottedNamePositions);
+                    metadata.put(entry, MetadataKey.NAME_POS, libNamePos);
+                    metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);
+                    metadata.put(entry, MetadataKey.FULL_POS, SourceSpan.between(keywordPos, tokens.lastPos()));
+                    yield entry;
                 } else {
                     var dottedNames = readDottedNames();
                     var globalName = dottedNames.removeLast();
+                    var globalNamePos = dottedNamePositions.removeLast();
                     expectSymbol(DocToken.Symbol.COLON);
                     var type = TypeParser.parse(tokens, metadata, diagnostics);
                     var condition = checkCondition();
                     expectEol();
-                    yield new NewDocEntry.GlobalValueEntry(new NamespaceDescription(dottedNames), globalName, type, condition, body);
+                    var entry = new NewDocEntry.GlobalValueEntry(new NamespaceDescription(dottedNames), globalName, type, condition, body);
+                    metadata.put(entry, DocMetadataKeys.NAMESPACE_POSITIONS, dottedNamePositions);
+                    metadata.put(entry, MetadataKey.NAME_POS, globalNamePos);
+                    metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);
+                    metadata.put(entry, MetadataKey.FULL_POS, SourceSpan.between(keywordPos, tokens.lastPos()));
+                    yield entry;
                 }
             }
             case "property" -> {
                 var dottedNames = readDottedNames();
                 var name = dottedNames.removeLast();
+                var namePos = dottedNamePositions.removeLast();
                 String owner;
+                SourceSpan ownerPos;
                 if (dottedNames.isEmpty()) {
                     var pos = tokens.lastPos();
                     diagnostics.addDiagnostic(new DocParseError(pos, "Property must have owner", DocParseError.Type.DOC_PARSE));
                     owner = "";
+                    ownerPos = new SourceSpan(pos.to().offset(1), pos.to().offset(1));
                 } else {
                     owner = dottedNames.removeLast();
+                    ownerPos = dottedNamePositions.removeLast();
                 }
                 expectSymbol(DocToken.Symbol.COLON);
                 var type = TypeParser.parse(tokens, metadata, diagnostics);
                 var condition = checkCondition();
                 expectEol();
-                yield new NewDocEntry.PropertyEntry(new NamespaceDescription(dottedNames), owner, name, type, condition, body);
+                var entry = new NewDocEntry.PropertyEntry(new NamespaceDescription(dottedNames), owner, name, type, condition, body);
+                metadata.put(entry, DocMetadataKeys.NAMESPACE_POSITIONS, dottedNamePositions);
+                metadata.put(entry, DocMetadataKeys.PROPERTY_OWNER_POS, ownerPos);
+                metadata.put(entry, MetadataKey.NAME_POS, namePos);
+                metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);
+                metadata.put(entry, MetadataKey.FULL_POS, SourceSpan.between(keywordPos, tokens.lastPos()));
+                yield entry;
             }
             case "type" -> {
                 var dottedNames = readDottedNames();
