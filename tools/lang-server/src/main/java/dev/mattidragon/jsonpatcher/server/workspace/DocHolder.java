@@ -31,13 +31,14 @@ import java.util.concurrent.CompletionException;
 public class DocHolder {
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
-    private final CompletableFuture<Void> stdlibFuture;
-    private DocTree completeTree = new DocTree(List.of());
+    private final DocTree completeTree = new DocTree(List.of());
     private final Map<String, ObjectData<NewDocEntry.GlobalEntry>> globals = new HashMap<>();
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
 
+    private Runnable onRebuild = () -> {};
+
     public DocHolder() {
-        stdlibFuture = loadStdlib();
+        loadStdlib().thenRun(this::rebuildLookups);
     }
 
     /**
@@ -137,6 +138,14 @@ public class DocHolder {
         rebuildLookups();
     }
 
+    public synchronized void onRebuild(Runnable callback) {
+        var old = onRebuild;
+        onRebuild = () -> {
+            old.run();
+            callback.run();
+        };
+    }
+
 //    public synchronized Optional<DocHolder.GlobalData> getGlobal(String name) {
 //        return Optional.ofNullable(globalLookup.get(name));
 //    }
@@ -156,24 +165,6 @@ public class DocHolder {
     public Index getIndex() {
         return docIndex;
     }
-
-//    /**
-//     * Gets the data of a doc entry able to own values (type or module).
-//     * Modules are looked up by their name, unlike in {@link #getModuleData}.
-//     * @param name The name of the type or module.
-//     * @return The data of the type or module, or {@link Optional#empty()} if not found.
-//     */
-//    public synchronized Optional<DocHolder.OwnerData> getOwnerData(String name) {
-//        return Optional.ofNullable(ownerLookup.get(name));
-//    }
-//
-//    public synchronized Optional<DocHolder.ModuleData> getModuleData(String name) {
-//        return Optional.ofNullable(moduleLookup.get(name));
-//    }
-//
-//    public synchronized Optional<DocHolder.TypeData> getTypeData(String name) {
-//        return Optional.ofNullable(typeLookup.get(name));
-//    }
     
     private synchronized void rebuildLookups() {
         completeTree.clear();
@@ -195,6 +186,8 @@ public class DocHolder {
                 }
             }
         }
+
+        onRebuild.run();
     }
 
     public record FileData(

@@ -30,7 +30,6 @@ public class WorkspaceManager implements WorkspaceService {
                 case Deleted -> docManager.deleteFile(event.getUri());
             }
         }
-        // TODO: send update to all open documents
     }
 
     public WorkspaceDocManager getDocManager() {

@@ -19,6 +19,11 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
 
     public DocumentManager(WorkspaceManager workspace) {
         this.workspace = workspace;
+        workspace.getDocManager().getHolder().onRebuild(() -> {
+            for (var documentState : documents.values()) {
+                documentState.handleExternalUpdate();
+            }
+        });
     }
 
     @Override

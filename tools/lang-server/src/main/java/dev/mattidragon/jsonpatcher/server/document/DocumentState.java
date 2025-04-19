@@ -39,6 +39,8 @@ public class DocumentState {
     private final Supplier<Map<String, DocHolder.ObjectData<NewDocEntry.GlobalEntry>>> globalsGetter;
     private final DocHolder docHolder;
 
+    private String lastContent = "";
+
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
     public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
@@ -67,7 +69,12 @@ public class DocumentState {
         }
     }
 
+    public void handleExternalUpdate() {
+        updateContent(lastContent);
+    }
+
     public void updateContent(String content) {
+        lastContent = content;
         data = CompletableFuture.supplyAsync(() -> {
             var diagnostics = new DiagnosticsBuilder();
             var docParser = new DocParser(diagnostics);
@@ -83,7 +90,6 @@ public class DocumentState {
             var globals = globalsGetter.get()
                     .entrySet()
                     .stream()
-//                    .filter(entry -> entry.getValue().entry().requiredMetadata().stream().allMatch(metadata::has))
                     .map(Map.Entry::getKey)
                     .toList();
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
