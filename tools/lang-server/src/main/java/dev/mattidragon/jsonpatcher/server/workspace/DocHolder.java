@@ -5,10 +5,8 @@ import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
-import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
-import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
 import dev.mattidragon.jsonpatcher.server.Util;
@@ -84,14 +82,12 @@ public class DocHolder {
 
                 // We ignore diagnostics here, but still need to collect them
                 var diagnosticBuilder = new DiagnosticsBuilder();
-                var docParser = new DocParser(diagnosticBuilder);
                 var metadata = new TreeMetadata();
                 var commentHandler = new DocCommentHandler(diagnosticBuilder, metadata);
-                Lexer.lex(Files.readString(path), uri, diagnosticBuilder, CommentHandler.allOf(docParser, commentHandler));
+                Lexer.lex(Files.readString(path), uri, diagnosticBuilder, commentHandler);
 
                 var index = new DocsIndex(uri);
                 index.index(commentHandler.entries(), metadata);
-
 
                 return new FileData(uri, new DocTree(commentHandler.entries()), index);
             } catch (IOException e) {

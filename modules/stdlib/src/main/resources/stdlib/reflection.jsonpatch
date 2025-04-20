@@ -31,7 +31,7 @@ $findClass = internal.findClass;
 
 val Array = $findClass("java.lang.reflect.Array");
 
-#| value reflection.makeArray: (class: JavaClass, size: number, fill: any?) -> JavaObject
+#| value reflection.makeArray: (class: JavaClass, size: number, fill?: any) -> JavaObject
 #| Utility function to instantiate a Java array of a certain class.
 #| Takes in the component type of the array, the size of the array and an optional value to fill it with.
 function makeArray(class, size, fill = null) {

@@ -1,10 +1,11 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -77,14 +78,14 @@ public class DocumentState {
         lastContent = content;
         data = CompletableFuture.supplyAsync(() -> {
             var diagnostics = new DiagnosticsBuilder();
-            var docParser = new DocParser(diagnostics);
+            var treeMetadata = new TreeMetadata();
+            var docParser = new DocCommentHandler(diagnostics, treeMetadata);
             var tokens = Lexer.lex(content, internalName, diagnostics, docParser).tokens();
 
             var tokenLookup = new TokenLookup(tokens);
 
-            var parseResult = Parser.parse(tokens, diagnostics);
+            var parseResult = Parser.parse(tokens, diagnostics, treeMetadata);
             var program = parseResult.program();
-            var treeMetadata = parseResult.treeMetadata();
             var metadata = parseResult.metadata();
 
             var globals = globalsGetter.get()
@@ -99,7 +100,7 @@ public class DocumentState {
             index.index(program, treeMetadata, variableAnalysis);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
-            return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.getEntries(), lookups, tokenLookup, index);
+            return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
     }
 

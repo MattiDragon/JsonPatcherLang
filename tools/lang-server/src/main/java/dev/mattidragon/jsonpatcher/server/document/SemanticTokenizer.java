@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.DocType;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
@@ -80,36 +79,36 @@ public class SemanticTokenizer {
         return new SemanticTokens(tokenizer.builder.build());
     }
 
-    private void tokenizeDocs(List<DocEntry> entries) {
-        for (var entry : entries) {
-            switch (entry) {
-                case DocEntry.Module module -> {
-                    builder.addToken(module.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
-                    if (module.locationPos() != null) {
-                        var pos = new SourceSpan(module.locationPos().from().offset(-1), module.locationPos().to().offset(1));
-                        builder.addToken(pos, SemanticTokenTypes.String);
-                    }
-                }
-                case DocEntry.Type type -> {
-                    builder.addToken(type.namePos(), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
-                    tokenizeDocType(type.definition());
-                }
-                case DocEntry.Value value -> {
-                    var type = value.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
-                    builder.addToken(value.namePos(), type, SemanticTokenModifiers.Declaration);
-                    builder.addToken(value.ownerPos(), SemanticTokenTypes.Namespace);
-                    tokenizeDocType(value.definition());
-                }
-                case DocEntry.GlobalModule globalModule -> {
-                    builder.addToken(globalModule.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
-                }
-                case DocEntry.GlobalValue globalValue -> {
-                    var type = globalValue.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
-                    builder.addToken(globalValue.namePos(), type, SemanticTokenModifiers.Declaration);
-                    tokenizeDocType(globalValue.definition());
-                }
-            }
-        }
+    private void tokenizeDocs(List<NewDocEntry> entries) {
+//        for (var entry : entries) {
+//            switch (entry) {
+//                case DocEntry.Module module -> {
+//                    builder.addToken(module.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
+//                    if (module.locationPos() != null) {
+//                        var pos = new SourceSpan(module.locationPos().from().offset(-1), module.locationPos().to().offset(1));
+//                        builder.addToken(pos, SemanticTokenTypes.String);
+//                    }
+//                }
+//                case DocEntry.Type type -> {
+//                    builder.addToken(type.namePos(), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
+//                    tokenizeDocType(type.definition());
+//                }
+//                case DocEntry.Value value -> {
+//                    var type = value.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
+//                    builder.addToken(value.namePos(), type, SemanticTokenModifiers.Declaration);
+//                    builder.addToken(value.ownerPos(), SemanticTokenTypes.Namespace);
+//                    tokenizeDocType(value.definition());
+//                }
+//                case DocEntry.GlobalModule globalModule -> {
+//                    builder.addToken(globalModule.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
+//                }
+//                case DocEntry.GlobalValue globalValue -> {
+//                    var type = globalValue.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
+//                    builder.addToken(globalValue.namePos(), type, SemanticTokenModifiers.Declaration);
+//                    tokenizeDocType(globalValue.definition());
+//                }
+//            }
+//        }
     }
     
     private void tokenizeDocType(DocType type) {

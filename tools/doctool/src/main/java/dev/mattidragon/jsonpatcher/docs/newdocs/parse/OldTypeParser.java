@@ -22,11 +22,12 @@ public class OldTypeParser {
 
     public static NewDocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         var typeParser = new OldTypeParser(metadata, tokens, diagnostics);
+        // TODO: handle EOF here
         return typeParser.root(typeParser.tokens.next());
     }
 
     private NewDocType root(DocToken token) {
-        return switch (token) {
+        var type = switch (token) {
             case DocToken.Symbol.BEGIN_PAREN -> function();
             case DocToken.Symbol.BEGIN_SQUARE -> array();
             case DocToken.Symbol.BEGIN_CURLY -> object();
@@ -42,6 +43,13 @@ public class OldTypeParser {
                 yield errorType;
             }
         };
+
+        while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.BAR) {
+            tokens.next();
+            type = new UnionDocType(type, root(tokens.next()));
+        }
+
+        return type;
     }
 
     private NewDocType object() {
@@ -112,7 +120,7 @@ public class OldTypeParser {
             diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Expected ')' to close function type", DocParseError.Type.TYPE_PARSE));
         }
 
-        if (tokens.peek() != DocToken.Symbol.ARROW) {
+        if (tokens.next() != DocToken.Symbol.ARROW) {
             diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Expected '->' after function arguments", DocParseError.Type.TYPE_PARSE));
         }
 
