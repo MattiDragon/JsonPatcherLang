@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
@@ -31,6 +32,7 @@ public class DocHolder {
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final DocTree completeTree = new DocTree(List.of());
     private final Map<String, ObjectData<NewDocEntry.GlobalEntry>> globals = new HashMap<>();
+    private final Map<String, NewDocEntry.LibraryEntry> libraries = new HashMap<>();
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
 
     private Runnable onRebuild = () -> {};
@@ -142,14 +144,6 @@ public class DocHolder {
         };
     }
 
-//    public synchronized Optional<DocHolder.GlobalData> getGlobal(String name) {
-//        return Optional.ofNullable(globalLookup.get(name));
-//    }
-//
-//    public synchronized Map<String, DocHolder.GlobalData> getGlobals() {
-//        return Collections.unmodifiableMap(globalLookup);
-//    }
-
     public synchronized Optional<ObjectData<NewDocEntry.GlobalEntry>> getGlobal(String name) {
         return Optional.ofNullable(globals.get(name));
     }
@@ -168,6 +162,8 @@ public class DocHolder {
             completeTree.addAll(value.newData());
         }
 
+        globals.clear();
+        libraries.clear();
         for (var namespace : completeTree.namespaces().values()) {
             for (var object : namespace.objects().values()) {
                 var entry = object.entry();
@@ -178,12 +174,33 @@ public class DocHolder {
                         var data = new ObjectData<>(globalEntry, object);
                         globals.put(globalEntry.name(), data);
                     }
+                    case NewDocEntry.LibraryEntry libraryEntry ->
+                            libraries.put(libraryEntry.location().orElse(libraryEntry.name()), libraryEntry);
                     default -> {}
                 }
             }
         }
 
         onRebuild.run();
+    }
+
+    public Optional<NewDocEntry> getDocEntry(NamespaceDescription namespace, String name) {
+        return Optional.ofNullable(completeTree.namespaces().get(namespace))
+                .map(ns -> ns.objects().get(name))
+                .map(DocTreeObject::entry);
+    }
+
+    public Optional<NewDocEntry> getLibrary(String location) {
+            return Optional.ofNullable(libraries.get(location));
+    }
+
+    public Optional<DocTreeObject> getObject(NamespaceDescription namespace, String name) {
+        return Optional.ofNullable(completeTree.namespaces().get(namespace))
+                .map(ns -> ns.objects().get(name));
+    }
+
+    public DocTree getTree() {
+        return completeTree;
     }
 
     public record FileData(

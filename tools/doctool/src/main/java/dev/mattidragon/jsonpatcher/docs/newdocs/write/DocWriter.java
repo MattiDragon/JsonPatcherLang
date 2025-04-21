@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
+import org.commonmark.Extension;
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.Code;
@@ -19,7 +20,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class DocWriter {
-    static final Parser PARSER = Parser.builder().extensions(List.of(TablesExtension.create(), StrikethroughExtension.create())).build();
+    public static final List<Extension> EXTENSIONS = List.of(TablesExtension.create(), StrikethroughExtension.create());
+    static final Parser PARSER = Parser.builder().extensions(EXTENSIONS).build();
 
     public static void write(Node node, DocTree docTree, int headingLevel) {
         var activeNamespaces = new ArrayList<>(docTree.namespaces().values());

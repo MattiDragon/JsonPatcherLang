@@ -52,11 +52,6 @@ public class DocTypeConverter {
                     }
                     case null -> {}
                 }
-
-                var type = getOrComputeType(fullName);
-                if (type.isSet()) {
-                    throw new IllegalStateException("Type already set: " + fullName);
-                }
             }
         }
     }

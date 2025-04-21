@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
@@ -12,11 +13,14 @@ import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
+import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
+import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -94,6 +98,12 @@ public class DocumentState {
                     .map(Map.Entry::getKey)
                     .toList();
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
+
+            var types = new DocTypeConverter();
+            types.loadTree(docHolder.getTree());
+            PreTypingPass.apply(program, treeMetadata, types, diagnostics);
+            TypeChecker.typeCheck(program, treeMetadata, diagnostics);
+
             var lookups = Lookups.get(program, treeMetadata);
 
             var index = new DocumentIndex(internalName);
@@ -140,9 +150,8 @@ public class DocumentState {
         return definitionFinder.getReferences(position);
     }
 
-    public CompletableFuture<Hover> getHover(Position position) {
-        return CompletableFuture.completedFuture(new Hover(List.of()));
-//        return definitionFinder.getHover(position);
+    public CompletableFuture<@Nullable Hover> getHover(Position position) {
+        return definitionFinder.getHover(position);
     }
 
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> autoComplete(Position position) {

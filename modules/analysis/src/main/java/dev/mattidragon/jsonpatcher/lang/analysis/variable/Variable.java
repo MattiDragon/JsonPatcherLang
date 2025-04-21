@@ -2,12 +2,13 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class Variable implements VariableRef {
+public final class Variable implements VariableRef, MetadataHolder {
     private final String name;
     private final boolean mutable;
     private final ProgramNode definition;
@@ -59,5 +60,10 @@ public final class Variable implements VariableRef {
 
     public boolean stdlib() {
         return definition instanceof Program;
+    }
+
+    @Override
+    public Iterable<MetadataHolder> getChildren() {
+        return List.of();
     }
 }

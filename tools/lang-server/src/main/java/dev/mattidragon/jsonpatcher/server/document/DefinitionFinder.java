@@ -1,35 +1,42 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocType;
-import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
+import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeProperty;
+import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocEntryWriter;
+import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocWriter;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
+import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.IndexEntry;
 import dev.mattidragon.jsonpatcher.server.index.StaticCombinedIndex;
+import dev.mattidragon.jsonpatcher.server.index.symbol.*;
+import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.renderer.Renderer;
 import org.commonmark.renderer.markdown.MarkdownRenderer;
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.*;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class DefinitionFinder {
     static final SourceFile LOOKUP_FAKE_FILE = new SourceFile("lookup fake file", "");
 
-    private final Renderer renderer = MarkdownRenderer.builder().extensions(DocWriter.DEFAULT_EXTENSIONS).build();
-    private final DocWriter docWriter = new DocWriter(List.of());
+    private final Renderer renderer = MarkdownRenderer.builder().extensions(DocWriter.EXTENSIONS).build();
 
     private final Supplier<CompletableFuture<DocumentData>> documentData;
     private final WorkspaceManager workspace;
@@ -39,9 +46,6 @@ public class DefinitionFinder {
         this.documentData = documentData;
         this.workspace = workspace;
         this.documentUri = documentUri;
-        docWriter.setHeadingLevel(4);
-        docWriter.setInlineDefinitions(true);
-        docWriter.setValueSubHeaders(false);
     }
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {
@@ -73,176 +77,191 @@ public class DefinitionFinder {
         }, Util.EXECUTOR);
     }
 
-//    public CompletableFuture<Hover> getHover(Position position) {
-//        var pos = new SourcePos(LOOKUP_FAKE_FILE, position.getLine() + 1, position.getCharacter() + 1);
-//        return documentData.get().thenApplyAsync(data -> {
-//            var lookups = data.lookups();
-//            return getVariableDocs(lookups, pos)
-//                    .or(() -> getPropertyDocs(lookups, pos))
-//                    .or(() -> getNestedDocs(data.docs(), pos))
-//                    .map(entry -> {
-//                        var document = new Document();
-//                        docWriter.writeEntry(document, entry);
-//                        return document;
-//                    })
-//                    .or(() -> getLocalInfo(lookups, pos))
-//                    .map(renderer::render)
-//                    .map(markdown -> new MarkupContent(MarkupKind.MARKDOWN, markdown))
-//                    .map(Hover::new)
-//                    .orElse(null);
-//        });
-//    }
-//
-//    private Optional<DocEntry> getNestedDocs(List<DocEntry> entries, SourcePos pos) {
-//        var out = new ArrayList<DocEntry>();
-//        forDocRefsAt(entries, pos, doc -> out.add(doc.entry()));
-//        return out.isEmpty() ? Optional.empty() : Optional.of(out.getFirst());
-//    }
+    public CompletableFuture<@Nullable Hover> getHover(Position position) {
+        return documentData.get().thenApplyAsync(data -> {
+            var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
 
-    private Optional<Document> getLocalInfo(Lookups lookups, SourcePos pos) {
-        return Optional.ofNullable(lookups.variableReferences().getFirstAt(pos))
-                .map(variable -> {
-                    var document = new Document();
-                    var code = new FencedCodeBlock();
-                    code.setInfo("jsonpatcher");
-                    var builder = new StringBuilder();
-                    switch (variable.definition()) {
-                        case FunctionDeclarationStatement statement -> {
-                            builder.append("function ");
-                            builder.append(variable.name());
-                            appendFunctionDesc(statement, builder);
-                        }
-                        case ImportStatement(var libraryName, var variableName) -> {
-                            builder.append("import \"");
-                            builder.append(libraryName);
-                            builder.append("\" as ");
-                            builder.append(variableName);
-                        }
-                        case FunctionArgument(var target, var defaultValue) -> {
-                            builder.append("param ");
-                            builder.append(variable.name());
-                            if (defaultValue.isPresent()) {
-                                builder.append("?");
-                            }
-                        }
-                        default -> {
-                            builder.append(variable.mutable() ? "var " : "val ");
-                            builder.append(variable.name());
-                        }
-                    }
-                    code.setLiteral(builder.toString());
-                    document.appendChild(code);
-                    return document;
-                });
+            return data.index().lookupEntries(pos)
+                    .map(IndexEntry::symbol)
+                    .map(symbol -> getSymbolDocs(symbol, data.treeMetadata()))
+                    .flatMap(Optional::stream)
+                    .findFirst()
+                    .map(renderer::render)
+                    .map(markdown -> new MarkupContent(MarkupKind.MARKDOWN, markdown))
+                    .map(Hover::new)
+                    .orElse(null);
+        });
     }
 
-    private static void appendFunctionDesc(FunctionDeclarationStatement statement, StringBuilder builder) {
-        if (statement != null) {
-            builder.append("(");
-            var args = statement.value().args();
-            var first = true;
-            for (var arg : args.arguments()) {
-                if (first) {
-                    first = false;
-                } else {
-                    builder.append(", ");
+    private Optional<Document> getSymbolDocs(Symbol symbol, TreeMetadata metadata) {
+        return switch (symbol) {
+            case DocEntrySymbol(var namespace, var name) ->
+                workspace.getDocManager()
+                        .getHolder()
+                        .getDocEntry(namespace, name)
+                        .map(this::renderDocEntry);
+            case LibrarySymbol(var location) ->
+                workspace.getDocManager()
+                        .getHolder()
+                        .getLibrary(location)
+                        .map(this::renderDocEntry);
+            case GlobalSymbol(var name) ->
+                workspace.getDocManager()
+                        .getHolder()
+                        .getGlobal(name)
+                        .map(DocHolder.ObjectData::entry)
+                        .map(this::renderDocEntry);
+            case PropertySymbol(var namespace, var owner, var name) ->
+                workspace.getDocManager()
+                        .getHolder()
+                        .getObject(namespace, owner)
+                        .map(object -> object.properties().get(name))
+                        .map(DocTreeProperty::entry)
+                        .map(this::renderDocEntry);
+            case VariableSymbol(var variable) ->
+                    Optional.of(getVariableDocs(variable, metadata));
+            default -> Optional.empty();
+        };
+    }
+
+    private Document renderDocEntry(NewDocEntry docEntry) {
+        var document = new Document();
+        DocEntryWriter.write(document, docEntry, 4);
+        return document;
+    }
+
+    private Document getVariableDocs(Variable variable, TreeMetadata metadata) {
+        var type = metadata.get(variable.definition(), TypeChecker.TYPE).orElse(SpecialType.UNKNOWN);
+
+        var document = new Document();
+        var code = new FencedCodeBlock();
+        code.setInfo("jsonpatcher");
+        var builder = new StringBuilder();
+        switch (variable.definition()) {
+            case FunctionDeclarationStatement statement -> {
+                builder.append("function ");
+                builder.append(variable.name());
+                if (type != SpecialType.UNKNOWN) {
+                    builder.append(": ");
+                    writeType(type, builder);
                 }
-                builder.append(switch (arg.target()) {
-                    case FunctionArgument.Target.Root root -> "$";
-                    case FunctionArgument.Target.Variable variable -> variable.name();
-                });
-                if (arg.defaultValue().isPresent()) {
+            }
+            case ImportStatement(var libraryName, var variableName) -> {
+                builder.append("import \"");
+                builder.append(libraryName);
+                builder.append("\" as ");
+                builder.append(variableName);
+            }
+            case FunctionArgument(var target, var defaultValue) -> {
+                builder.append("param ");
+                builder.append(variable.name());
+                if (defaultValue.isPresent()) {
                     builder.append("?");
                 }
+                if (type != SpecialType.UNKNOWN) {
+                    builder.append(": ");
+                    writeType(type, builder);
+                }
             }
-            if (args.varargs()) {
-                builder.append("*");
+            default -> {
+                builder.append(variable.mutable() ? "var " : "val ");
+                builder.append(variable.name());
+                if (type != SpecialType.UNKNOWN) {
+                    builder.append(": ");
+                    writeType(type, builder);
+                }
             }
-            builder.append(")");
+        }
+        code.setLiteral(builder.toString());
+        document.appendChild(code);
+        return document;
+    }
+
+    private void writeType(Type type, StringBuilder builder) {
+        switch (type) {
+            case ArrayType(var component) -> {
+                writeTypeSafe(component, builder);
+                builder.append("[]");
+            }
+            case ObjectType objectType -> {
+                writeTypeSafe(objectType, builder);
+                builder.append("{}");
+            }
+            case PrimitiveType primitiveType ->
+                    builder.append(primitiveType.name().toLowerCase(Locale.ROOT));
+            case SpecialType specialType ->
+                    builder.append(specialType.name().toLowerCase(Locale.ROOT));
+            case TypeArgument typeArgument ->
+                    builder.append('$').append(typeArgument.name());
+            case NamedType namedType -> builder.append(namedType.name());
+
+            case FunctionType functionType -> {
+                if (!functionType.typeArguments().isEmpty()) {
+                    builder.append('<');
+                    var first = true;
+                    for (var typeArgument : functionType.typeArguments()) {
+                        if (!first) {
+                            builder.append(", ");
+                        } else {
+                            first = false;
+                        }
+                        writeType(typeArgument, builder);
+                        if (typeArgument.bound() != SpecialType.ANY) {
+                            builder.append(": ");
+                            writeType(typeArgument.bound(), builder);
+                        }
+                    }
+                    builder.append('>');
+                }
+                var argIndex = 0;
+                var first = true;
+                builder.append('(');
+                for (var argument : functionType.args()) {
+                    if (!first) {
+                        builder.append(", ");
+                    } else {
+                        first = false;
+                    }
+                    writeType(argument, builder);
+                    if (argIndex == functionType.args().size() - 1) {
+                        builder.append("*");
+                    } else if (argIndex++ < functionType.requiredArgs()) {
+                        builder.append("?");
+                    }
+                }
+                builder.append(") -> ");
+                writeTypeSafe(functionType.returnType(), builder);
+            }
+
+            case UnionType unionType -> {
+                var first = true;
+                for (var child : UnionType.flatten(unionType).toList()) {
+                    if (!first) {
+                        builder.append(" | ");
+                    } else {
+                        first = false;
+                    }
+                    writeTypeSafe(child, builder);
+                }
+            }
+
+            case LazyType lazyType -> writeType(lazyType.get(), builder);
         }
     }
 
-//    private Optional<DocEntry> getVariableDocs(Lookups lookups, SourcePos pos) {
-//        return Optional.ofNullable(lookups.variableReferences().getFirstAt(pos))
-//                .flatMap(this::getDocs)
-//                .map(DocHolder.DocsData::entry);
-//    }
-//
-//    private Optional<DocEntry> getPropertyDocs(Lookups lookups, SourcePos pos) {
-//        var access = lookups.propertyAccesses().getFirstAt(pos);
-//        if (!(access instanceof PropertyAccessExpression(VariableAccessExpression variableAccess, var name))) {
-//            return Optional.empty();
-//        }
-//
-//        var variable = lookups.treeMetadata().get(variableAccess, VariableAnalyser.VARIABLE_REFERENCE);
-//
-//        return variable.flatMap(this::getDocs)
-//                .flatMap(data ->
-//                        data instanceof DocHolder.OwnerData ownerData ? Optional.of(ownerData.values()) : Optional.empty())
-//                .map(valueMap -> valueMap.get(name));
-//    }
-
-//    private Optional<DocHolder.DocsData> getDocs(Variable variable) {
-//        var docHolder = workspace.getDocManager().getHolder();
-//        if (variable.stdlib()) {
-//            return docHolder.getGlobal(variable.name()).map(Function.identity());
-//        }
-//        if (variable.definition() instanceof ImportStatement importStatement) {
-//            return docHolder.getModuleData(importStatement.libraryName()).map(Function.identity());
-//        }
-//        return Optional.empty();
-//    }
-//
-//    private void forDocRefsAt(List<DocEntry> docs, SourcePos pos, Consumer<DocHolder.OwnerData> consumer) {
-//        var docHolder = workspace.getDocManager().getHolder();
-//        for (var doc : docs) {
-//            DocType definition = null;
-//            if (doc instanceof DocEntry.Type type) {
-//                definition = type.definition();
-//            } else if (doc instanceof DocEntry.Value value) {
-//                definition = value.definition();
-//
-//                if (value.ownerPos() != null && value.ownerPos().contains(pos)) {
-//                    docHolder.getOwnerData(value.owner()).ifPresent(consumer);
-//                }
-//            }
-//
-//            if (definition != null) {
-//                walkDocTypes(definition, docType -> {
-//                    if (!(docType instanceof DocType.Name(var name, var nameSpan))) return;
-//                    if (nameSpan == null || !nameSpan.contains(pos)) return;
-//                    docHolder.getTypeData(name)
-//                            .ifPresent(consumer);
-//                });
-//            }
-//        }
-//    }
-    
-    private void walkDocTypes(DocType type, Consumer<DocType> visitor) {
+    private void writeTypeSafe(Type type, StringBuilder builder) {
         switch (type) {
-            case DocType.Array array -> {
-                visitor.accept(array);
-                walkDocTypes(array.entry(), visitor);
+            case FunctionType functionType -> {
+                builder.append('{');
+                writeType(functionType, builder);
+                builder.append("}");
             }
-            case DocType.Object object -> {
-                visitor.accept(object);
-                walkDocTypes(object.entry(), visitor);
+            case UnionType unionType -> {
+                builder.append('{');
+                writeType(unionType, builder);
+                builder.append("}");
             }
-            case DocType.Function function -> {
-                visitor.accept(function);
-                for (var arg : function.args()) {
-                    walkDocTypes(arg.type(), visitor);
-                }
-                walkDocTypes(function.returnType(), visitor);
-            }
-            case DocType.Union union -> {
-                visitor.accept(union);
-                for (var child : union.children()) {
-                    walkDocTypes(child, visitor);
-                }
-            }
-            case DocType.Name name -> visitor.accept(name);
-            case DocType.Special special -> visitor.accept(special);
+            default -> writeType(type, builder);
         }
     }
 }

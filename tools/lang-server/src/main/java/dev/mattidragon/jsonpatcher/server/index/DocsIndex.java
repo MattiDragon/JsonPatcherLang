@@ -21,7 +21,9 @@ public class DocsIndex extends LookupIndex {
     }
 
     private void indexEntry(NewDocEntry entry, TreeMetadata metadata) {
-        addSymbol(entry, new IndexEntry(getDocEntrySymbol(entry), true), metadata);
+        if (!(entry instanceof NewDocEntry.PropertyEntry)) {
+            addSymbol(entry, new IndexEntry(new DocEntrySymbol(entry.namespace(), entry.name()), true), metadata);
+        }
 
         switch (entry) {
             case NewDocEntry.GlobalLibraryEntry(var namespace, var name, var condition, var body) -> {
@@ -54,12 +56,5 @@ public class DocsIndex extends LookupIndex {
     private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata, MetadataKey<SourceSpan> metadataKey) {
         metadata.get(docEntry, metadataKey)
                 .ifPresent(pos -> lookup.add(pos, entry));
-    }
-
-    private static DocEntrySymbol getDocEntrySymbol(NewDocEntry entry) {
-        if (entry instanceof NewDocEntry.PropertyEntry propertyEntry) {
-            return new DocEntrySymbol(propertyEntry.namespace().withLast(propertyEntry.owner()), propertyEntry.name());
-        }
-        return new DocEntrySymbol(entry.namespace(), entry.name());
     }
 }

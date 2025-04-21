@@ -6,6 +6,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.TextDocumentService;
+import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -98,7 +99,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
     }
 
     @Override
-    public CompletableFuture<Hover> hover(HoverParams params) {
+    public CompletableFuture<@Nullable Hover> hover(HoverParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.getHover(params.getPosition());

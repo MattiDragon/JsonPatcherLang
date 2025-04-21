@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
@@ -20,8 +19,8 @@ import java.util.stream.Stream;
 
 public class TypeChecker {
     public static final MetadataKey<Type> TYPE = new MetadataKey<>("TypeChecker/TYPE");
+    private static final Type CALLABLE_TYPE = new UnionType(Arrays.asList(PrimitiveType.FUNCTION, PrimitiveType.SPECIAL));
 
-    private final Map<Variable, Type> variableTypes = new HashMap<>();
     private final TreeMetadata metadata;
     private final DiagnosticsBuilder diagnostics;
     private final Deque<Consumer<Type>> returnTypeConsumers = new ArrayDeque<>();
@@ -46,12 +45,12 @@ public class TypeChecker {
                 // The language server will set the types of import statements before type checking based on doc comments
                 var type = metadata.get(statement, TYPE).orElse(SpecialType.UNKNOWN);
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
-                        .ifPresent(variable -> variableTypes.put(variable, type));
+                        .ifPresent(variable -> metadata.put(variable, TYPE, type));
             }
             case VariableCreationStatement statement -> {
                 var type = checkExpression(statement.initializer());
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
-                        .ifPresent(variable -> variableTypes.put(variable, type));
+                        .ifPresent(variable -> metadata.put(variable, TYPE, type));
             }
 
             case ReturnStatement(var value) -> {
@@ -81,7 +80,7 @@ public class TypeChecker {
 
             case VariableAccessExpression variableAccessExpression ->
                     metadata.get(variableAccessExpression, VariableAnalyser.VARIABLE_REFERENCE)
-                            .flatMap(variable -> Optional.ofNullable(variableTypes.get(variable)))
+                            .flatMap(variable -> metadata.get(variable, TYPE))
                             .orElse(SpecialType.UNKNOWN);
 
             case FunctionExpression(var body, var args) -> checkFunctionDeclaration(body, args);
@@ -200,6 +199,10 @@ public class TypeChecker {
     private Type checkFunctionCall(Expression function, List<Expression> arguments) {
         var actualArgTypes = arguments.stream().map(this::checkExpression).toList();
         var functionType = checkExpression(function);
+        if (functionType instanceof NamedType namedType && namedType.callSignature().isPresent()) {
+            functionType = namedType.callSignature().get();
+        }
+
         if (!(functionType instanceof FunctionType(
                 var typeArguments,
                 var args,
@@ -207,7 +210,7 @@ public class TypeChecker {
                 var varargs,
                 var returnType
         ))) {
-            if (functionType != PrimitiveType.SPECIAL && functionType != PrimitiveType.FUNCTION) {
+            if (!TypeComparison.isSubtype(functionType, CALLABLE_TYPE)) {
                 addError(function, "Expected function or other callable, got " + functionType);
             }
             return SpecialType.UNKNOWN;
