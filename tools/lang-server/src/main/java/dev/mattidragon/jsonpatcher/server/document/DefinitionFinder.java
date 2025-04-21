@@ -80,8 +80,9 @@ public class DefinitionFinder {
     public CompletableFuture<@Nullable Hover> getHover(Position position) {
         return documentData.get().thenApplyAsync(data -> {
             var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
+            var combinedIndex = new StaticCombinedIndex(data.index(), workspace.getWorkspaceIndex());
 
-            return data.index().lookupEntries(pos)
+            return combinedIndex.lookupEntries(pos)
                     .map(IndexEntry::symbol)
                     .map(symbol -> getSymbolDocs(symbol, data.treeMetadata()))
                     .flatMap(Optional::stream)
@@ -126,7 +127,7 @@ public class DefinitionFinder {
 
     private Document renderDocEntry(NewDocEntry docEntry) {
         var document = new Document();
-        DocEntryWriter.write(document, docEntry, 4);
+        DocEntryWriter.write(document, docEntry, 3);
         return document;
     }
 

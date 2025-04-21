@@ -30,26 +30,38 @@ public class DocEntryWriter {
         var metadata = new Paragraph();
 
         if (entry instanceof NewDocEntry.TypeAliasEntry typeAliasEntry) {
-            metadata.appendChild(new StrongEmphasis("= "));
+            var strong = new StrongEmphasis();
+            strong.appendChild(new Text("="));
+            metadata.appendChild(strong);
+            metadata.appendChild(new Text(" "));
             metadata.appendChild(new Code(DocTypeWriter.write(typeAliasEntry.definition())));
             metadata.appendChild(new HardLineBreak());
         }
 
         if (entry instanceof NewDocEntry.LibraryEntry libraryEntry && libraryEntry.location().isPresent()) {
-            metadata.appendChild(new StrongEmphasis("Location: "));
+            var strong = new StrongEmphasis();
+            strong.appendChild(new Text("Location:"));
+            metadata.appendChild(strong);
+            metadata.appendChild(new Text(" "));
             metadata.appendChild(new Code(libraryEntry.location().get()));
             metadata.appendChild(new HardLineBreak());
         }
 
         var type = type(entry);
         if (type != null) {
-            metadata.appendChild(new StrongEmphasis("Type: "));
+            var strong = new StrongEmphasis();
+            strong.appendChild(new Text("Type:"));
+            metadata.appendChild(strong);
+            metadata.appendChild(new Text(" "));
             metadata.appendChild(new Code(DocTypeWriter.write(type)));
             metadata.appendChild(new HardLineBreak());
         }
 
         entry.condition().ifPresent(condition -> {
-            metadata.appendChild(new StrongEmphasis("Requires: "));
+            var strong = new StrongEmphasis();
+            strong.appendChild(new Text("Requires:"));
+            metadata.appendChild(strong);
+            metadata.appendChild(new Text(" "));
             metadata.appendChild(new Code(DocConditionWriter.write(condition)));
             metadata.appendChild(new HardLineBreak());
         });
@@ -76,10 +88,13 @@ public class DocEntryWriter {
 
     private static String name(NewDocEntry entry) {
         var namespace = String.join(".", entry.namespace().parts());
-        if (entry instanceof NewDocEntry.PropertyEntry propertyEntry) {
-            return namespace + "." + propertyEntry.owner() + "." + entry.name();
+        if (!namespace.isEmpty()) {
+            namespace += ".";
         }
-        return namespace + "." + entry.name();
+        if (entry instanceof NewDocEntry.PropertyEntry propertyEntry) {
+            return namespace + propertyEntry.owner() + "." + entry.name();
+        }
+        return namespace + entry.name();
     }
 
     private static String entryType(NewDocEntry entry) {
