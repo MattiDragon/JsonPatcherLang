@@ -141,10 +141,17 @@ public class Tokenizer {
     }
 
     private char nextChar() {
-        return text.charAt(index++);
+        var activeIndex = index++;
+        if (activeIndex >= text.length()) {
+            throw new EolException(firstPos.offset(activeIndex));
+        }
+        return text.charAt(activeIndex);
     }
 
     private char peekChar() {
+        if (index >= text.length()) {
+            throw new EolException(firstPos.offset(index));
+        }
         return text.charAt(index);
     }
 
@@ -159,6 +166,19 @@ public class Tokenizer {
     private void skipWhitespace() {
         while (index < text.length() && (text.charAt(index) == ' ' || text.charAt(index) == '\t')) {
             index++;
+        }
+    }
+
+    public static class EolException extends RuntimeException {
+        private final SourcePos pos;
+
+        public EolException(SourcePos pos) {
+            super("Unexpected end of line");
+            this.pos = pos;
+        }
+
+        public SourcePos getPos() {
+            return pos;
         }
     }
 }

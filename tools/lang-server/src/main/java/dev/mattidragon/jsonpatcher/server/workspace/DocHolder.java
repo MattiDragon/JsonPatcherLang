@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
@@ -187,7 +188,9 @@ public class DocHolder {
     public Optional<NewDocEntry> getDocEntry(NamespaceDescription namespace, String name) {
         return Optional.ofNullable(completeTree.namespaces().get(namespace))
                 .map(ns -> ns.objects().get(name))
-                .map(DocTreeObject::entry);
+                .map(DocTreeObject::entry)
+                .or(() -> Optional.ofNullable(completeTree.namespaces().get(namespace.withLast(name)))
+                        .map(DocTreeNamespace::entry));
     }
 
     public Optional<NewDocEntry> getLibrary(String location) {

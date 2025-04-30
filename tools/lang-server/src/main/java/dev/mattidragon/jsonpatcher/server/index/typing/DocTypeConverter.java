@@ -31,7 +31,7 @@ public class DocTypeConverter {
                     case NewDocEntry.LibraryEntry libraryEntry -> {
                         var type = buildNamedType(fullName, PrimitiveType.OBJECT, object.properties().values());
                         getOrComputeType(fullName).set(type);
-                        libraries.put(fullName, type);
+                        libraries.put(libraryEntry.location().orElse(libraryEntry.name()), type);
                     }
                     case NewDocEntry.MetadataEntry metadataEntry -> {
                         // Metadata will get type checking later

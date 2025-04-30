@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -40,13 +41,34 @@ public class DocsIndex extends LookupIndex {
             }
             case NewDocEntry.NamespaceEntry namespaceEntry -> {
             }
-            case NewDocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) ->
-                    addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
+            case NewDocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) -> {
+                addSymbol(entry, new IndexEntry(new DocEntrySymbol(namespace, owner), false), metadata, DocMetadataKeys.PROPERTY_OWNER_POS);
+                addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
+            }
             case NewDocEntry.TypeAliasEntry typeAliasEntry -> {
             }
             case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
             }
         }
+
+        addNamespaceSymbols(entry, metadata);
+    }
+
+    private void addNamespaceSymbols(NewDocEntry entry, TreeMetadata metadata) {
+        var partCount = entry.namespace().parts().size();
+        metadata.get(entry, DocMetadataKeys.NAMESPACE_POSITIONS).ifPresent(namespacePositions -> {
+            if (namespacePositions.size() != partCount) {
+                throw new IllegalStateException("Namespace positions do not match namespace values");
+            }
+
+            var namespace = entry.namespace();
+            for (var i = partCount - 1; i >= 0; i--) {
+                var pos = namespacePositions.get(i);
+                var name = namespace.parts().get(i);
+                namespace = namespace.withoutLast();
+                lookup.add(pos, new IndexEntry(new DocEntrySymbol(namespace, name), false));
+            }
+        });
     }
 
     private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata) {

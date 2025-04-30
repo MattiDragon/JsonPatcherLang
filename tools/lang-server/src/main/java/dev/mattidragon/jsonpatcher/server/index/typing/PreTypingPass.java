@@ -42,8 +42,10 @@ public class PreTypingPass {
                                 metadata.put(statement, TypeChecker.TYPE, SpecialType.UNKNOWN);
                             });
             case VariableAccessExpression expression -> {
-                var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE)
-                        .orElseThrow(() -> new IllegalStateException("Variable analysis not complete"));
+                var optionalVariable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE);
+                if (optionalVariable.isEmpty()) break;
+                var variable = optionalVariable.get();
+
                 if (!(variable.definition() instanceof Program)) return;
                 types.getGlobalType(variable.name()).ifPresentOrElse(
                         type -> metadata.put(expression, TypeChecker.TYPE, type),
