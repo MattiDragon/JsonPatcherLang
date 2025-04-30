@@ -1,6 +1,5 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
@@ -214,67 +213,6 @@ public class DocHolder {
         public String toString() {
             return "FileData[%s]".formatted(uri);
         }
-    }
-
-    public sealed interface DocsData {
-        /**
-         * Returns the file defining this module or type
-         */
-        FileData file();
-
-        /**
-         * Returns the doc entry for this module or type
-         */
-        DocEntry entry();
-    }
-
-    /**
-     * Superinterface for {@link ModuleData} and {@link TypeData} for cases where both are applicable.
-     * Primarily used when dealing with value doc comments.
-     */
-    public sealed interface OwnerData extends DocsData {
-        /**
-         * Returns a map from value name to doc entry for values belonging to this module or type.
-         */
-        Map<String, DocEntry.Value> values();
-    }
-
-    public sealed interface GlobalData extends DocsData {
-        /**
-         * Returns the doc entry for this module or type
-         */
-        DocEntry.Global entry();
-    }
-
-
-    /**
-     * Stores the docs of a single module and its values.
-     * @param file The file defining the module
-     * @param entry The doc entry for the module itself
-     * @param values A map from value name to doc entry for said value
-     */
-    public record ModuleData(FileData file, DocEntry.Module entry, Map<String, DocEntry.Value> values) implements OwnerData {
-    }
-
-    /**
-     * Stores the docs of a single global module and its values.
-     * @param file The file defining the module
-     * @param entry The doc entry for the module itself
-     * @param values A map from value name to doc entry for said value
-     */
-    public record GlobalModuleData(FileData file, DocEntry.GlobalModule entry, Map<String, DocEntry.Value> values) implements OwnerData, GlobalData {
-    }
-
-    /**
-     * Stores the docs of a single type and its values.
-     * @param file The file defining the type
-     * @param entry The doc entry for the type itself
-     * @param values A map from value name to doc entry for said value
-     */
-    public record TypeData(FileData file, DocEntry.Type entry, Map<String, DocEntry.Value> values) implements OwnerData {
-    }
-
-    public record GlobalValueData(FileData file, DocEntry.GlobalValue entry) implements GlobalData {
     }
 
     public record ObjectData<T extends NewDocEntry>(T entry, DocTreeObject treeObject) {
