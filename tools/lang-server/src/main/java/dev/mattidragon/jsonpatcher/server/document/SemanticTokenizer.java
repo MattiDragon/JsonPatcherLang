@@ -1,7 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocType;
+import dev.mattidragon.jsonpatcher.docs.newdocs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.newdocs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -24,6 +25,8 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 
 public class SemanticTokenizer {
+    private final List<String> BUILT_IN_TYPES = Arrays.asList("number", "string", "boolean", "null",
+            "object", "array", "function", "special", "any", "never", "unknown");
     public static final Map<String, Integer> TOKEN_TYPES;
     public static final Map<String, Integer> TOKEN_MODIFIERS;
     public static final SemanticTokensLegend LEGEND;
@@ -38,13 +41,15 @@ public class SemanticTokenizer {
                 SemanticTokenTypes.Type,
                 SemanticTokenTypes.Function,
                 SemanticTokenTypes.Parameter,
+                SemanticTokenTypes.TypeParameter,
                 SemanticTokenTypes.Variable,
                 SemanticTokenTypes.Property,
+                SemanticTokenTypes.Decorator,
                 
                 SemanticTokenTypes.String,
                 SemanticTokenTypes.Number
         );
-        for (int i = 0; i < supportedTokens.size(); i++) {
+        for (var i = 0; i < supportedTokens.size(); i++) {
             tokenTypes.put(supportedTokens.get(i), i);
         }
         TOKEN_TYPES = Collections.unmodifiableMap(tokenTypes);
@@ -55,7 +60,7 @@ public class SemanticTokenizer {
                 SemanticTokenModifiers.Readonly,
                 SemanticTokenModifiers.DefaultLibrary
         );
-        for (int i = 0; i < supportedModifiers.size(); i++) {
+        for (var i = 0; i < supportedModifiers.size(); i++) {
             tokenModifiers.put(supportedModifiers.get(i), i);
         }
         TOKEN_MODIFIERS = Collections.unmodifiableMap(tokenModifiers);
@@ -80,62 +85,78 @@ public class SemanticTokenizer {
     }
 
     private void tokenizeDocs(List<NewDocEntry> entries) {
-//        for (var entry : entries) {
-//            switch (entry) {
-//                case DocEntry.Module module -> {
-//                    builder.addToken(module.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
-//                    if (module.locationPos() != null) {
-//                        var pos = new SourceSpan(module.locationPos().from().offset(-1), module.locationPos().to().offset(1));
-//                        builder.addToken(pos, SemanticTokenTypes.String);
-//                    }
-//                }
-//                case DocEntry.Type type -> {
-//                    builder.addToken(type.namePos(), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
-//                    tokenizeDocType(type.definition());
-//                }
-//                case DocEntry.Value value -> {
-//                    var type = value.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
-//                    builder.addToken(value.namePos(), type, SemanticTokenModifiers.Declaration);
-//                    builder.addToken(value.ownerPos(), SemanticTokenTypes.Namespace);
-//                    tokenizeDocType(value.definition());
-//                }
-//                case DocEntry.GlobalModule globalModule -> {
-//                    builder.addToken(globalModule.namePos(), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
-//                }
-//                case DocEntry.GlobalValue globalValue -> {
-//                    var type = globalValue.definition().isFunction() ? SemanticTokenTypes.Function : SemanticTokenTypes.Property;
-//                    builder.addToken(globalValue.namePos(), type, SemanticTokenModifiers.Declaration);
-//                    tokenizeDocType(globalValue.definition());
-//                }
-//            }
-//        }
+        for (var entry : entries) {
+            metadata.get(entry, DocMetadataKeys.NAMESPACE_POSITIONS).ifPresent(positions -> {
+                for (var pos : positions) {
+                    builder.addToken(pos, SemanticTokenTypes.Namespace);
+                }
+            });
+
+            switch (entry) {
+                case NewDocEntry.GlobalValueEntry globalValueEntry -> {
+                    builder.addToken(metadata.get(globalValueEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(globalValueEntry.type());
+                }
+                case NewDocEntry.GlobalLibraryEntry globalLibraryEntry ->
+                        builder.addToken(metadata.get(globalLibraryEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                case NewDocEntry.LibraryEntry libraryEntry -> {
+                    builder.addToken(metadata.get(libraryEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                    builder.addToken(metadata.get(libraryEntry, MetadataKey.IMPORT_LOCATION_POS), SemanticTokenTypes.String);
+                }
+                case NewDocEntry.MetadataEntry metadataEntry -> {
+                    builder.addToken(metadata.get(metadataEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Decorator, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(metadataEntry.type());
+                }
+                case NewDocEntry.NamespaceEntry namespaceEntry ->
+                        builder.addToken(metadata.get(namespaceEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
+                case NewDocEntry.PropertyEntry propertyEntry -> {
+                    builder.addToken(metadata.get(propertyEntry, DocMetadataKeys.PROPERTY_OWNER_POS), SemanticTokenTypes.Type);
+                    builder.addToken(metadata.get(propertyEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(propertyEntry.type());
+                }
+                case NewDocEntry.TypeAliasEntry typeAliasEntry -> {
+                    builder.addToken(metadata.get(typeAliasEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
+                    tokenizeDocType(typeAliasEntry.definition());
+                }
+                case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
+                    builder.addToken(metadata.get(typeDeclarationEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
+                    builder.addToken(metadata.get(typeDeclarationEntry, DocMetadataKeys.BASE_TYPE_POS), SemanticTokenTypes.Type);
+                }
+            }
+        }
     }
     
-    private void tokenizeDocType(DocType type) {
+    private void tokenizeDocType(NewDocType type) {
         switch (type) {
-            case DocType.Array array -> tokenizeDocType(array.entry());
-            case DocType.Function function -> {
-                tokenizeDocType(function.returnType());
-                for (var arg : function.args()) {
-                    tokenizeDocType(arg.type());
-                    builder.addToken(arg.namePos(), SemanticTokenTypes.Parameter);
-                    for (var pos : arg.operatorPoses()) {
-                        builder.addToken(new SourceSpan(pos, pos), SemanticTokenTypes.Operator);
+            case ArrayDocType(var component) -> tokenizeDocType(component);
+            case MapDocType(var component) -> tokenizeDocType(component);
+            case UnionDocType(var first, var second) -> {
+                tokenizeDocType(first);
+                tokenizeDocType(second);
+            }
+            case ErrorDocType ignored -> {
+            }
+            case FunctionDocType(var typeArguments, var argTypes, var returnType) -> {
+                for (var typeArgument : typeArguments) {
+                    builder.addToken(metadata.get(typeArgument, MetadataKey.NAME_POS), SemanticTokenTypes.TypeParameter, SemanticTokenModifiers.Declaration);
+                }
+                for (var argType : argTypes) {
+                    tokenizeDocType(argType.type());
+                    if (argType.name().isPresent()) {
+                        builder.addToken(metadata.get(argType, MetadataKey.NAME_POS), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Declaration);
                     }
                 }
-                for (var pos : function.operatorPoses()) {
-                    builder.addToken(pos, SemanticTokenTypes.Operator);
+                tokenizeDocType(returnType);
+            }
+            case ReferenceDocType referenceDocType -> {
+                if (BUILT_IN_TYPES.contains(referenceDocType.name())) {
+                    builder.addToken(metadata.get(referenceDocType, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.DefaultLibrary);
+                } else {
+                    builder.addToken(metadata.get(referenceDocType, MetadataKey.NAME_POS), SemanticTokenTypes.Type);
                 }
             }
-            case DocType.Name name -> builder.addToken(name.pos(), SemanticTokenTypes.Type);
-            case DocType.Object object -> tokenizeDocType(object.entry());
-            case DocType.Special special -> builder.addToken(special.pos(), SemanticTokenTypes.Type, SemanticTokenModifiers.DefaultLibrary);
-            case DocType.Union union -> {
-                union.children().forEach(this::tokenizeDocType);
-                for (var separator : union.separators()) {
-                    builder.addToken(new SourceSpan(separator, separator), SemanticTokenTypes.Operator);
-                }
-            }
+            case TypeArgumentDocType typeArgumentDocType ->
+                    builder.addToken(metadata.get(typeArgumentDocType, MetadataKey.NAME_POS), SemanticTokenTypes.TypeParameter);
         }
     }
 
@@ -147,21 +168,21 @@ public class SemanticTokenizer {
     
     private void tokenize(ProgramNode node) {
         switch (node) {
-            case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Keyword);
-            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.String);
-            case NumberExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Number);
+            case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
+            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
+            case NumberExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Number);
             case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());
-                builder.addToken(metadata.get(function, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Function);
+                builder.addToken(metadata.get(function, MetadataKey.NAME_POS), SemanticTokenTypes.Function);
                 tokenize(args);
             }
             case FunctionCallExpression(VariableAccessExpression function, var args) -> {
-                builder.addToken(metadata.get(function, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Function);
+                builder.addToken(metadata.get(function, MetadataKey.MAIN_POS), SemanticTokenTypes.Function);
                 tokenize(args);
             }
             case PropertyAccessExpression expression -> {
                 tokenize(expression.parent());
-                builder.addToken(metadata.get(expression, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Property);
+                builder.addToken(metadata.get(expression, MetadataKey.NAME_POS), SemanticTokenTypes.Property);
             }
             case VariableAccessExpression expression -> {
                 var modifiers = new ArrayList<String>();
@@ -193,35 +214,35 @@ public class SemanticTokenizer {
                     type = SemanticTokenTypes.Variable;
                 }
 
-                builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS).orElse(null), type, modifiers.toArray(new String[0]));
+                builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), type, modifiers.toArray(new String[0]));
             }
             case ObjectInitializerExpression expression -> {
                 for (var entry : expression.contents()) {
-                    builder.addToken(metadata.get(entry, MetadataKey.MAIN_POS).orElse(null), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
+                    builder.addToken(metadata.get(entry, MetadataKey.MAIN_POS), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
                     tokenize(entry.value());
                 }
             }
             case IsInstanceExpression expression -> {
                 tokenize(expression.input());
-                builder.addToken(metadata.get(expression, MetadataKey.IS_TYPE_POS).orElse(null), SemanticTokenTypes.Type);
+                builder.addToken(metadata.get(expression, MetadataKey.IS_TYPE_POS), SemanticTokenTypes.Type);
             }
             
             case VariableCreationStatement statement -> {
                 var modifiers = statement.mutable() 
                         ? new String[] { SemanticTokenModifiers.Declaration } 
                         : new String[] { SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration };
-                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Variable, modifiers);
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, modifiers);
                 tokenize(statement.initializer());
             }
             case FunctionArgument argument -> {
-                builder.addToken(metadata.get(argument, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                builder.addToken(metadata.get(argument, MetadataKey.NAME_POS), SemanticTokenTypes.Parameter, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 argument.defaultValue().ifPresent(this::tokenize);
             }
             case FunctionDeclarationStatement statement -> {
-                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 tokenize(statement.getChildren());
             }
-            case ImportStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.NAME_POS).orElse(null), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+            case ImportStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
             
             case ProgramNode other -> tokenize(other.getChildren());
         }
@@ -230,14 +251,19 @@ public class SemanticTokenizer {
     private static class DataBuilder {
         private final List<Entry> entries = new ArrayList<>();
         
+        @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+        public void addToken(Optional<SourceSpan> span, String type, String... modifiers) {
+            span.ifPresent(s -> addToken(s, type, modifiers));
+        }
+        
         public void addToken(@Nullable SourceSpan span, String type, String... modifiers) {
             if (span == null) return; // it's more convenient to simply pass in null for missing positions than to check it
             entries.add(new Entry(span, type, modifiers));
         }
 
         public List<Integer> build() {
-            int previousRow = 1;
-            int previousColumn = 1;
+            var previousRow = 1;
+            var previousColumn = 1;
             List<Integer> data = new ArrayList<>();
             entries.sort(Comparator.comparing(entry -> entry.span().from(), Comparator.comparingInt(SourcePos::row).thenComparing(SourcePos::column)));
             

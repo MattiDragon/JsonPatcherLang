@@ -93,7 +93,10 @@ public class TypeParser {
 
     private NewDocType parseVar(String name) {
         if (typeArguments.containsKey(name)) {
-            return new TypeArgumentDocType(typeArguments.get(name));
+            var type = new TypeArgumentDocType(typeArguments.get(name));
+            metadata.put(type, MetadataKey.NAME_POS, tokens.lastPos());
+            metadata.put(type, MetadataKey.FULL_POS, tokens.lastPos());
+            return type;
         }
         var type = new ErrorDocType("Unknown type argument: " + name);
         metadata.put(type, MetadataKey.FULL_POS, tokens.lastPos());
@@ -103,6 +106,7 @@ public class TypeParser {
     private NewDocType parseName(String value) {
         var type = new ReferenceDocType(value);
         metadata.put(type, MetadataKey.FULL_POS, tokens.lastPos());
+        metadata.put(type, MetadataKey.NAME_POS, tokens.lastPos());
         return type;
     }
 
