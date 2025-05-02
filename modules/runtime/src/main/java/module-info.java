@@ -3,8 +3,8 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module jsonpatcher.lang.runtime {
     uses dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
-    requires org.jspecify;
-    requires org.jetbrains.annotations;
+    requires static org.jspecify;
+    requires static org.jetbrains.annotations;
 
     requires jsonpatcher.lang.compiler;
     requires jsonpatcher.lang.parser;

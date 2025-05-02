@@ -2,9 +2,10 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.lang.compiler {
-    requires org.jetbrains.annotations;
+    requires static org.jetbrains.annotations;
+    requires static org.jspecify;
+
     requires org.objectweb.asm;
-    requires org.jspecify;
 
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.analysis;

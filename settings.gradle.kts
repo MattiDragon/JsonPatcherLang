@@ -18,6 +18,7 @@ fun tool(name: String) {
     project(":$name").projectDir = file("tools/$name")
 }
 
+tool("cli")
 tool("doctool")
 tool("lang-server")
 tool("formatter")

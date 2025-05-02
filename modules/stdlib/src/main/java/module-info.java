@@ -2,7 +2,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.lang.stdlib {
-    requires org.jspecify;
+    requires static org.jspecify;
 
     exports dev.mattidragon.jsonpatcher.lang.stdlib;
 }

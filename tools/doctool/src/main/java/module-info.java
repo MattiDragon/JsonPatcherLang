@@ -2,12 +2,14 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.tools.doctool {
-    requires jsonpatcher.lang.parser;
+    requires static org.jspecify;
+    requires static org.jetbrains.annotations;
+
     requires org.commonmark;
     requires org.commonmark.ext.gfm.strikethrough;
     requires org.commonmark.ext.gfm.tables;
-    requires org.jspecify;
-    requires org.jetbrains.annotations;
+
+    requires jsonpatcher.lang.parser;
 
     exports dev.mattidragon.jsonpatcher.docs;
     exports dev.mattidragon.jsonpatcher.docs.data;
