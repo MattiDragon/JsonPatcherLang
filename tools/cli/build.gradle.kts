@@ -7,6 +7,7 @@ plugins {
 dependencies {
     implementation(project(":doctool"))
     implementation(project(":formatter"))
+    implementation(project(":analysis"))
     implementation(libs.picocli)
     annotationProcessor(libs.picocli.codegen)
 }
@@ -29,6 +30,7 @@ tasks.processResources {
 }
 
 application {
+    applicationName = "jsonpatcher-cli"
     mainClass = "dev.mattidragon.jsonpatcher.cli.Main"
     mainModule = "jsonpatcher.tools.cli"
 }

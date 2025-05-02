@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.cli;
+package dev.mattidragon.jsonpatcher.cli.impl;
 
 import picocli.CommandLine;
 

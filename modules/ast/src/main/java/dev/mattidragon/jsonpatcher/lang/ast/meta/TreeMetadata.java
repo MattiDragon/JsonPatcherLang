@@ -31,6 +31,13 @@ public class TreeMetadata {
                 });
     }
 
+    public Map<MetadataKey<?>, Object> getAll(MetadataHolder node) {
+        var nodeMap = values.get(node);
+        if (nodeMap == null) return Map.of();
+
+        return Map.copyOf(nodeMap);
+    }
+
     /**
      * Copies a key from one node to another.
      * This method is different from a simple implementation using {@link #get} and {@link #put} 

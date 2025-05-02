@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.cli.commands;
 
-import dev.mattidragon.jsonpatcher.cli.VersionProvider;
+import dev.mattidragon.jsonpatcher.cli.impl.VersionProvider;
 import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocWriter;

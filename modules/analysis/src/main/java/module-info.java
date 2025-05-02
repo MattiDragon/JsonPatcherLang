@@ -8,4 +8,6 @@ module jsonpatcher.lang.analysis {
     exports dev.mattidragon.jsonpatcher.lang.analysis.constant;
     exports dev.mattidragon.jsonpatcher.lang.analysis.variable;
     exports dev.mattidragon.jsonpatcher.lang.analysis.poscheck;
+    exports dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
+    exports dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type;
 }
