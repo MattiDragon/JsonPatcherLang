@@ -3,77 +3,77 @@ import "@internals" as internals;
 #| global library math
 #| The math library contains many functions for performing mathematical operations.
 
-#| value math.PI: number
+#| property math.PI: number
 $PI = internals.pi();
 
-#| value math.E: number
+#| property math.E: number
 $E = internals.e();
 
-#| value math.NaN: number
+#| property math.NaN: number
 $NaN = 0 / 0;
 
-#| value math.POSITIVE_INFINITY: number
+#| property math.POSITIVE_INFINITY: number
 $POSITIVE_INFINITY = 1 / 0;
 
-#| value math.NEGATIVE_INFINITY: number
+#| property math.NEGATIVE_INFINITY: number
 $NEGATIVE_INFINITY = -1 / 0;
 
-#| value math.asin: (input: number) -> number
+#| property math.asin: (input: number) -> number
 $asin = internals.bindMathFunction("asin");
 
-#| value math.sin: (input: number) -> number
+#| property math.sin: (input: number) -> number
 $sin = internals.bindMathFunction("sin");
 
-#| value math.sinh: (input: number) -> number
+#| property math.sinh: (input: number) -> number
 $sinh = internals.bindMathFunction("sinh");
 
-#| value math.acos: (input: number) -> number
+#| property math.acos: (input: number) -> number
 $acos = internals.bindMathFunction("acos");
 
-#| value math.cos: (input: number) -> number
+#| property math.cos: (input: number) -> number
 $cos = internals.bindMathFunction("cos");
 
-#| value math.cosh: (input: number) -> number
+#| property math.cosh: (input: number) -> number
 $cosh = internals.bindMathFunction("cosh");
 
-#| value math.atan: (input: number) -> number
+#| property math.atan: (input: number) -> number
 $atan = internals.bindMathFunction("atan");
 
-#| value math.tan: (input: number) -> number
+#| property math.tan: (input: number) -> number
 $tan = internals.bindMathFunction("tan");
 
-#| value math.tanh: (input: number) -> number
+#| property math.tanh: (input: number) -> number
 $tanh = internals.bindMathFunction("tanh");
 
-#| value math.exp: (input: number) -> number
+#| property math.exp: (input: number) -> number
 $exp = internals.bindMathFunction("exp");
 
-#| value math.log: (input: number) -> number
+#| property math.log: (input: number) -> number
 $log = internals.bindMathFunction("log");
 
-#| value math.log10: (input: number) -> number
+#| property math.log10: (input: number) -> number
 $log10 = internals.bindMathFunction("log10");
 
-#| value math.sqrt: (input: number) -> number
+#| property math.sqrt: (input: number) -> number
 $sqrt = internals.bindMathFunction("sqrt");
 
-#| value math.cbrt: (input: number) -> number
+#| property math.cbrt: (input: number) -> number
 $cbrt = internals.bindMathFunction("cbrt");
 
-#| value math.ceil: (input: number) -> number
+#| property math.ceil: (input: number) -> number
 $ceil = internals.bindMathFunction("ceil");
 
-#| value math.floor: (input: number) -> number
+#| property math.floor: (input: number) -> number
 $floor = internals.bindMathFunction("floor");
 
-#| value math.abs: (input: number) -> number
+#| property math.abs: (input: number) -> number
 $abs = internals.bindMathFunction("abs");
 
-#| value math.signum: (input: number) -> number
+#| property math.signum: (input: number) -> number
 $signum = internals.bindMathFunction("signum");
 
-#| value math.max: (first: number, second: number) -> number
+#| property math.max: (first: number, second: number) -> number
 $min = internals.min;
 
-#| value math.min: (first: number, second: number) -> number
+#| property math.min: (first: number, second: number) -> number
 $min = internals.max;

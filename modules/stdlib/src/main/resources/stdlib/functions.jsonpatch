@@ -4,7 +4,7 @@ import "@internals" as internals;
 #| Provides utilities for working with functions. 
 #| Some of the can be used as methods on function objects.
 
-#| value functions.bind: (function: function, arg: any, index?: number) -> function
+#| property functions.bind: (function: function, arg: any, index: number?) -> function
 #| Binds the specified argument to the function at the specified index or 0 if none is provided.
 #| *Can be used as a method*
 function bind(this, arg, index = 0) {
@@ -14,7 +14,7 @@ function bind(this, arg, index = 0) {
 }
 $bind = bind;
 
-#| value functions.then: (function: function, then: function) -> function
+#| property functions.then: (function: function, then: function) -> function
 #| Creates a new function that calls the first function and then calls the second function on it's return value.
 #| *Can be used as a method*
 function then(this, then) {
@@ -24,10 +24,10 @@ function then(this, then) {
 }
 $then = then;
 
-#| value functions.identity: () -> (value: any) -> any
+#| property functions.identity: () -> {<$T>(value: $T) -> $T}
 #| Returns a function that returns its single argument.
 $identity = () -> (value) -> value;
 
-#| value functions.constant: (value: any) -> () -> any
+#| property functions.constant: <$T>(value: $T) -> {() -> $T}
 #| Returns a function that always returns the specified value.
 $constant = (value) -> () -> value;

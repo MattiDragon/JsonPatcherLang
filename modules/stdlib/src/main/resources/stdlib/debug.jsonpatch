@@ -3,19 +3,19 @@ import "@internals" as internals;
 #| global library debug
 #| Provides various functions for debugging code.
 
-#| value debug.log: (message: any) -> null
+#| property debug.log: (message: any) -> null
 #| Logs a message to console.
 function log(value) {
     internals.log(value);
 }
 
-#| value debug.throw: (message: any) -> null
+#| property debug.throw: (message: any) -> null
 #| Throws an error. Use this if your code gets in situations it shouldn't.
 function throw(value) {
     internals._throw(value);
 }
 
-#| value debug.assert: (value: any, message?: string) -> null
+#| property debug.assert: (value: any, message: string?) -> null
 #| Checks if the value is truthy. If it is nothing happens. If it isn't, then an error is thrown.
 function assert(value, message = "Asserting failed") {
     if (!value) {
@@ -23,7 +23,7 @@ function assert(value, message = "Asserting failed") {
     }
 }
 
-#| value debug.assertEquals: (first: any, second: any) -> null
+#| property debug.assertEquals: (first: any, second: any) -> null
 #| Checks if the two values are equal. If they are nothing happens. If they aren't, then an error is thrown.
 function assertEquals(first, second) {
     if (first != second) {
