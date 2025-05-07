@@ -2,8 +2,8 @@ package dev.mattidragon.jsonpatcher.docs.parse;
 
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.data.DocCondition;
-import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -51,8 +51,6 @@ public class DocParser {
         }
         var keywordPos = tokens.lastPos();
 
-        // TODO: attach position metadata
-        // TODO: handle legacy syntax
         return switch (firstToken) {
             case "library" -> parseLibrary(keywordPos);
             case "global" -> {
@@ -161,7 +159,7 @@ public class DocParser {
     }
 
     private DocEntry.PropertyEntry parseProperty(SourceSpan keywordPos) throws FailException {
-        var dottedNames = readDottedNames();
+        var dottedNames = readPropertyName();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
         String owner;
@@ -340,6 +338,31 @@ public class DocParser {
         while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
             tokens.next();
             names.add(expectName());
+            dottedNamePositions.add(tokens.lastPos());
+        }
+        return names;
+    }
+
+    // Special version of the above that supports a star at the end
+    private List<String> readPropertyName() throws FailException {
+        var names = new ArrayList<String>();
+        dottedNamePositions = new ArrayList<>();
+        names.add(expectName());
+        dottedNamePositions.add(tokens.lastPos());
+        while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
+            tokens.next();
+            var upcoming = tokens.peek();
+            if (upcoming == DocToken.Symbol.STAR) {
+                tokens.next();
+                names.add("*");
+                dottedNamePositions.add(tokens.lastPos());
+                if (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
+                    diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Unexpected '.' after '*'", DocParseError.Type.DOC_PARSE));
+                }
+                break;
+            } else {
+                names.add(expectName());
+            }
             dottedNamePositions.add(tokens.lastPos());
         }
         return names;

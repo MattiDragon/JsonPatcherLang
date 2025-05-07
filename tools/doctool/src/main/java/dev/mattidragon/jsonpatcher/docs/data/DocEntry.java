@@ -29,6 +29,9 @@ public sealed interface DocEntry extends MetadataHolder {
     record GlobalValueEntry(NamespaceDescription namespace, String name, DocType type, Optional<DocCondition> condition, String body) implements GlobalEntry {
     }
 
+    /**
+     * @param name May be {@code *} in addition to regular names
+     */
     record PropertyEntry(NamespaceDescription namespace, String owner, String name, DocType type, Optional<DocCondition> condition, String body) implements DocEntry {
     }
 

@@ -67,6 +67,7 @@ public class TypeChecker {
 
     private Type checkExpression(Expression expression) {
         var existingType = metadata.get(expression, TYPE);
+        //noinspection OptionalIsPresent
         if (existingType.isPresent()) {
             return existingType.get();
         }
@@ -150,10 +151,12 @@ public class TypeChecker {
 
             // TODO: primitives with stdlib
 
-            case NamedType(var supertype, var properties, var callSignature, var typeName) -> {
+            case NamedType(var supertype, var properties, var wildcardPropertyType, var callSignature, var typeName) -> {
                 var propType = properties.get(name);
                 if (propType != null) {
                     yield propType;
+                } if (wildcardPropertyType.isPresent()) {
+                    yield wildcardPropertyType.get();
                 } else {
                     addError(expression, "Unknown property " + name + " on type " + typeName);
                     yield SpecialType.UNKNOWN;

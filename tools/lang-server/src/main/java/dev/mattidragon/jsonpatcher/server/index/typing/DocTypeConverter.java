@@ -69,15 +69,20 @@ public class DocTypeConverter {
     }
 
     private NamedType buildNamedType(String name, PrimitiveType superType, Collection<DocTreeProperty> docProperties) {
+        Type wildcardType = null;
         var properties = new HashMap<String, Type>();
         for (var property : docProperties) {
             var propertyName = property.entry().name();
             var propertyType = convert(property.entry().type());
+            if (propertyName.equals("*")) {
+                wildcardType = propertyType;
+                continue;
+            }
             properties.put(propertyName, propertyType);
         }
 
         // TODO: add option to declare call signature and use that
-        return new NamedType(superType, properties, Optional.empty(), name);
+        return new NamedType(superType, properties, Optional.ofNullable(wildcardType), Optional.empty(), name);
     }
 
     private Type convert(DocType docType) {

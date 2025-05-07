@@ -74,7 +74,7 @@ public class TypeComparison {
             // TODO: Consider shortcut for union supertype
             case UnionType(var children) -> children.stream().allMatch(child -> isSubtype(child, superType, equalTypeArgs));
 
-            case NamedType(var namedSuperType, var properties, var callSignature, String name) -> {
+            case NamedType(var namedSuperType, var properties, var wildcardProperty, var callSignature, var name) -> {
                 if (isSubtype(namedSuperType, superType, equalTypeArgs)) {
                     yield true;
                 }
