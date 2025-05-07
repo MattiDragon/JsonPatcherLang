@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.docs;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.parse.NewDocParser;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class DocCommentHandler implements CommentHandler {
-    private final List<NewDocEntry> entries = new ArrayList<>();
+    private final List<DocEntry> entries = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
     private final TreeMetadata metadata;
 
@@ -42,7 +42,7 @@ public class DocCommentHandler implements CommentHandler {
                     .map(Comment::text)
                     .collect(Collectors.joining("\n"));
 
-            var entry = NewDocParser.parse(
+            var entry = DocParser.parse(
                     docBlock.getFirst().text(),
                     body,
                     docBlock.getFirst().start(),
@@ -56,7 +56,7 @@ public class DocCommentHandler implements CommentHandler {
         }
     }
 
-    public List<NewDocEntry> entries() {
+    public List<DocEntry> entries() {
         return Collections.unmodifiableList(entries);
     }
 

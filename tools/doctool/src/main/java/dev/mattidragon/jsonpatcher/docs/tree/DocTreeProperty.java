@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.tree;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 
-public record DocTreeProperty(NewDocEntry.PropertyEntry entry) {
+public record DocTreeProperty(DocEntry.PropertyEntry entry) {
 }

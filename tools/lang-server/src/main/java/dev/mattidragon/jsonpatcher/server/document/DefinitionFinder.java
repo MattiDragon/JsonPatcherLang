@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
 import dev.mattidragon.jsonpatcher.docs.write.DocEntryWriter;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
@@ -123,7 +123,7 @@ public class DefinitionFinder {
         };
     }
 
-    private Document renderDocEntry(NewDocEntry docEntry) {
+    private Document renderDocEntry(DocEntry docEntry) {
         var document = new Document();
         DocEntryWriter.write(document, docEntry, 3);
         return document;

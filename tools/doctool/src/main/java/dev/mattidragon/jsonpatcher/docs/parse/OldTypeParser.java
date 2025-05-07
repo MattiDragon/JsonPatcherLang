@@ -20,13 +20,13 @@ public class OldTypeParser {
         this.diagnostics = diagnostics;
     }
 
-    public static NewDocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    public static DocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         var typeParser = new OldTypeParser(metadata, tokens, diagnostics);
         // TODO: handle EOF here
         return typeParser.root(typeParser.tokens.next());
     }
 
-    private NewDocType root(DocToken token) {
+    private DocType root(DocToken token) {
         var type = switch (token) {
             case DocToken.Symbol.BEGIN_PAREN -> function();
             case DocToken.Symbol.BEGIN_SQUARE -> array();
@@ -52,7 +52,7 @@ public class OldTypeParser {
         return type;
     }
 
-    private NewDocType object() {
+    private DocType object() {
         var inner = root(tokens.next());
         if (tokens.next() != DocToken.Symbol.END_CURLY) {
             var error = "Expected '}' to close object type";
@@ -63,7 +63,7 @@ public class OldTypeParser {
         return new MapDocType(inner);
     }
 
-    private NewDocType array() {
+    private DocType array() {
         var inner = root(tokens.next());
         if (tokens.next() != DocToken.Symbol.END_SQUARE) {
             var error = "Expected ']' to close array type";
@@ -74,7 +74,7 @@ public class OldTypeParser {
         return new ArrayDocType(inner);
     }
 
-    private NewDocType function() {
+    private DocType function() {
         var arguments = new ArrayList<FunctionDocType.Argument>();
         args:
         while (tokens.peek() instanceof DocToken.Name(var name)) {

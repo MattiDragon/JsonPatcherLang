@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.index.typing;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
@@ -21,29 +21,29 @@ public class DocTypeConverter {
                 var fullName = joinName(namespace, object);
 
                 switch (object.entry()) {
-                    case NewDocEntry.GlobalValueEntry globalEntry ->
+                    case DocEntry.GlobalValueEntry globalEntry ->
                             globals.put(globalEntry.name(), convert(globalEntry.type()));
-                    case NewDocEntry.GlobalLibraryEntry globalEntry -> {
+                    case DocEntry.GlobalLibraryEntry globalEntry -> {
                         var type = buildNamedType(fullName, PrimitiveType.OBJECT, object.properties().values());
                         getOrComputeType(fullName).set(type);
                         globals.put(globalEntry.name(), type);
                     }
-                    case NewDocEntry.LibraryEntry libraryEntry -> {
+                    case DocEntry.LibraryEntry libraryEntry -> {
                         var type = buildNamedType(fullName, PrimitiveType.OBJECT, object.properties().values());
                         getOrComputeType(fullName).set(type);
                         libraries.put(libraryEntry.location().orElse(libraryEntry.name()), type);
                     }
-                    case NewDocEntry.MetadataEntry metadataEntry -> {
+                    case DocEntry.MetadataEntry metadataEntry -> {
                         // Metadata will get type checking later
                     }
-                    case NewDocEntry.NamespaceEntry namespaceEntry ->
+                    case DocEntry.NamespaceEntry namespaceEntry ->
                             throw new IllegalStateException("Namespaces are not doc objects");
-                    case NewDocEntry.PropertyEntry propertyEntry ->
+                    case DocEntry.PropertyEntry propertyEntry ->
                             throw new IllegalStateException("Properties are not doc objects");
-                    case NewDocEntry.TypeAliasEntry typeAliasEntry ->
+                    case DocEntry.TypeAliasEntry typeAliasEntry ->
                             getOrComputeType(fullName).set(convert(typeAliasEntry.definition()));
 
-                    case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
+                    case DocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
                         var superType = switch (typeDeclarationEntry.baseType()) {
                             case OBJECT -> PrimitiveType.OBJECT;
                             case SPECIAL -> PrimitiveType.SPECIAL;
@@ -80,11 +80,11 @@ public class DocTypeConverter {
         return new NamedType(superType, properties, Optional.empty(), name);
     }
 
-    private Type convert(NewDocType docType) {
+    private Type convert(DocType docType) {
         return convert(docType, new HashMap<>());
     }
 
-    private Type convert(NewDocType docType, Map<FunctionDocType.TypeArgument, TypeArgument> typeArgMapping) {
+    private Type convert(DocType docType, Map<FunctionDocType.TypeArgument, TypeArgument> typeArgMapping) {
         return switch (docType) {
             case ArrayDocType(var element) -> new ArrayType(convert(element, typeArgMapping));
             case MapDocType(var element) -> new ObjectType(convert(element, typeArgMapping));

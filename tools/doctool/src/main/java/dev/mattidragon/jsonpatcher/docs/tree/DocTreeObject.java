@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.tree;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DocTreeObject {
-    private @Nullable NewDocEntry entry;
+    private @Nullable DocEntry entry;
     private final String name;
     private final Map<String, DocTreeProperty> properties = new HashMap<>();
 
@@ -16,11 +16,11 @@ public class DocTreeObject {
         this.name = name;
     }
 
-    public void setEntry(NewDocEntry entry) {
-        if (entry instanceof NewDocEntry.PropertyEntry) {
+    public void setEntry(DocEntry entry) {
+        if (entry instanceof DocEntry.PropertyEntry) {
             throw new IllegalArgumentException("Object cannot have property entry");
         }
-        if (entry instanceof NewDocEntry.NamespaceEntry) {
+        if (entry instanceof DocEntry.NamespaceEntry) {
             throw new IllegalArgumentException("Object cannot have namespace entry");
         }
         if (!entry.name().equals(name)) {
@@ -33,7 +33,7 @@ public class DocTreeObject {
         this.entry = entry;
     }
 
-    public @Nullable NewDocEntry entry() {
+    public @Nullable DocEntry entry() {
         return entry;
     }
 

@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
@@ -84,7 +84,7 @@ public class SemanticTokenizer {
         return new SemanticTokens(tokenizer.builder.build());
     }
 
-    private void tokenizeDocs(List<NewDocEntry> entries) {
+    private void tokenizeDocs(List<DocEntry> entries) {
         for (var entry : entries) {
             metadata.get(entry, DocMetadataKeys.NAMESPACE_POSITIONS).ifPresent(positions -> {
                 for (var pos : positions) {
@@ -93,32 +93,32 @@ public class SemanticTokenizer {
             });
 
             switch (entry) {
-                case NewDocEntry.GlobalValueEntry globalValueEntry -> {
+                case DocEntry.GlobalValueEntry globalValueEntry -> {
                     builder.addToken(metadata.get(globalValueEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                     tokenizeDocType(globalValueEntry.type());
                 }
-                case NewDocEntry.GlobalLibraryEntry globalLibraryEntry ->
+                case DocEntry.GlobalLibraryEntry globalLibraryEntry ->
                         builder.addToken(metadata.get(globalLibraryEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
-                case NewDocEntry.LibraryEntry libraryEntry -> {
+                case DocEntry.LibraryEntry libraryEntry -> {
                     builder.addToken(metadata.get(libraryEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                     builder.addToken(metadata.get(libraryEntry, MetadataKey.IMPORT_LOCATION_POS), SemanticTokenTypes.String);
                 }
-                case NewDocEntry.MetadataEntry metadataEntry -> {
+                case DocEntry.MetadataEntry metadataEntry -> {
                     builder.addToken(metadata.get(metadataEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Decorator, SemanticTokenModifiers.Declaration);
                     tokenizeDocType(metadataEntry.type());
                 }
-                case NewDocEntry.NamespaceEntry namespaceEntry ->
+                case DocEntry.NamespaceEntry namespaceEntry ->
                         builder.addToken(metadata.get(namespaceEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Declaration);
-                case NewDocEntry.PropertyEntry propertyEntry -> {
+                case DocEntry.PropertyEntry propertyEntry -> {
                     builder.addToken(metadata.get(propertyEntry, DocMetadataKeys.PROPERTY_OWNER_POS), SemanticTokenTypes.Type);
                     builder.addToken(metadata.get(propertyEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
                     tokenizeDocType(propertyEntry.type());
                 }
-                case NewDocEntry.TypeAliasEntry typeAliasEntry -> {
+                case DocEntry.TypeAliasEntry typeAliasEntry -> {
                     builder.addToken(metadata.get(typeAliasEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
                     tokenizeDocType(typeAliasEntry.definition());
                 }
-                case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
+                case DocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
                     builder.addToken(metadata.get(typeDeclarationEntry, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.Declaration);
                     builder.addToken(metadata.get(typeDeclarationEntry, DocMetadataKeys.BASE_TYPE_POS), SemanticTokenTypes.Type);
                 }
@@ -126,7 +126,7 @@ public class SemanticTokenizer {
         }
     }
     
-    private void tokenizeDocType(NewDocType type) {
+    private void tokenizeDocType(DocType type) {
         switch (type) {
             case ArrayDocType(var component) -> tokenizeDocType(component);
             case MapDocType(var component) -> tokenizeDocType(component);
@@ -204,7 +204,7 @@ public class SemanticTokenizer {
                         case FunctionArgument __ -> SemanticTokenTypes.Parameter;
                         case Program __ -> {
                             var globalDocData = docHolder.getGlobal(variable.name()).orElse(null);
-                            if (globalDocData != null && globalDocData.entry() instanceof NewDocEntry.GlobalLibraryEntry) {
+                            if (globalDocData != null && globalDocData.entry() instanceof DocEntry.GlobalLibraryEntry) {
                                 yield SemanticTokenTypes.Namespace;
                             }
                             yield SemanticTokenTypes.Variable;

@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.docs.write;
 import dev.mattidragon.jsonpatcher.docs.type.*;
 
 public class DocTypeWriter {
-    public static String write(NewDocType type) {
+    public static String write(DocType type) {
         return switch (type) {
             case ArrayDocType(var inner)
                     -> writeSuffix(inner, "[]");
@@ -22,7 +22,7 @@ public class DocTypeWriter {
         };
     }
 
-    private static String writeSuffix(NewDocType inner, String suffix) {
+    private static String writeSuffix(DocType inner, String suffix) {
         var needsParens = inner instanceof FunctionDocType || inner instanceof UnionDocType;
 
         var builder = new StringBuilder();

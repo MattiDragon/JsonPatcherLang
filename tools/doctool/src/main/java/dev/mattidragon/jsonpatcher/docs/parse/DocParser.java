@@ -3,7 +3,7 @@ package dev.mattidragon.jsonpatcher.docs.parse;
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.data.DocCondition;
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class NewDocParser {
+public class DocParser {
     private final Tokenizer tokens;
     private final String body;
     private final DiagnosticsBuilder diagnostics;
@@ -23,7 +23,7 @@ public class NewDocParser {
     private final TreeMetadata metadata;
     private List<SourceSpan> dottedNamePositions = List.of();
 
-    private NewDocParser(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    private DocParser(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         this.tokens = new Tokenizer(header, headerStartPos);
         this.body = body;
         this.diagnostics = diagnostics;
@@ -31,9 +31,9 @@ public class NewDocParser {
         this.metadata = metadata;
     }
 
-    public static @Nullable NewDocEntry parse(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    public static @Nullable DocEntry parse(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         try {
-            return new NewDocParser(header, body, headerStartPos, metadata, diagnostics).parse();
+            return new DocParser(header, body, headerStartPos, metadata, diagnostics).parse();
         } catch (FailException e) {
             return null;
         } catch (Tokenizer.EolException e) {
@@ -42,7 +42,7 @@ public class NewDocParser {
         }
     }
 
-    private NewDocEntry parse() throws FailException {
+    private DocEntry parse() throws FailException {
         var hadNext = tokens.hasNext();
         if (!hadNext || !(tokens.next() instanceof DocToken.Name(var firstToken))) {
             var pos = hadNext ? tokens.lastPos() : new SourceSpan(headerStartPos, headerStartPos);
@@ -80,7 +80,7 @@ public class NewDocParser {
                 }
                 var condition = checkCondition();
                 expectEol();
-                yield new NewDocEntry.LibraryEntry(NamespaceDescription.EMPTY, name, Optional.ofNullable(location), condition, body);
+                yield new DocEntry.LibraryEntry(NamespaceDescription.EMPTY, name, Optional.ofNullable(location), condition, body);
             }
             case "value" -> {
                 var owner = expectName();
@@ -90,7 +90,7 @@ public class NewDocParser {
                 var type = OldTypeParser.parse(tokens, metadata, diagnostics);
                 var condition = checkCondition();
                 expectEol();
-                yield new NewDocEntry.PropertyEntry(NamespaceDescription.EMPTY, owner, name, type, condition, body);
+                yield new DocEntry.PropertyEntry(NamespaceDescription.EMPTY, owner, name, type, condition, body);
             }
             default -> {
                 var pos = tokens.lastPos();
@@ -100,18 +100,18 @@ public class NewDocParser {
         };
     }
 
-    private NewDocEntry.NamespaceEntry parseNamespace(SourceSpan keywordPos) throws FailException {
+    private DocEntry.NamespaceEntry parseNamespace(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.NamespaceEntry(new NamespaceDescription(dottedNames), name, condition, body);
+        var entry = new DocEntry.NamespaceEntry(new NamespaceDescription(dottedNames), name, condition, body);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
 
-    private NewDocEntry.MetadataEntry parseMetadata(SourceSpan keywordPos) throws FailException {
+    private DocEntry.MetadataEntry parseMetadata(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
@@ -119,12 +119,12 @@ public class NewDocParser {
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.MetadataEntry(new NamespaceDescription(dottedNames), name, type, condition, body);
+        var entry = new DocEntry.MetadataEntry(new NamespaceDescription(dottedNames), name, type, condition, body);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
 
-    private NewDocEntry.TypeAliasEntry parseTypeAlias(SourceSpan keywordPos) throws FailException {
+    private DocEntry.TypeAliasEntry parseTypeAlias(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
@@ -132,35 +132,35 @@ public class NewDocParser {
         var definition = TypeParser.parse(tokens, metadata, diagnostics);
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.TypeAliasEntry(new NamespaceDescription(dottedNames), name, definition, condition, body);
+        var entry = new DocEntry.TypeAliasEntry(new NamespaceDescription(dottedNames), name, definition, condition, body);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
 
-    private NewDocEntry.TypeDeclarationEntry parseType(SourceSpan keywordPos) throws FailException {
+    private DocEntry.TypeDeclarationEntry parseType(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
         expectSymbol(DocToken.Symbol.COLON);
         var baseType = switch (tokens.next()) {
-            case DocToken.Name(var s) when s.equals("object") -> NewDocEntry.TypeDeclarationEntry.BaseType.OBJECT;
-            case DocToken.Name(var s) when s.equals("special") -> NewDocEntry.TypeDeclarationEntry.BaseType.SPECIAL;
+            case DocToken.Name(var s) when s.equals("object") -> DocEntry.TypeDeclarationEntry.BaseType.OBJECT;
+            case DocToken.Name(var s) when s.equals("special") -> DocEntry.TypeDeclarationEntry.BaseType.SPECIAL;
             default -> {
                 var pos = tokens.lastPos();
                 diagnostics.addDiagnostic(new DocParseError(pos, "Unknown base type. Must be either object or special", DocParseError.Type.DOC_PARSE));
-                yield NewDocEntry.TypeDeclarationEntry.BaseType.OBJECT;
+                yield DocEntry.TypeDeclarationEntry.BaseType.OBJECT;
             }
         };
         var baseTypePos = tokens.lastPos();
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.TypeDeclarationEntry(new NamespaceDescription(dottedNames), name, baseType, condition, body);
+        var entry = new DocEntry.TypeDeclarationEntry(new NamespaceDescription(dottedNames), name, baseType, condition, body);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.BASE_TYPE_POS, baseTypePos);
         return entry;
     }
 
-    private NewDocEntry.PropertyEntry parseProperty(SourceSpan keywordPos) throws FailException {
+    private DocEntry.PropertyEntry parseProperty(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
@@ -179,13 +179,13 @@ public class NewDocParser {
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.PropertyEntry(new NamespaceDescription(dottedNames), owner, name, type, condition, body);
+        var entry = new DocEntry.PropertyEntry(new NamespaceDescription(dottedNames), owner, name, type, condition, body);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.PROPERTY_OWNER_POS, ownerPos);
         return entry;
     }
 
-    private NewDocEntry.GlobalValueEntry parseGlobal(SourceSpan keywordPos) throws FailException {
+    private DocEntry.GlobalValueEntry parseGlobal(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var globalName = dottedNames.removeLast();
         var globalNamePos = dottedNamePositions.removeLast();
@@ -193,23 +193,23 @@ public class NewDocParser {
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.GlobalValueEntry(new NamespaceDescription(dottedNames), globalName, type, condition, body);
+        var entry = new DocEntry.GlobalValueEntry(new NamespaceDescription(dottedNames), globalName, type, condition, body);
         attachStandardMetadata(entry, keywordPos, globalNamePos);
         return entry;
     }
 
-    private NewDocEntry.GlobalLibraryEntry parseGlobalLibrary(SourceSpan keywordPos, SourceSpan secondKeywordPos) throws FailException {
+    private DocEntry.GlobalLibraryEntry parseGlobalLibrary(SourceSpan keywordPos, SourceSpan secondKeywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var libName = dottedNames.removeLast();
         var libNamePos = dottedNamePositions.removeLast();
         var condition = checkCondition();
-        var entry = new NewDocEntry.GlobalLibraryEntry(new NamespaceDescription(dottedNames), libName, condition, body);
+        var entry = new DocEntry.GlobalLibraryEntry(new NamespaceDescription(dottedNames), libName, condition, body);
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.SECONDARY_KEYWORD_POS, secondKeywordPos);
         return entry;
     }
 
-    private NewDocEntry.LibraryEntry parseLibrary(SourceSpan keywordPos) throws FailException {
+    private DocEntry.LibraryEntry parseLibrary(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var libName = dottedNames.removeLast();
         var libNamePos = dottedNamePositions.removeLast();
@@ -218,13 +218,13 @@ public class NewDocParser {
         var locationsPos = location == null ? null : tokens.lastPos();
         var condition = checkCondition();
         expectEol();
-        var entry = new NewDocEntry.LibraryEntry(namespace, libName, Optional.ofNullable(location), condition, body);
+        var entry = new DocEntry.LibraryEntry(namespace, libName, Optional.ofNullable(location), condition, body);
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.IMPORT_LOCATION_POS, locationsPos != null ? locationsPos : libNamePos);
         return entry;
     }
 
-    private void attachStandardMetadata(NewDocEntry entry, SourceSpan keywordPos, SourceSpan namePos) {
+    private void attachStandardMetadata(DocEntry entry, SourceSpan keywordPos, SourceSpan namePos) {
         metadata.put(entry, DocMetadataKeys.NAMESPACE_POSITIONS, dottedNamePositions);
         metadata.put(entry, MetadataKey.NAME_POS, namePos);
         metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);

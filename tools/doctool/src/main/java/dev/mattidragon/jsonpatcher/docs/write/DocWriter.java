@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.write;
 
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
@@ -63,12 +63,12 @@ public class DocWriter {
         node.appendChild(heading);
     }
 
-    private static NewDocEntry.@NotNull NamespaceEntry getEntry(DocTreeNamespace namespace) {
+    private static DocEntry.@NotNull NamespaceEntry getEntry(DocTreeNamespace namespace) {
         var namespaceEntry = namespace.entry();
         if (namespaceEntry != null) {
             return namespaceEntry;
         }
-        return new NewDocEntry.NamespaceEntry(
+        return new DocEntry.NamespaceEntry(
                 namespace.description().withoutLast(),
                 namespace.description().parts().isEmpty()
                         ? ""

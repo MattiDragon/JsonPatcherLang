@@ -21,12 +21,12 @@ public class TypeParser {
         this.diagnostics = diagnostics;
     }
 
-    public static NewDocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    public static DocType parse(Tokenizer tokens, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         var typeParser = new TypeParser(metadata, tokens, diagnostics);
         return typeParser.root(typeParser.tokens.next());
     }
 
-    private NewDocType root(DocToken token) {
+    private DocType root(DocToken token) {
         var type = switch (token) {
             case DocToken.Symbol.BEGIN_PAREN -> parseFunction(List.of());
             case DocToken.Symbol.BEGIN_ANGLE -> parseGenericFunction();
@@ -92,7 +92,7 @@ public class TypeParser {
         return type;
     }
 
-    private NewDocType parseVar(String name) {
+    private DocType parseVar(String name) {
         if (typeArguments.containsKey(name)) {
             var type = new TypeArgumentDocType(typeArguments.get(name));
             metadata.put(type, MetadataKey.NAME_POS, tokens.lastPos());
@@ -104,7 +104,7 @@ public class TypeParser {
         return type;
     }
 
-    private NewDocType parseName(String value) {
+    private DocType parseName(String value) {
         var startPos = tokens.lastPos();
 
         var namespacePositions = new ArrayList<SourceSpan>();
@@ -130,7 +130,7 @@ public class TypeParser {
         return type;
     }
 
-    private NewDocType parseGenericFunction() {
+    private DocType parseGenericFunction() {
         var startPos = tokens.lastPos();
 
         var typeArguments = new ArrayList<FunctionDocType.TypeArgument>();
@@ -145,7 +145,7 @@ public class TypeParser {
             }
             var namePos = tokens.lastPos();
 
-            NewDocType type = null;
+            DocType type = null;
             if (tokens.peek() == DocToken.Symbol.COLON) {
                 tokens.next();
                 type = root(tokens.next());
@@ -192,7 +192,7 @@ public class TypeParser {
         return type;
     }
 
-    private NewDocType parseFunction(List<FunctionDocType.TypeArgument> typeArguments) {
+    private DocType parseFunction(List<FunctionDocType.TypeArgument> typeArguments) {
         var startPos = tokens.lastPos();
 
         var arguments = new ArrayList<FunctionDocType.Argument>();
@@ -254,7 +254,7 @@ public class TypeParser {
         diagnostics.addDiagnostic(new DocParseError(pos, message, DocParseError.Type.TYPE_PARSE));
     }
 
-    private NewDocType parseParens() {
+    private DocType parseParens() {
         var type = root(tokens.next());
         if (tokens.peek() == DocToken.Symbol.END_CURLY) {
             tokens.next();

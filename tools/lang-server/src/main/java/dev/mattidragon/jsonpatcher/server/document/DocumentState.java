@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
@@ -41,7 +41,7 @@ public class DocumentState {
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
-    private final Supplier<Map<String, DocHolder.ObjectData<NewDocEntry.GlobalEntry>>> globalsGetter;
+    private final Supplier<Map<String, DocHolder.ObjectData<DocEntry.GlobalEntry>>> globalsGetter;
     private final DocHolder docHolder;
 
     private String lastContent = "";

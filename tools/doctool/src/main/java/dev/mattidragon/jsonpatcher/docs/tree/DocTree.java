@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.docs.tree;
 
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -11,17 +11,17 @@ import java.util.Map;
 public class DocTree {
     private final Map<NamespaceDescription, DocTreeNamespace> namespaces = new HashMap<>();
 
-    public DocTree(Collection<NewDocEntry> entries) {
+    public DocTree(Collection<DocEntry> entries) {
         entries.forEach(this::addEntry);
     }
 
-    public void addEntry(NewDocEntry entry) {
+    public void addEntry(DocEntry entry) {
         switch (entry) {
-            case NewDocEntry.NamespaceEntry namespaceEntry -> {
+            case DocEntry.NamespaceEntry namespaceEntry -> {
                 var key = namespaceEntry.namespace().withLast(namespaceEntry.name());
                 getOrCreateNamespace(key).setEntry(namespaceEntry);
             }
-            case NewDocEntry.PropertyEntry propertyEntry ->
+            case DocEntry.PropertyEntry propertyEntry ->
                     getOrCreateObject(propertyEntry.namespace(), propertyEntry.owner())
                             .addProperty(new DocTreeProperty(propertyEntry));
             default ->

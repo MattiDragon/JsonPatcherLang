@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.docs.tree;
 
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DocTreeNamespace {
-    private NewDocEntry.@Nullable NamespaceEntry entry;
+    private DocEntry.@Nullable NamespaceEntry entry;
     private final NamespaceDescription description;
     private final Map<String, DocTreeObject> objects = new HashMap<>();
 
@@ -17,7 +17,7 @@ public class DocTreeNamespace {
         this.description = description;
     }
 
-    public void setEntry(NewDocEntry.NamespaceEntry entry) {
+    public void setEntry(DocEntry.NamespaceEntry entry) {
         if (this.entry != null) {
             // We ignore duplicate entries
             return;
@@ -28,7 +28,7 @@ public class DocTreeNamespace {
         this.entry = entry;
     }
 
-    public NewDocEntry.@Nullable NamespaceEntry entry() {
+    public DocEntry.@Nullable NamespaceEntry entry() {
         return entry;
     }
 

@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
-import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -17,44 +17,44 @@ public class DocsIndex extends LookupIndex {
         super(fileName);
     }
 
-    public void index(List<NewDocEntry> docs, TreeMetadata metadata) {
+    public void index(List<DocEntry> docs, TreeMetadata metadata) {
         docs.forEach(entry -> indexEntry(entry, metadata));
     }
 
-    private void indexEntry(NewDocEntry entry, TreeMetadata metadata) {
-        if (!(entry instanceof NewDocEntry.PropertyEntry)) {
+    private void indexEntry(DocEntry entry, TreeMetadata metadata) {
+        if (!(entry instanceof DocEntry.PropertyEntry)) {
             addSymbol(entry, new IndexEntry(new DocEntrySymbol(entry.namespace(), entry.name()), true), metadata);
         }
 
         switch (entry) {
-            case NewDocEntry.GlobalLibraryEntry(var namespace, var name, var condition, var body) -> {
+            case DocEntry.GlobalLibraryEntry(var namespace, var name, var condition, var body) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case NewDocEntry.GlobalValueEntry(var namespace, var name, var type, var condition, var body) -> {
+            case DocEntry.GlobalValueEntry(var namespace, var name, var type, var condition, var body) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case NewDocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) ->
+            case DocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) ->
                     addSymbol(entry, new IndexEntry(new LibrarySymbol(location.orElse(name)), true), metadata, MetadataKey.IMPORT_LOCATION_POS);
-            case NewDocEntry.MetadataEntry metadataEntry -> {
+            case DocEntry.MetadataEntry metadataEntry -> {
             }
-            case NewDocEntry.NamespaceEntry namespaceEntry -> {
+            case DocEntry.NamespaceEntry namespaceEntry -> {
             }
-            case NewDocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) -> {
+            case DocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) -> {
                 addSymbol(entry, new IndexEntry(new DocEntrySymbol(namespace, owner), false), metadata, DocMetadataKeys.PROPERTY_OWNER_POS);
                 addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
             }
-            case NewDocEntry.TypeAliasEntry typeAliasEntry -> {
+            case DocEntry.TypeAliasEntry typeAliasEntry -> {
             }
-            case NewDocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
+            case DocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
             }
         }
 
         addNamespaceSymbols(entry, metadata);
     }
 
-    private void addNamespaceSymbols(NewDocEntry entry, TreeMetadata metadata) {
+    private void addNamespaceSymbols(DocEntry entry, TreeMetadata metadata) {
         var partCount = entry.namespace().parts().size();
         metadata.get(entry, DocMetadataKeys.NAMESPACE_POSITIONS).ifPresent(namespacePositions -> {
             if (namespacePositions.size() != partCount) {
@@ -71,11 +71,11 @@ public class DocsIndex extends LookupIndex {
         });
     }
 
-    private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata) {
+    private void addSymbol(DocEntry docEntry, IndexEntry entry, TreeMetadata metadata) {
         addSymbol(docEntry, entry, metadata, MetadataKey.NAME_POS);
     }
 
-    private void addSymbol(NewDocEntry docEntry, IndexEntry entry, TreeMetadata metadata, MetadataKey<SourceSpan> metadataKey) {
+    private void addSymbol(DocEntry docEntry, IndexEntry entry, TreeMetadata metadata, MetadataKey<SourceSpan> metadataKey) {
         metadata.get(docEntry, metadataKey)
                 .ifPresent(pos -> lookup.add(pos, entry));
     }

@@ -4,7 +4,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 
 import java.util.List;
 
-public record ArrayDocType(NewDocType elementType) implements NewDocType {
+public record ArrayDocType(DocType elementType) implements DocType {
     @Override
     public Iterable<? extends MetadataHolder> getChildren() {
         return List.of(elementType);
