@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.parse;
 
+import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -104,9 +105,28 @@ public class TypeParser {
     }
 
     private NewDocType parseName(String value) {
-        var type = new ReferenceDocType(value);
-        metadata.put(type, MetadataKey.FULL_POS, tokens.lastPos());
+        var startPos = tokens.lastPos();
+
+        var namespacePositions = new ArrayList<SourceSpan>();
+        namespacePositions.add(startPos);
+
+        var name = new StringBuilder(value);
+        while (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
+            tokens.next();
+            if (tokens.peek() instanceof DocToken.Name(var nextName)) {
+                name.append('.').append(nextName);
+                tokens.next();
+                namespacePositions.add(tokens.lastPos());
+            } else {
+                addDiagnostic(tokens.lastPos(), "Expected name after dot, but got " + tokens.peek());
+            }
+        }
+        namespacePositions.removeLast();
+
+        var type = new ReferenceDocType(name.toString());
+        metadata.put(type, MetadataKey.FULL_POS, SourceSpan.between(startPos, tokens.lastPos()));
         metadata.put(type, MetadataKey.NAME_POS, tokens.lastPos());
+        metadata.put(type, DocMetadataKeys.NAMESPACE_POSITIONS, namespacePositions);
         return type;
     }
 

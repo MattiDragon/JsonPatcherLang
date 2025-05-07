@@ -153,6 +153,8 @@ public class SemanticTokenizer {
                     builder.addToken(metadata.get(referenceDocType, MetadataKey.NAME_POS), SemanticTokenTypes.Type, SemanticTokenModifiers.DefaultLibrary);
                 } else {
                     builder.addToken(metadata.get(referenceDocType, MetadataKey.NAME_POS), SemanticTokenTypes.Type);
+                    metadata.get(referenceDocType, DocMetadataKeys.NAMESPACE_POSITIONS).orElse(List.of())
+                            .forEach(pos -> builder.addToken(pos, SemanticTokenTypes.Namespace));
                 }
             }
             case TypeArgumentDocType typeArgumentDocType ->
