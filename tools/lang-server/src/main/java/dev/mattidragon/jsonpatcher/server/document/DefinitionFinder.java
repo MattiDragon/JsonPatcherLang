@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeProperty;
-import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocEntryWriter;
-import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocWriter;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
+import dev.mattidragon.jsonpatcher.docs.write.DocEntryWriter;
+import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
@@ -40,12 +40,10 @@ public class DefinitionFinder {
 
     private final Supplier<CompletableFuture<DocumentData>> documentData;
     private final WorkspaceManager workspace;
-    private final String documentUri;
 
-    public DefinitionFinder(Supplier<CompletableFuture<DocumentData>> documentData, WorkspaceManager workspace, String documentUri) {
+    public DefinitionFinder(Supplier<CompletableFuture<DocumentData>> documentData, WorkspaceManager workspace) {
         this.documentData = documentData;
         this.workspace = workspace;
-        this.documentUri = documentUri;
     }
 
     public CompletableFuture<List<Location>> getDefinitions(Position position) {

@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;

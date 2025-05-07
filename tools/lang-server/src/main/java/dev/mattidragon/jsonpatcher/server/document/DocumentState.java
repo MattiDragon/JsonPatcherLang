@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
@@ -53,7 +53,7 @@ public class DocumentState {
         this.internalName = getInternalName(name);
         this.client = client;
         docHolder = workspace.getDocManager().getHolder();
-        this.definitionFinder = new DefinitionFinder(() -> data, workspace, name);
+        this.definitionFinder = new DefinitionFinder(() -> data, workspace);
         autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.globalsGetter = docHolder::getGlobals;
     }

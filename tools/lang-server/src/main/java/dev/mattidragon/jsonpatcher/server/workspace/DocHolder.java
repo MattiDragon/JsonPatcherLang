@@ -1,11 +1,11 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeNamespace;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
+import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;

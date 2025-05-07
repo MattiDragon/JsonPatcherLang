@@ -1,9 +1,9 @@
 package dev.mattidragon.jsonpatcher.cli.commands;
 
 import dev.mattidragon.jsonpatcher.cli.impl.VersionProvider;
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
-import dev.mattidragon.jsonpatcher.docs.newdocs.write.DocWriter;
+import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;

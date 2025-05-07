@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NamespaceDescription;
+import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.NamedType;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;

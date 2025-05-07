@@ -1,11 +1,11 @@
 package dev.mattidragon.jsonpatcher.server.index.typing;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTree;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeNamespace;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeObject;
-import dev.mattidragon.jsonpatcher.docs.newdocs.tree.DocTreeProperty;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.*;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
+import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 
 import java.util.*;

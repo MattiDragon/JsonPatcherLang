@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocMetadataKeys;
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.*;
+import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;

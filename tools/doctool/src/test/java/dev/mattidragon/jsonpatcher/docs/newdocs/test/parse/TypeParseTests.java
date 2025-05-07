@@ -1,11 +1,11 @@
 package dev.mattidragon.jsonpatcher.docs.newdocs.test.parse;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.parse.Tokenizer;
-import dev.mattidragon.jsonpatcher.docs.newdocs.parse.TypeParser;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.FunctionDocType;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.NewDocType;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.ReferenceDocType;
-import dev.mattidragon.jsonpatcher.docs.newdocs.type.UnionDocType;
+import dev.mattidragon.jsonpatcher.docs.parse.Tokenizer;
+import dev.mattidragon.jsonpatcher.docs.parse.TypeParser;
+import dev.mattidragon.jsonpatcher.docs.type.FunctionDocType;
+import dev.mattidragon.jsonpatcher.docs.type.NewDocType;
+import dev.mattidragon.jsonpatcher.docs.type.ReferenceDocType;
+import dev.mattidragon.jsonpatcher.docs.type.UnionDocType;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;

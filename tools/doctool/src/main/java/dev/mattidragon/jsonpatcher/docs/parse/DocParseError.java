@@ -5,7 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import org.jspecify.annotations.Nullable;
 
-public record DocParseError(SourceSpan pos, String message, Code code) implements Diagnostic {
+public record DocParseError(SourceSpan pos, String message, Type type) implements Diagnostic {
     @Override
     public @Nullable ProgramNode node() {
         return null;
@@ -13,7 +13,7 @@ public record DocParseError(SourceSpan pos, String message, Code code) implement
 
     @Override
     public String id() {
-        return "DOC-" + code.ordinal();
+        return "DOC-" + type.ordinal();
     }
 
     @Override
@@ -21,11 +21,9 @@ public record DocParseError(SourceSpan pos, String message, Code code) implement
         return Kind.ERROR;
     }
 
-    public enum Code {
-        INVALID_HEADER,
-        UNEXPECTED_CHARACTER,
+    public enum Type {
         EOL,
-        TRAILING_DATA,
-        UNKNOWN_ENTRY_TYPE
+        TYPE_PARSE,
+        DOC_PARSE
     }
 }

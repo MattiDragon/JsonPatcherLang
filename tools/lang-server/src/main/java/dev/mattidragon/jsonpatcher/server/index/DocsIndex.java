@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.DocMetadataKeys;
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;

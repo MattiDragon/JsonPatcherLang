@@ -1,200 +1,80 @@
 package dev.mattidragon.jsonpatcher.docs.write;
 
-import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
-import dev.mattidragon.jsonpatcher.docs.data.DocType;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.node.*;
+import org.commonmark.node.Code;
+import org.commonmark.node.Heading;
+import org.commonmark.node.Node;
+import org.commonmark.node.Text;
 import org.commonmark.parser.Parser;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 public class DocWriter {
-    public static final List<Extension> DEFAULT_EXTENSIONS = List.of(TablesExtension.create(), StrikethroughExtension.create());
-    public static final Parser DEFAULT_PARSER = Parser.builder().extensions(DEFAULT_EXTENSIONS).build();
-    private final List<OutputType> types = new ArrayList<>();
-    private final List<OutputModule> modules = new ArrayList<>();
-    private final List<OutputGlobalModule> globalModules = new ArrayList<>();
-    private final List<DocEntry.GlobalValue> globalValues = new ArrayList<>();
+    public static final List<Extension> EXTENSIONS = List.of(TablesExtension.create(), StrikethroughExtension.create());
+    static final Parser PARSER = Parser.builder().extensions(EXTENSIONS).build();
 
-    private int headingLevel = 1;
-    private Parser parser = DEFAULT_PARSER;
-    private boolean inlineDefinitions = false;
-    private boolean valueSubHeaders = true;
+    public static void write(Node node, DocTree docTree, int headingLevel) {
+        var activeNamespaces = new ArrayList<>(docTree.namespaces().values());
+        activeNamespaces.sort(Comparator.comparing(DocTreeNamespace::description));
 
-    public DocWriter(List<DocEntry> entries) {
-        var values = new ArrayList<DocEntry.Value>();
-
-        for (var entry : entries) {
-            switch (entry) {
-                case DocEntry.Module module -> modules.add(new OutputModule(module, new ArrayList<>()));
-                case DocEntry.Type type -> types.add(new OutputType(type, new ArrayList<>()));
-                case DocEntry.Value value -> values.add(value);
-                case DocEntry.GlobalModule globalModule -> globalModules.add(new OutputGlobalModule(globalModule, new ArrayList<>()));
-                case DocEntry.GlobalValue globalValue -> globalValues.add(globalValue);
+        for (var namespace : activeNamespaces) {
+            int innerHeadingLevel;
+            if (namespace.description().parts().isEmpty()) {
+                innerHeadingLevel = headingLevel;
+            } else {
+                DocEntryWriter.write(node, getEntry(namespace), headingLevel);
+                innerHeadingLevel = headingLevel + 1;
             }
-        }
 
-        var owners = new LinkedHashMap<String, Owner>();
-        types.forEach(type -> owners.put(type.entry().name(), type));
-        modules.forEach(module -> owners.put(module.entry().name(), module));
-        globalModules.forEach(module -> owners.put(module.entry().name(), module));
+            namespace.objects()
+                    .values()
+                    .stream()
+                    .sorted(Comparator.comparing(DocTreeObject::name))
+                    .forEach(object -> {
+                        var objectEntry = object.entry();
+                        if (objectEntry != null) {
+                            DocEntryWriter.write(node, objectEntry, innerHeadingLevel);
+                        } else {
+                            writeUnknownEntry(node, object.name(), innerHeadingLevel);
+                        }
 
-        for (var value : values) {
-            var owner = owners.get(value.owner());
-            // If we don't have an owner, generate a dummy
-            if (owner == null) {
-                var type = new OutputType(new DocEntry.Type(value.owner(), new DocType.Special(DocType.SpecialKind.UNKNOWN, null), "", null), new ArrayList<>()); 
-                owner = type;
-                types.add(type);
-            }
-            owner.values().add(value);
-        }
-    }
-
-    public void setHeadingLevel(int headingLevel) {
-        if (headingLevel < 1) throw new IllegalArgumentException("Heading level must be positive");
-        this.headingLevel = headingLevel;
-    }
-
-    public void setParser(Parser parser) {
-        this.parser = parser;
-    }
-
-    public void setInlineDefinitions(boolean inlineDefinitions) {
-        this.inlineDefinitions = inlineDefinitions;
-    }
-
-    public void setValueSubHeaders(boolean valueSubHeaders) {
-        this.valueSubHeaders = valueSubHeaders;
-    }
-
-    public void buildDocument(Node document) {
-        for (var module : globalModules) {
-            writeEntry(document, module.entry());
-            writeValues(document, module.values());
-        }
-        for (var value : globalValues) {
-            writeEntry(document, value);
-        }
-        for (var module : modules) {
-            writeEntry(document, module.entry());
-            writeValues(document, module.values());
-        }
-        for (var type : types) {
-            writeEntry(document, type.entry());
-            writeValues(document, type.values());
-        }
-    }
-    
-    public void writeEntry(Node document, DocEntry entry) {
-        switch (entry) {
-            case DocEntry.Module module -> {
-                writeHeader(document, "Module", module.name(), "", headingLevel);
-                addLocationData(document, module);
-                document.appendChild(parser.parse(module.description()));
-            }
-            case DocEntry.Type type -> {
-                writeHeader(document, "Type", type.name(), type.definition().format(), headingLevel);
-                writeTypeDefinition(document, type.definition());
-                document.appendChild(parser.parse(type.description()));
-            }
-            case DocEntry.Value value -> {
-                var heading = value.definition().isFunction() ? "Function" : "Property";
-                writeHeader(document, heading, value.owner() + "." + value.name(), value.definition().format(), valueSubHeaders ? headingLevel + 1 : headingLevel);
-                writeTypeDefinition(document, value.definition());
-                document.appendChild(parser.parse(value.description()));
-            }
-            case DocEntry.GlobalModule module -> {
-                writeHeader(document, "Global Module", module.name(), "", headingLevel);
-                addGlobalExplainer(document, module);
-                document.appendChild(parser.parse(module.description()));
-            }
-            case DocEntry.GlobalValue value -> {
-                var heading = value.definition().isFunction() ? "Global function" : "Global value";
-                writeHeader(document, heading, value.name(), value.definition().format(), valueSubHeaders ? headingLevel + 1 : headingLevel);
-                writeTypeDefinition(document, value.definition());
-                addGlobalExplainer(document, value);
-                document.appendChild(parser.parse(value.description()));
-            }
+                        for (var value : object.properties().values()) {
+                            DocEntryWriter.write(node, value.entry(), innerHeadingLevel + 1);
+                        }
+                    });
         }
     }
 
-    private static void addLocationData(Node document, DocEntry.Module entry) {
-        if (entry.name().equals(entry.location())) return;
-
-        var location = new Paragraph();
-        var emp = new Emphasis();
-        emp.appendChild(new Text("Available at "));
-        emp.appendChild(new Code("\"" + entry.location() + "\""));
-        location.appendChild(emp);
-        document.appendChild(location);
-    }
-
-    private static void addGlobalExplainer(Node document, DocEntry.Global entry) {
-        var location = new Paragraph();
-        var emp = new Emphasis();
-        var text = entry.requiredMetadata().isEmpty() ? "Available as a global variable"
-                : "Available as a global variable with metadata set: ";
-        emp.appendChild(new Text(text));
-        var first = true;
-        for (var metadata : entry.requiredMetadata()) {
-            if (!first) emp.appendChild(new Text(","));
-            else first = false;
-            emp.appendChild(new Code("@" + metadata));
-        }
-        location.appendChild(emp);
-        document.appendChild(location);
-    }
-
-    private void writeValues(Node document, List<DocEntry.Value> values) {
-        for (var value : values) {
-            writeEntry(document, value);
-        }
-    }
-
-    private void writeHeader(Node document, String heading, String name, String definition, int level) {
-        var moduleHead = new Paragraph();
-        moduleHead.appendChild(new Text(heading + " "));
-        moduleHead.appendChild(new Code(name));
-        if (inlineDefinitions && !definition.isBlank()) {
-            moduleHead.appendChild(new Text(": "));
-            moduleHead.appendChild(new Code(definition));
-        }
-        document.appendChild(heading(level, moduleHead));
-    }
-
-    private void writeTypeDefinition(Node document, DocType definition) {
-        if (inlineDefinitions) return;
-        
-        var block = new Paragraph();
-        var emphasis = new Emphasis();
-
-        if (definition instanceof DocType.Special special && special.kind() == DocType.SpecialKind.UNKNOWN) {
-            emphasis.appendChild(new Text("Definition unknown"));
-        } else {
-            emphasis.appendChild(new Text("Definition: "));
-            emphasis.appendChild(new Code(definition.format()));
-        }
-        block.appendChild(emphasis);
-        document.appendChild(block);
-    }
-
-    private Node heading(int level, Node content) {
+    private static void writeUnknownEntry(Node node, String name, int headingLevel) {
         var heading = new Heading();
-        heading.setLevel(level);
-        heading.appendChild(content);
-        return heading;
+        heading.setLevel(headingLevel);
+        heading.appendChild(new Text("Unknown object "));
+        heading.appendChild(new Code(name));
+        node.appendChild(heading);
     }
 
-    sealed interface Owner {
-        List<DocEntry.Value> values();
+    private static NewDocEntry.@NotNull NamespaceEntry getEntry(DocTreeNamespace namespace) {
+        var namespaceEntry = namespace.entry();
+        if (namespaceEntry != null) {
+            return namespaceEntry;
+        }
+        return new NewDocEntry.NamespaceEntry(
+                namespace.description().withoutLast(),
+                namespace.description().parts().isEmpty()
+                        ? ""
+                        : namespace.description().parts().getLast(),
+                Optional.empty(),
+                ""
+        );
     }
-    
-    record OutputModule(DocEntry.Module entry, List<DocEntry.Value> values) implements Owner {}
-    record OutputType(DocEntry.Type entry, List<DocEntry.Value> values) implements Owner {}
-    record OutputGlobalModule(DocEntry.GlobalModule entry, List<DocEntry.Value> values) implements Owner {}
 }

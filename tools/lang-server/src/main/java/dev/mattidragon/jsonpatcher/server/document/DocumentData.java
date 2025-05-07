@@ -1,6 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
-import dev.mattidragon.jsonpatcher.docs.newdocs.data.NewDocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.NewDocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
