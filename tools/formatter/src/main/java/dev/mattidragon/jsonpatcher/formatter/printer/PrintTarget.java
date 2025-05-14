@@ -70,6 +70,7 @@ public abstract class PrintTarget {
                 printString(error, '\'');
                 writeText("\\");
             }
+            case Token.EofToken.EOF -> {}
         }
         return this;
     }

@@ -146,4 +146,13 @@ public sealed interface Token {
             return "'" + value + "'";
         }
     }
+
+    enum EofToken implements Token {
+        EOF;
+
+        @Override
+        public String explain() {
+            return "end of file";
+        }
+    }
 }

@@ -55,7 +55,6 @@ public class Parser {
         Expression expression = null;
         try {
             expression = parser.expression();
-        } catch (EndParsingException ignored) {
         } catch (ParseException e) {
             parser.addError(e.diagnostic());
         }
@@ -73,7 +72,7 @@ public class Parser {
                 expect(Token.SimpleToken.SEMICOLON);
             } catch (ParseException e) {
                 addError(e.diagnostic());
-            } catch (EndParsingException ignored) {}
+            }
         }
         
         var statements = new ArrayList<Statement>();
@@ -83,7 +82,7 @@ public class Parser {
             }
         } catch (ParseException e) {
             addError(e.diagnostic());
-        } catch (EndParsingException ignored) {}
+        }
 
         var end = start == null ? null : previous().to();
         var program = new Program(statements);
@@ -147,26 +146,26 @@ public class Parser {
     public Token.WordToken expectWord() {
         var token = next().token();
         if (token instanceof Token.WordToken wordToken) return wordToken;
-        return expectFail("word");
+        return expectFail("word", token);
     }
 
     public Token.StringToken expectString() {
         var token = next().token();
         if (token instanceof Token.StringToken stringToken) return stringToken;
-        return expectFail("string");
+        return expectFail("string", token);
     }
 
     public String expectWordOrString() {
         var token = next().token();
         if (token instanceof Token.WordToken(String word)) return word;
         if (token instanceof Token.StringToken(String string)) return string;
-        return expectFail("word or string");
+        return expectFail("word or string", token);
     }
 
     public Token.NumberToken expectNumber() {
         var token = next().token();
         if (token instanceof Token.NumberToken numberToken) return numberToken;
-        return expectFail("number");
+        return expectFail("number", token);
     }
 
 
@@ -188,21 +187,21 @@ public class Parser {
 
     public void expect(Token token) {
         var found = next().token();
-        if (found != token) expectFail(token.explain());
+        if (found != token) expectFail(token.explain(), found);
     }
 
-    @Contract("_ -> fail")
-    private <T> T expectFail(String expected) {
+    @Contract("_, _ -> fail")
+    private <T> T expectFail(String expected, Token actual) {
         throw new ParseException(new ParseDiagnostic(previous().pos(),
                 null,
-                "Expected %s, but found %s".formatted(expected, previous().token().explain()),
+                "Expected %s, but found %s".formatted(expected, actual.explain()),
                 ParseDiagnostic.Code.UNEXPECTED_TOKEN));
     }
 
     public PositionedToken next() {
         if (!hasNext()) {
             addError(new SourceSpan(previous().to(), previous().to()), "Unexpected end of file", ParseDiagnostic.Code.EOF);
-            throw new EndParsingException();
+            return new PositionedToken(previous().pos().to().offset(1).toSpan(), Token.EofToken.EOF);
         }
         return tokens.get(current++);
     }
@@ -216,7 +215,7 @@ public class Parser {
     public PositionedToken peek() {
         if (!hasNext()) {
             addError(new SourceSpan(previous().to(), previous().to()), "Unexpected end of file", ParseDiagnostic.Code.EOF);
-            throw new EndParsingException();
+            return new PositionedToken(previous().pos().to().offset(1).toSpan(), Token.EofToken.EOF);
         }
         return tokens.get(current);
     }
@@ -251,12 +250,6 @@ public class Parser {
 
     public void addError(SourceSpan pos, String message, ParseDiagnostic.Code code) {
         addError(pos, null, message, code);
-    }
-
-    /**
-     * Special error to throw when we reach an error condition from which recovery doesn't make sense (end of file)
-     */
-    private static class EndParsingException extends RuntimeException {
     }
 
     public static class ParseException extends RuntimeException {

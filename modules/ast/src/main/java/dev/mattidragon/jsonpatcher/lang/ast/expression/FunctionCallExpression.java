@@ -9,7 +9,7 @@ public record FunctionCallExpression(Expression function, List<Expression> argum
     @Override
     public Iterable<? extends ProgramNode> getChildren() {
         var list = new ArrayList<>(arguments);
-        list.add(function);
+        list.addFirst(function);
         return list;
     }
 }

@@ -12,10 +12,20 @@ public record FunctionArgument(Target target, Optional<Expression> defaultValue)
     }
 
     public sealed interface Target {
-        record Variable(String name) implements Target {}
+        record Variable(String name) implements Target {
+            @Override
+            public String toString() {
+                return "Target.Variable[" + name + "]";
+            }
+        }
         
         enum Root implements Target {
-            INSTANCE
+            INSTANCE;
+
+            @Override
+            public String toString() {
+                return "Target.Root";
+            }
         }
     }
 }

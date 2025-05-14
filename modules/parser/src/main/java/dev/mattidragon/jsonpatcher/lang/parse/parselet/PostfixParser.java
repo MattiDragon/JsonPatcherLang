@@ -19,9 +19,23 @@ public class PostfixParser {
 
     private static Expression parsePropertyAccess(Parser parser, Expression left, PositionedToken token) {
         var leftPos = getLeftStartPos(parser, left);
-        var name = parser.expectWord();
+        var name = switch (parser.next().token()) {
+            case Token.WordToken(String value) -> value;
+            case Token.EofToken.EOF -> {
+                var message = "Expected property name";
+                var diagnostic = new Parser.ParseDiagnostic(token.pos(), null, message, Parser.ParseDiagnostic.Code.EOF);
+                parser.addError(diagnostic);
+                yield "";
+            }
+            case Token other -> {
+                var message = "Expected property name, got %s".formatted(other.explain());
+                var diagnostic = new Parser.ParseDiagnostic(token.pos(), null, message, Parser.ParseDiagnostic.Code.UNEXPECTED_TOKEN);
+                parser.addError(diagnostic);
+                yield "";
+            }
+        };
         var namePos = parser.previous().pos();
-        var expression = new PropertyAccessExpression(left, name.value());
+        var expression = new PropertyAccessExpression(left, name);
         parser.setMetadata(expression, MetadataKey.NAME_POS, namePos);
         parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
         parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
