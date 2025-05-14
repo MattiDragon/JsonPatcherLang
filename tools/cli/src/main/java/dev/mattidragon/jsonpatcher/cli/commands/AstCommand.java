@@ -11,7 +11,11 @@ import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -25,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -88,8 +93,8 @@ public class AstCommand implements Callable<Integer> {
             }
 
             printMetadata(parse.metadata());
-            System.out.println("Program:");
-            System.out.print("  ");
+            System.out.println("Main AST:");
+            System.out.print("- ");
             print(parse.program(), parse.treeMetadata(), 1);
 
             System.out.println();
@@ -134,22 +139,149 @@ public class AstCommand implements Callable<Integer> {
     }
 
     private void print(ProgramNode node, TreeMetadata metadata, int indent) {
+        var childTags = new IdentityHashMap<ProgramNode, String>();
+
+        System.out.println(node.getClass().getSimpleName());
+
         switch (node) {
-            case ProgramNode other -> {
-                System.out.println(other.getClass().getSimpleName());
-
-                if (allMetadata) {
-                    printAllMetadata(other, metadata, indent);
-                } else {
-                    printImportantMetadata(other, metadata, indent);
-                }
-
-                for (var child : other.getChildren()) {
-                    System.out.print("  ".repeat(indent));
-                    System.out.print("- ");
-                    print(child, metadata, indent + 1);
+            case UnaryModificationExpression(var postfix, var target, var operator) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(operator: %s, %s)%n", operator, postfix ? "postfix" : "prefix");
+            }
+            case ErrorExpression(var diagnostic, var child) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(error: %s)%n", diagnostic.message());
+                if (child != null) {
+                    childTags.put(child, "inner expression");
                 }
             }
+            case PropertyAccessExpression(var parent, var name) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(name: %s)%n", name);
+            }
+            case VariableAccessExpression(var name) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(name: %s)%n", name);
+            }
+            case IndexExpression(var target, var index) -> {
+                childTags.put(target, "target");
+                childTags.put(index, "index");
+            }
+            case ShortedBinaryExpression(var first, var second, var op) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(operator: %s)%n", op);
+            }
+            case BinaryExpression(var first, var second, var op) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(operator: %s)%n", op);
+            }
+            case AssignmentExpression(var target, var value, var op) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(operator: %s)%n", op);
+                childTags.put(target, "target");
+                childTags.put(value, "value");
+            }
+            case TernaryExpression(var condition, var ifTrue, var ifFalse) -> {
+                childTags.put(condition, "condition");
+                childTags.put(ifTrue, "if true");
+                childTags.put(ifFalse, "if false");
+            }
+            case UnaryExpression(var input, var op) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(operator: %s)%n", op);
+            }
+            case IsInstanceExpression(var input, var type) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(type: %s)%n", type);
+            }
+            case FunctionCallExpression(var function, var args) -> {
+                childTags.put(function, "function");
+                for (var i = 0; i < args.size(); i++) {
+                    childTags.put(args.get(i), "arg" + i);
+                }
+            }
+            case StringExpression(var value) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.print("(");
+                printString(value, indent);
+                System.out.printf(")%n");
+            }
+            case NumberExpression(var value) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(%s)%n", value);
+            }
+            case BooleanExpression(var value) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(%s)%n", value);
+            }
+            case FunctionArguments(var arguments, var varargs) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(%s)%n", varargs ? "varargs" : "no varargs");
+            }
+            case FunctionArgument(var target, var defaultValue) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(target: %s)%n", target);
+                defaultValue.ifPresent(value -> childTags.put(value, "default value"));
+            }
+            case ErrorStatement(var diagnostic, var child) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(error: %s)%n", diagnostic.message());
+                if (child != null) {
+                    childTags.put(child, "inner statement");
+                }
+            }
+            case ApplyStatement(var root, var action) -> {
+                childTags.put(root, "root");
+                childTags.put(action, "action");
+            }
+            case VariableCreationStatement(var name, var initializer, var mutable) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(name: %s, %s)%n", name, mutable ? "mutable" : "immutable");
+            }
+            case ForLoopStatement(Statement initializer, Expression condition, Statement incrementer, Statement body) -> {
+                childTags.put(initializer, "initializer");
+                childTags.put(condition, "condition");
+                childTags.put(incrementer, "incrementer");
+                childTags.put(body, "body");
+            }
+            case ForEachLoopStatement(Expression iterable, String variableName, Statement body) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(variable: %s)%n", variableName);
+                childTags.put(iterable, "iterable");
+                childTags.put(body, "body");
+            }
+            case FunctionDeclarationStatement(String name, FunctionExpression value) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(name: %s)%n", name);
+            }
+            case ImportStatement(String libraryName, String variableName) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.printf("(library: %s, variable: %s)%n", libraryName, variableName);
+            }
+            case IfStatement(Expression condition, Statement action, Statement elseAction) -> {
+                childTags.put(condition, "condition");
+                childTags.put(action, "if true");
+                if (elseAction != null) {
+                    childTags.put(elseAction, "if false");
+                }
+            }
+            default -> {}
+        }
+
+        if (allMetadata) {
+            printAllMetadata(node, metadata, indent);
+        } else {
+            printImportantMetadata(node, metadata, indent);
+        }
+
+        for (var child : node.getChildren()) {
+            System.out.print("  ".repeat(indent));
+            System.out.print("- ");
+            var tag = childTags.get(child);
+            if (tag != null) {
+                System.out.printf("%s: ", tag);
+            }
+            print(child, metadata, indent + 1);
         }
     }
 
