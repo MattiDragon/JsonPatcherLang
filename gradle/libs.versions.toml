@@ -6,6 +6,7 @@ lsp4j = "0.23.1"
 asm = "9.7.1" # Fabric mixin uses this version, meaning that it will be available in minecraft without us having to bundle it
 jspecify = "1.0.0"
 picocli = "4.7.7"
+shadow = "8.3.6"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
@@ -23,6 +24,9 @@ asm-analysis = { module = "org.ow2.asm:asm-analysis", version.ref = "asm"}
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 
 [bundles]
 commonmark = ["commonmark-core", "commonmark-tables", "commonmark-strikethrough"]

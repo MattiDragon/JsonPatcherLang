@@ -1,5 +1,5 @@
 plugins {
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    alias(libs.plugins.shadow)
     id("shared")
     id("application")
 }
@@ -37,4 +37,8 @@ application {
 
 tasks.assemble {
     dependsOn("shadowJar")
+}
+
+distributions.named("shadow") {
+    distributionBaseName = application.applicationName + "-shadow"
 }
