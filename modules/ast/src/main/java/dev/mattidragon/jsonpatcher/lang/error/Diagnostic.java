@@ -68,7 +68,7 @@ public interface Diagnostic {
             var file = from.file();
             var rowBegin = file.findRow(row);
             var rowEnd = file.findRow(row + 1);
-            if (rowEnd == -1) rowEnd = file.code().length();
+            if (rowEnd == -1) rowEnd = file.code().length() + 1;
 
             codeHighlight.append(file.code()
                     .substring(rowBegin, rowEnd - 1)
