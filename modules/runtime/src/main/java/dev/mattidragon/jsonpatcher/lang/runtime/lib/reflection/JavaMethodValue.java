@@ -19,7 +19,7 @@ public class JavaMethodValue implements Value.SpecialValue {
     @Override
     public Value invoke(EvaluationContext context, Value... args) {
         try {
-            return (Value) getWrappedHandle().invokeWithArguments((Object[]) args);
+            return (Value) getWrappedHandle(context).invokeWithArguments((Object[]) args);
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
@@ -31,21 +31,21 @@ public class JavaMethodValue implements Value.SpecialValue {
     public Value getProperty(String property, EvaluationContext context) {
         if (property.equals("weaklyConverted")) {
             var argCount = nativeHandle.type().parameterCount();
-            return new FunctionValue(new FunctionHooks.DefinedFunction(getWeaklyWrappedHandle(), argCount, argCount, false));
+            return new FunctionValue(new FunctionHooks.DefinedFunction(getWeaklyWrappedHandle(context), argCount, argCount, false));
         }
         return SpecialValue.super.getProperty(property, context);
     }
 
-    private MethodHandle getWrappedHandle() {
+    private MethodHandle getWrappedHandle(EvaluationContext context) {
         if (this.wrappedHandle == null) {
-            this.wrappedHandle = JavaValueUtil.wrapMethodHandle(nativeHandle);
+            this.wrappedHandle = JavaValueUtil.wrapMethodHandle(nativeHandle, context);
         }
         return this.wrappedHandle;
     }
 
-    private MethodHandle getWeaklyWrappedHandle() {
+    private MethodHandle getWeaklyWrappedHandle(EvaluationContext context) {
         if (this.weaklyWrappedHandle == null) {
-            this.weaklyWrappedHandle = JavaValueUtil.wrapMethodHandleWeakly(nativeHandle);
+            this.weaklyWrappedHandle = JavaValueUtil.wrapMethodHandleWeakly(nativeHandle, context);
         }
         return this.weaklyWrappedHandle;
     }

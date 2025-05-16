@@ -46,7 +46,7 @@ public class ReflectionTests {
                 import "assertions";
                 import "reflection";
                 
-                var TestJavaMethods = reflection.findClass("dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test.TestJavaMethods");
+                val TestJavaMethods = reflection.findClass("dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test.TestJavaMethods");
                 
                 TestJavaMethods.staticVoidMethod(10, "hello");
                 assertions.assertEquals(TestJavaMethods.INFO, "Lorem ipsum");
@@ -59,6 +59,29 @@ public class ReflectionTests {
                 var secondInstance = TestJavaMethods();
                 secondInstance.instanceMethod(10, null);
                 assertions.assertEquals(1, secondInstance.'val');
+                """;
+
+        TestUtils.runCode(runner, code);
+    }
+
+    @Test
+    public void testLambdaBinding() {
+        var code = """
+                import "assertions";
+                import "reflection";
+                
+                val Arrays = reflection.findClass("java.util.Arrays");
+                val Object = reflection.findClass("java.lang.Object");
+                
+                val transformed = Arrays.asList(reflection.convertArray(Object, "AA", "BBB", "CC", "DDD"))
+                    .stream()
+                    .filter((s) -> s.length() == 3)
+                    .map((s) -> s.toLowerCase())
+                    .toList();
+                
+                assertions.assertEquals(2, transformed.size());
+                assertions.assertEquals("bbb", transformed.get(0));
+                assertions.assertEquals("ddd", transformed.get(1));
                 """;
 
         TestUtils.runCode(runner, code);

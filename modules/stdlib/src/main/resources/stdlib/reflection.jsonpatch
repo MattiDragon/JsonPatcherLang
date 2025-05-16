@@ -47,12 +47,25 @@ val Array = $findClass("java.lang.reflect.Array");
 #| Utility function to instantiate a Java array of a certain class.
 #| Takes in the component type of the array, the size of the array and an optional value to fill it with.
 function makeArray(class, size, fill = null) {
-    val array = Array.newInstance(class.class, size);
+    val array = Array.'newInstance(Ljava/lang/Class;I)Ljava/lang/Object;'(class.class, size);
     if (fill != null)
         for (var i = 0; i < size; i++)
             array[i] = fill;
     return array;
 }
 $makeArray = makeArray;
+
+#| property reflection.convertArray: (class: JavaClass, value: any*) -> JavaObject
+#| Utility function to convert a JsonPatcher array into a Java array.
+#| Takes in the component type of the array and the values to convert.
+function convertArray(class, value*) {
+    debug.assert(value is array, "Expected value to be an array");
+    val array = Array.'newInstance(Ljava/lang/Class;I)Ljava/lang/Object;'(class.class, value.length);
+    for (var i = 0; i < value.length; i++)
+        array[i] = value[i];
+    return array;
+}
+$convertArray = convertArray;
+
 
 

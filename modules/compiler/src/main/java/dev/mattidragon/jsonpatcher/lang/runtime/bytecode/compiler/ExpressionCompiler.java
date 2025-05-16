@@ -521,14 +521,15 @@ public class ExpressionCompiler implements Opcodes {
             compile(argument);
         }
 
-        var invokerType = new StringBuilder("(");
-        invokerType.append(Types.PLATFORM_CONTEXT);
-        invokerType.append(Types.VALUE);
-        invokerType.append(String.valueOf(Types.VALUE).repeat(expression.arguments().size()));
-        invokerType.append(")").append(Types.VALUE);
+        var invokerType = "(%s%s%s)%s".formatted(
+                Types.PLATFORM_CONTEXT,
+                Types.VALUE,
+                String.valueOf(Types.VALUE).repeat(expression.arguments().size()),
+                Types.VALUE
+        );
 
         visitor.visitInvokeDynamicInsn("function",
-                invokerType.toString(),
+                invokerType,
                 new Handle(H_INVOKESTATIC,
                         Types.FUNCTION_HOOKS.getInternalName(),
                         "callHook",

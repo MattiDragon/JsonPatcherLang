@@ -53,7 +53,7 @@ public class JavaClassValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectGetter(field));
+                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectGetter(field), context);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public field", e);
                 }
@@ -73,7 +73,7 @@ public class JavaClassValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.LOOKUP.unreflect(method);
+                    handle = JavaValueUtil.LOOKUP.unreflect(PublicSuperUtil.findAccessibleSuper(method));
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public method", e);
                 }
@@ -107,7 +107,7 @@ public class JavaClassValue implements Value.SpecialValue {
         }
         MethodHandle handle;
         try {
-            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectSetter(field));
+            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectSetter(field), context);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Cannot access public field", e);
         }
@@ -153,7 +153,7 @@ public class JavaClassValue implements Value.SpecialValue {
 
         MethodHandle handle;
         try {
-            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectConstructor(available.getFirst()));
+            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectConstructor(available.getFirst()), context);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Cannot access public field", e);
         }

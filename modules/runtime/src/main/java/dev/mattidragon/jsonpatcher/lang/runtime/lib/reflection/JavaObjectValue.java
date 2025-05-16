@@ -39,7 +39,7 @@ public class JavaObjectValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectGetter(field).bindTo(object));
+                    handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectGetter(field).bindTo(object), context);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public field", e);
                 }
@@ -61,7 +61,7 @@ public class JavaObjectValue implements Value.SpecialValue {
                 }
                 MethodHandle handle;
                 try {
-                    handle = JavaValueUtil.LOOKUP.unreflect(method).bindTo(object);
+                    handle = JavaValueUtil.LOOKUP.unreflect(PublicSuperUtil.findAccessibleSuper(method)).bindTo(object);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Cannot access public method", e);
                 }
@@ -91,7 +91,7 @@ public class JavaObjectValue implements Value.SpecialValue {
         }
         MethodHandle handle;
         try {
-            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectSetter(field).bindTo(object));
+            handle = JavaValueUtil.wrapMethodHandle(JavaValueUtil.LOOKUP.unreflectSetter(field).bindTo(object), context);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Cannot access public field", e);
         }
@@ -133,7 +133,7 @@ public class JavaObjectValue implements Value.SpecialValue {
             throw context.createException("Array index must be number, was " + index);
         }
 
-        Array.set(object, (int) number, JavaValueUtil.valueToObject(value, object.getClass().getComponentType()));
+        Array.set(object, (int) number, JavaValueUtil.valueToObject(value, object.getClass().getComponentType(), context));
     }
 
     public Object object() {

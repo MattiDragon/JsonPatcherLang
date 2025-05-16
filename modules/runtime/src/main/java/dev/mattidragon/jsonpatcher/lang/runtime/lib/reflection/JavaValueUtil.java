@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection;
 
+import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchException;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.remap.Remapper;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
@@ -19,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-class JavaValueUtil {
+public class JavaValueUtil {
     @Language("RegExp")
     private static final String FIELD_DESCRIPTOR = "\\[*(?:[BCDFIJSZ]|L[^.;() ]+;)";
     @Language("RegExp")
@@ -45,7 +46,7 @@ class JavaValueUtil {
         try {
             OBJECT_TO_VALUE_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "objectToValue", MethodType.methodType(Value.class, Object.class));
             OBJECT_VALUE_CONSTRUCTOR_HANDLE = PRIVATE_LOOKUP.findConstructor(JavaObjectValue.class, MethodType.methodType(void.class, Object.class));
-            VALUE_TO_OBJECT_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "valueToObject", MethodType.methodType(Object.class, Value.class, Class.class));
+            VALUE_TO_OBJECT_HANDLE = PRIVATE_LOOKUP.findStatic(JavaValueUtil.class, "valueToObject", MethodType.methodType(Object.class, Value.class, Class.class, EvaluationContext.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new IllegalStateException("Cannot find required methods", e);
         }
@@ -223,10 +224,10 @@ class JavaValueUtil {
      * Wraps a method handle to jsonpatcher values.
      * @param original The method handle to wrap, can be anything.
      * @return A method handle that only deals in {@link Value}s
-     * @see #wrapMethodHandleWeakly(MethodHandle)
+     * @see #wrapMethodHandleWeakly(MethodHandle, EvaluationContext)
      */
-    public static MethodHandle wrapMethodHandle(MethodHandle original) {
-        var withArgsModified = wrapMethodHandleArgs(original);
+    public static MethodHandle wrapMethodHandle(MethodHandle original, EvaluationContext context) {
+        var withArgsModified = wrapMethodHandleArgs(original, context);
         if (original.type().returnType() == void.class) {
             return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
         } else {
@@ -235,14 +236,14 @@ class JavaValueUtil {
     }
 
     /**
-     * Wraps a method handle to jsonpatcher values. Unlike {@link #wrapMethodHandle(MethodHandle) wrapMethodHandle}
+     * Wraps a method handle to jsonpatcher values. Unlike {@link #wrapMethodHandle(MethodHandle, EvaluationContext) wrapMethodHandle}
      * the handle returned from here always yields {@link JavaObjectValue}s
      * @param original The method handle to wrap, can be anything.
      * @return A method handle that only deals in {@link Value}s
-     * @see #wrapMethodHandle(MethodHandle)
+     * @see #wrapMethodHandle(MethodHandle, EvaluationContext)
      */
-    public static MethodHandle wrapMethodHandleWeakly(MethodHandle original) {
-        var withArgsModified = wrapMethodHandleArgs(original);
+    public static MethodHandle wrapMethodHandleWeakly(MethodHandle original, EvaluationContext context) {
+        var withArgsModified = wrapMethodHandleArgs(original, context);
         if (original.type().returnType() == void.class) {
             return MethodHandles.filterReturnValue(withArgsModified, MethodHandles.constant(Value.NullValue.class, Value.NullValue.NULL));
         } else {
@@ -250,13 +251,13 @@ class JavaValueUtil {
         }
     }
 
-    private static MethodHandle wrapMethodHandleArgs(MethodHandle original) {
+    private static MethodHandle wrapMethodHandleArgs(MethodHandle original, EvaluationContext context) {
         var originalType = original.type();
         var argCount = originalType.parameterCount();
         var filterArray = new MethodHandle[argCount];
         for (var i = 0; i < argCount; i++) {
             var expectedType = originalType.parameterType(i);
-            filterArray[i] = MethodHandles.insertArguments(VALUE_TO_OBJECT_HANDLE, 1, expectedType)
+            filterArray[i] = MethodHandles.insertArguments(VALUE_TO_OBJECT_HANDLE, 1, expectedType, context)
                     .asType(MethodType.methodType(expectedType, Object.class));
         }
         return MethodHandles.filterArguments(original, 0, filterArray);
@@ -283,12 +284,13 @@ class JavaValueUtil {
      * Converts a value to a java object. May fail if no conversion is available.
      * @param value The value to convert
      * @param clazz A class object representing the target type
+     * @param context The current evaluation context. Needed for lambda conversion.
      * @return The converted value
      * @throws ClassCastException If no conversion is possible.
      * @param <T> The type to convert to
      */
     @SuppressWarnings("unchecked")
-    public static <T> @Nullable T valueToObject(Value value, Class<T> clazz) {
+    public static <T> @Nullable T valueToObject(Value value, Class<T> clazz, EvaluationContext context) {
         if (Value.class.isAssignableFrom(clazz)) {
             if (clazz.isAssignableFrom(value.getClass())) {
                 return clazz.cast(value);
@@ -318,6 +320,9 @@ class JavaValueUtil {
             }
             case Value.NumberValue(var n) when clazz == float.class || clazz == Float.class -> (T) (Float) (float) n;
             case Value.NumberValue(var n) when clazz == double.class || clazz == Double.class -> (T) (Double) n;
+
+            case Value.FunctionValue functionValue when clazz.isInterface() ->
+                    LambdaBridgeGenerator.createLambdaBridge(clazz, context, functionValue);
 
             default -> throw new ClassCastException(value + " cannot be cast to " + clazz.getSimpleName());
         };

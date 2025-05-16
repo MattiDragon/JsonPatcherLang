@@ -6,6 +6,8 @@ module jsonpatcher.lang.runtime {
     requires static org.jspecify;
     requires static org.jetbrains.annotations;
 
+    requires org.objectweb.asm;
+
     requires jsonpatcher.lang.compiler;
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.stdlib;
