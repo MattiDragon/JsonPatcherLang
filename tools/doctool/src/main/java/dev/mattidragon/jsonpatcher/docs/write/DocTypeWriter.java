@@ -60,7 +60,18 @@ public class DocTypeWriter {
             argument.name().ifPresent(name ->
                     builder.append(name).append(": "));
 
+            var needsParens = argument.type() instanceof FunctionDocType || argument.type() instanceof UnionDocType;
+            if (needsParens && argument.kind() != FunctionDocType.Argument.Kind.REGULAR) {
+                builder.append('{');
+            }
             builder.append(write(argument.type()));
+            if (needsParens && argument.kind() != FunctionDocType.Argument.Kind.REGULAR) {
+                builder.append('}');
+            }
+            switch (argument.kind()) {
+                case VARARGS -> builder.append("*");
+                case OPTIONAL -> builder.append("?");
+            }
         }
         builder.append(") -> ").append(write(function.returnType()));
         return builder.toString();
