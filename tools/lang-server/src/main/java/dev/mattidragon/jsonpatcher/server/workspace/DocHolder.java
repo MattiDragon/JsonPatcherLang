@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
@@ -182,6 +182,14 @@ public class DocHolder {
         }
 
         onRebuild.run();
+    }
+
+    public Optional<DocEntry> getDocEntry(String fullName) {
+        var parts = fullName.split("\\.");
+        return getDocEntry(
+                new NamespaceDescription(Arrays.asList(parts).subList(0, parts.length - 1)),
+                parts[parts.length - 1]
+        );
     }
 
     public Optional<DocEntry> getDocEntry(NamespaceDescription namespace, String name) {

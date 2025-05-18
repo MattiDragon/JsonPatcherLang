@@ -1,5 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
+import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
@@ -9,15 +12,9 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
-import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionItemKind;
-import org.eclipse.lsp4j.CompletionList;
-import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -67,7 +64,84 @@ public class AutoCompleteHelper {
     }
 
     private void completeProperty(DocumentData data, TokenLookup.IndexedToken currentToken, ArrayList<CompletionItem> completions) {
+        data.lookups()
+                .propertyAccesses()
+                .getAllAt(currentToken.pos().from())
+                .reduce((a, b) -> b)
+                .flatMap(expression -> data.treeMetadata().get(expression.parent(), TypeChecker.TYPE))
+                .map(this::getTypeProperties)
+                .stream()
+                .flatMap(Collection::stream)
+                .map(this::buildPropertyCompletion)
+                .forEach(completions::add);
+    }
 
+    private CompletionItem buildPropertyCompletion(PropertyCompletionInfo info) {
+        var completion = new CompletionItem(info.name);
+
+        var isFunction = info.propertyType instanceof FunctionType || info.propertyType == PrimitiveType.FUNCTION;
+        var isOwned = true;
+        if (info.ownerType instanceof NamedType namedType) {
+            var docEntry = docs.getDocEntry(namedType.name());
+            if (docEntry.isPresent() &&
+                (docEntry.get() instanceof DocEntry.LibraryEntry || docEntry.get() instanceof DocEntry.GlobalLibraryEntry)) {
+                isOwned = false;
+            }
+        }
+
+        if (isFunction && isOwned) {
+            completion.setKind(CompletionItemKind.Method);
+        } else if (isFunction) {
+            completion.setKind(CompletionItemKind.Function);
+        } else if (isOwned) {
+            completion.setKind(CompletionItemKind.Field);
+        } else {
+            completion.setKind(CompletionItemKind.Value);
+        }
+
+        if (isFunction) {
+            var argCount = info.propertyType instanceof FunctionType functionType ? functionType.requiredArgs() : 1;
+            completion.setInsertTextFormat(InsertTextFormat.Snippet);
+            var snippet = new StringBuilder(info.name);
+            snippet.append("(");
+            for (var i = 0; i < argCount; i++) {
+                if (i != 0) {
+                    snippet.append(", ");
+                }
+                snippet.append("$").append(i + 1);
+            }
+            snippet.append(")");
+            completion.setInsertText(snippet.toString());
+        }
+
+        return completion;
+    }
+
+    private Collection<PropertyCompletionInfo> getTypeProperties(Type type) {
+        return switch (type) {
+            case LazyType lazyType -> getTypeProperties(lazyType.get());
+            case NamedType namedType -> namedType.properties()
+                    .entrySet()
+                    .stream()
+                    .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue()))
+                    .collect(Collectors.toSet());
+            // TODO: methods
+            case FunctionType functionType -> List.of();
+            case PrimitiveType primitiveType -> List.of();
+            case ArrayType arrayType -> List.of();
+            // No innate properties, and we don't know additional ones
+            case ObjectType objectType -> List.of();
+            case SpecialType specialType -> List.of();
+            // This is unlikely to ever actually come up, but this should work
+            case TypeArgument typeArgument -> getTypeProperties(typeArgument.bound());
+            // Technically this should be an intersection, not a union of properties,
+            // but users will often know better than us
+            case UnionType unionType -> unionType.children()
+                    .stream()
+                    .map(this::getTypeProperties)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toSet());
+        };
     }
 
     private void completeVariable(DocumentData data, SourcePos pos, ArrayList<CompletionItem> completions) {
@@ -136,5 +210,8 @@ public class AutoCompleteHelper {
         trueItem.setKind(CompletionItemKind.Constant);
 
         completions.addAll(Arrays.asList(nullItem, falseItem, trueItem));
+    }
+
+    private record PropertyCompletionInfo(String name, Type ownerType, Type propertyType) {
     }
 }

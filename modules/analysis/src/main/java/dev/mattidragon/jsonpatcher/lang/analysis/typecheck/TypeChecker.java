@@ -67,12 +67,11 @@ public class TypeChecker {
 
     private Type checkExpression(Expression expression) {
         var existingType = metadata.get(expression, TYPE);
-        //noinspection OptionalIsPresent
         if (existingType.isPresent()) {
             return existingType.get();
         }
 
-        return switch (expression) {
+        var result = switch (expression) {
             case NullExpression nullExpression -> PrimitiveType.NULL;
             case NumberExpression numberExpression -> PrimitiveType.NUMBER;
             case StringExpression stringExpression -> PrimitiveType.STRING;
@@ -139,6 +138,11 @@ public class TypeChecker {
                 yield SpecialType.UNKNOWN;
             }
         };
+
+        while (result instanceof LazyType lazyType) {
+            result = lazyType.get();
+        }
+        return result;
     }
 
     private Type checkPropertyAccess(Expression parent, Expression expression, String name) {
