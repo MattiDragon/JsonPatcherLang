@@ -147,18 +147,6 @@ public class DocHolder {
         };
     }
 
-    public synchronized Optional<ObjectData<DocEntry.GlobalEntry>> getGlobal(String name) {
-        return Optional.ofNullable(globals.get(name));
-    }
-
-    public synchronized Map<String, ObjectData<DocEntry.GlobalEntry>> getGlobals() {
-        return Collections.unmodifiableMap(globals);
-    }
-
-    public Index getIndex() {
-        return docIndex;
-    }
-    
     private synchronized void rebuildLookups() {
         completeTree.clear();
         for (var value : files.values()) {
@@ -180,8 +168,7 @@ public class DocHolder {
                     }
                     case DocEntry.LibraryEntry libraryEntry ->
                             libraries.put(libraryEntry.location().orElse(libraryEntry.name()), libraryEntry);
-                    case DocEntry.MetadataEntry metadataEntry ->
-                            metadataTags.put(metadataEntry.name(), metadataEntry);
+                    case DocEntry.MetadataEntry metadataEntry -> metadataTags.put(metadataEntry.name(), metadataEntry);
                     default -> {}
                 }
             }
@@ -190,6 +177,18 @@ public class DocHolder {
         typeConverter.loadTree(completeTree);
 
         onRebuild.run();
+    }
+
+    public synchronized Optional<ObjectData<DocEntry.GlobalEntry>> getGlobal(String name) {
+        return Optional.ofNullable(globals.get(name));
+    }
+
+    public synchronized Map<String, ObjectData<DocEntry.GlobalEntry>> getGlobals() {
+        return Collections.unmodifiableMap(globals);
+    }
+
+    public Index getIndex() {
+        return docIndex;
     }
 
     public Optional<DocEntry> getDocEntry(String fullName) {
@@ -227,6 +226,10 @@ public class DocHolder {
 
     public Map<String, DocEntry.MetadataEntry> getMetadataTags() {
         return metadataTags;
+    }
+
+    public Optional<DocEntry.MetadataEntry> getMetadataTag(String name) {
+        return Optional.ofNullable(metadataTags.get(name));
     }
 
     public record FileData(

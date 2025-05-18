@@ -320,8 +320,7 @@ public class DocParser {
         }
         tokens.next();
 
-        // TODO: Quoted string
-        if (!tokens.hasNext() || !(tokens.next() instanceof DocToken.Name(var location))) {
+        if (!tokens.hasNext() || !(tokens.next() instanceof DocToken.Quoted(var location))) {
             var pos = tokens.lastPos();
             diagnostics.addDiagnostic(new DocParseError(pos, "Expected location after 'at'", DocParseError.Type.DOC_PARSE));
             return null;

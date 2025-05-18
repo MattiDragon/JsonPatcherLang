@@ -20,7 +20,7 @@ public class Tokenizer {
         skipWhitespace();
         startPos = firstPos.offset(index);
         var c = nextChar();
-        if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {
+        if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_') {
             var word = new StringBuilder(String.valueOf(c));
             while (hasNextChar() && isWordChar(peekChar())) {
                 word.append(nextChar());

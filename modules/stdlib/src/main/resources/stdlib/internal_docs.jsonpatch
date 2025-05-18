@@ -1,0 +1,51 @@
+#| library _internals.internals at "@internals" when #internals
+#| Contains functions needed for the implementation of the standard library.
+#| These are not available to user code.
+
+#| property _internals.internals._throw: (any) -> never
+
+#| property _internals.internals.log: (any) -> null
+
+#| property _internals.internals.arrayInsert: (array, number, any) -> null
+
+#| property _internals.internals.keys: (object) -> string[]
+
+#| property _internals.internals.defineMethods: (string, object) -> null
+
+#| property _internals.internals.bindMathFunction: (string) -> (number) -> number
+
+#| property _internals.internals.pi: () -> number
+
+#| property _internals.internals.e: () -> number
+
+#| property _internals.internals.min: (number, number) -> number
+
+#| property _internals.internals.max: (number, number) -> number
+
+#| property _internals.internals.bind: (function, any, number) -> function
+
+#| property _internals.internals.then: (function, function) -> function
+
+#| property _internals.internals.freeze: <$T>(T) -> T
+
+
+#| library _internals.reflection at "@internals/reflection" when #internals
+#| Contains functions needed for the implementation of the standard reflection library.
+#| These are not available to user code.
+
+#| property _internals.reflection.findClass: (string) -> JavaClass
+#| Finds a Java class and loads it into a JsonPatcher value.
+
+#| property _internals.reflection.newArray: (JavaClass, number) -> JavaObject
+#| Creates a new array of the given class and size. The array is filled with null values.
+
+#| property _internals.reflection.unwrapValue: (any) -> JavaObject
+#| Returns a java object of the internal representation of the value.
+
+#| property _internals.reflection.forceWrap: (any) -> JavaObject
+#| Returns a java object of the value instance.
+
+
+#| metadata _internals.libgroup: string when #internals
+#| Used to mark the library group that a standard library belongs to.
+#| Can be "reflection" or "default". Defaults to "default".

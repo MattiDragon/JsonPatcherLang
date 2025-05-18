@@ -117,6 +117,12 @@ public class DefinitionFinder {
                         .map(object -> object.properties().get(name))
                         .map(DocTreeProperty::entry)
                         .map(this::renderDocEntry);
+            case MetadataSymbol(var name) ->
+                    workspace.getDocManager()
+                            .getHolder()
+                            .getMetadataTag(name)
+                            .map(this::renderDocEntry);
+
             case VariableSymbol(var variable) ->
                     Optional.of(getVariableDocs(variable, metadata));
             default -> Optional.empty();

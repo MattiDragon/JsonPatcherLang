@@ -1,0 +1,4 @@
+#| metadata version: string
+#| Declares the version of a JsonPatcher file. Currently only version 2 is supported.
+#| Any other version may result in the file getting rejected.
+

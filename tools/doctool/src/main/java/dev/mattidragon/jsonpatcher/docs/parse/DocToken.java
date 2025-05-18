@@ -36,8 +36,6 @@ sealed interface DocToken {
         AND,
         ARROW,
         HASH,
-        LESS,
-        GREATER,
         EQUAL,
         CARET,
         QUESTION_MARK,

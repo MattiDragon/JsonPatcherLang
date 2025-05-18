@@ -5,10 +5,7 @@ import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.server.index.symbol.DocEntrySymbol;
-import dev.mattidragon.jsonpatcher.server.index.symbol.GlobalSymbol;
-import dev.mattidragon.jsonpatcher.server.index.symbol.LibrarySymbol;
-import dev.mattidragon.jsonpatcher.server.index.symbol.PropertySymbol;
+import dev.mattidragon.jsonpatcher.server.index.symbol.*;
 
 import java.util.List;
 
@@ -35,9 +32,13 @@ public class DocsIndex extends LookupIndex {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) ->
-                    addSymbol(entry, new IndexEntry(new LibrarySymbol(location.orElse(name)), true), metadata, MetadataKey.IMPORT_LOCATION_POS);
+            case DocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) -> {
+                var symbol = new LibrarySymbol(location.orElse(name));
+                addSymbol(entry, new IndexEntry(symbol, true), metadata, MetadataKey.IMPORT_LOCATION_POS);
+            }
             case DocEntry.MetadataEntry metadataEntry -> {
+                var symbol = new MetadataSymbol(entry.name());
+                addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
             case DocEntry.NamespaceEntry namespaceEntry -> {
             }

@@ -10,6 +10,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.PropertyAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
+import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
 import dev.mattidragon.jsonpatcher.server.index.symbol.*;
 
 import java.util.Arrays;
@@ -40,6 +41,14 @@ abstract class AstIndex extends LookupIndex {
                             .ifPresent(pos -> lookup.add(pos, usageEntry));
                 }
             }
+        }
+    }
+
+    protected void indexMetadata(PatchMetadata metadata, TreeMetadata treeMetadata) {
+        for (var entry : metadata.getAll().entrySet()) {
+            var indexEntry = new IndexEntry(new MetadataSymbol(entry.getKey()), false);
+            treeMetadata.get(entry.getValue(), MetadataKey.NAME_POS)
+                    .ifPresent(pos -> lookup.add(pos, indexEntry));
         }
     }
 

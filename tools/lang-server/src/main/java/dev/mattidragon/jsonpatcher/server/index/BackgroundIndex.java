@@ -30,5 +30,6 @@ public class BackgroundIndex extends AstIndex {
         TypeChecker.typeCheck(program, metadata, diagnostics);
 
         indexTree(program, metadata);
+        indexMetadata(parse.metadata(), metadata);
     }
 }

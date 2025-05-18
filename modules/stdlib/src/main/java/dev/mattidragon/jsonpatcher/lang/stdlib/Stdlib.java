@@ -23,6 +23,10 @@ public class Stdlib {
      */
     public static final String[] MISC_LIBRARY_NAMES;
     /**
+     * Contains a list of standard libraries that only contain documentation
+     */
+    public static final String[] DOC_LIBRARY_NAMES;
+    /**
      * Contains the contents of the standard library files.
      */
     public static final Map<String, String> LIBRARY_CONTENTS;
@@ -30,12 +34,16 @@ public class Stdlib {
     static {
         GLOBAL_LIBRARY_NAMES = loadLibList("globals");
         MISC_LIBRARY_NAMES = loadLibList("misc");
+        DOC_LIBRARY_NAMES = loadLibList("docs_only");
 
         var contents = new HashMap<String, String>();
         for (var name : GLOBAL_LIBRARY_NAMES) {
             loadLibraryContent(name, contents);
         }
         for (var name : MISC_LIBRARY_NAMES) {
+            loadLibraryContent(name, contents);
+        }
+        for (var name : DOC_LIBRARY_NAMES) {
             loadLibraryContent(name, contents);
         }
         LIBRARY_CONTENTS = Collections.unmodifiableMap(contents);

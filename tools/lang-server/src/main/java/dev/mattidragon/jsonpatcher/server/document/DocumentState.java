@@ -13,7 +13,6 @@ import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
-import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
@@ -105,7 +104,7 @@ public class DocumentState {
             var lookups = Lookups.get(program, treeMetadata);
 
             var index = new DocumentIndex(internalName);
-            index.index(program, treeMetadata, variableAnalysis);
+            index.index(program, metadata, treeMetadata, variableAnalysis);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
             return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
