@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeComparison;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
@@ -60,7 +61,51 @@ public class AutoCompleteHelper {
     }
 
     private void completeMetadata(ArrayList<CompletionItem> completions) {
-        completions.add(new CompletionItem("version"));
+        docs.getMetadataTags()
+                .values()
+                .stream()
+                .map(this::buildMetadataCompletion)
+                .forEach(completions::add);
+    }
+
+    private CompletionItem buildMetadataCompletion(DocEntry.MetadataEntry metadataEntry) {
+        var completion = new CompletionItem(metadataEntry.name());
+        completion.setKind(CompletionItemKind.Property);
+
+        var type = docs.getTypeConverter().convert(metadataEntry.type());
+
+        completion.setInsertTextFormat(InsertTextFormat.Snippet);
+        completion.setInsertText(metadataEntry.name() + getValueTemplate(type) + ";");
+
+        return completion;
+    }
+
+    private String getValueTemplate(Type type) {
+        return switch (type) {
+            case PrimitiveType.STRING -> " \"$1\"";
+            case PrimitiveType.ARRAY -> " [$1]";
+            case ArrayType arrayType -> " [$1]";
+            case PrimitiveType.OBJECT -> " {$1}";
+            case ObjectType objectType -> " {$1}";
+            case PrimitiveType.NULL -> "";
+            case PrimitiveType primitiveType -> " $1";
+            case SpecialType specialType -> " $1";
+            case LazyType lazyType -> getValueTemplate(lazyType.get());
+            case NamedType namedType -> {
+                var s = new StringBuilder(" {");
+                var i = 1;
+                for (var key : namedType.properties().keySet()) {
+                    if (i != 1) s.append(",");
+                    s.append("\n  \"").append(key).append("\": $").append(i++);
+                }
+                s.append("\n}");
+                yield s.toString();
+            }
+            case UnionType unionType -> TypeComparison.isSubtype(PrimitiveType.NULL, unionType) ? "" : " $1";
+            // Should never be used for metadata
+            case TypeArgument typeArgument -> "";
+            case FunctionType functionType -> "";
+        };
     }
 
     private void completeProperty(DocumentData data, TokenLookup.IndexedToken currentToken, ArrayList<CompletionItem> completions) {

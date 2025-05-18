@@ -33,6 +33,7 @@ public class DocHolder {
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final DocTree completeTree = new DocTree(List.of());
     private final Map<String, ObjectData<DocEntry.GlobalEntry>> globals = new HashMap<>();
+    private final Map<String, DocEntry.MetadataEntry> metadataTags = new HashMap<>();
     private final Map<String, DocEntry.LibraryEntry> libraries = new HashMap<>();
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
     private DocTypeConverter typeConverter = new DocTypeConverter();
@@ -166,6 +167,7 @@ public class DocHolder {
 
         globals.clear();
         libraries.clear();
+        metadataTags.clear();
         for (var namespace : completeTree.namespaces().values()) {
             for (var object : namespace.objects().values()) {
                 var entry = object.entry();
@@ -178,6 +180,8 @@ public class DocHolder {
                     }
                     case DocEntry.LibraryEntry libraryEntry ->
                             libraries.put(libraryEntry.location().orElse(libraryEntry.name()), libraryEntry);
+                    case DocEntry.MetadataEntry metadataEntry ->
+                            metadataTags.put(metadataEntry.name(), metadataEntry);
                     default -> {}
                 }
             }
@@ -219,6 +223,10 @@ public class DocHolder {
 
     public DocTypeConverter getTypeConverter() {
         return typeConverter;
+    }
+
+    public Map<String, DocEntry.MetadataEntry> getMetadataTags() {
+        return metadataTags;
     }
 
     public record FileData(

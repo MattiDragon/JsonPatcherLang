@@ -68,6 +68,10 @@ public class DocTypeConverter {
         return Optional.ofNullable(globals.get(name));
     }
 
+    public Optional<Type> getNamedType(String name) {
+        return Optional.ofNullable(namedTypes.get(name)).map(LazyType::get);
+    }
+
     private NamedType buildNamedType(String name, PrimitiveType superType, Collection<DocTreeProperty> docProperties) {
         Type wildcardType = null;
         var properties = new HashMap<String, Type>();
@@ -85,7 +89,7 @@ public class DocTypeConverter {
         return new NamedType(superType, properties, Optional.ofNullable(wildcardType), Optional.empty(), name);
     }
 
-    private Type convert(DocType docType) {
+    public Type convert(DocType docType) {
         return convert(docType, new HashMap<>());
     }
 
