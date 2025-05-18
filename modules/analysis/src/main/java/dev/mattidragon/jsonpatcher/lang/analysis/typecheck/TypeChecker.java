@@ -90,7 +90,7 @@ public class TypeChecker {
                 var oldType = checkExpression(target);
                 var newType = checkBinaryOp(operator, checkExpression(target), checkExpression(value));
                 if (oldType != PrimitiveType.NULL && !TypeComparison.isSubtype(newType, oldType)) {
-                    addError(expression, "Expected " + oldType + ", got " + newType);
+                    addError(expression, "Expected " + TypeFormatter.format(oldType) + ", got " + TypeFormatter.format(newType));
                 }
                 yield newType;
             }
@@ -169,6 +169,7 @@ public class TypeChecker {
 
             case PrimitiveType.OBJECT, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
             default -> {
+                // TODO: What does this mean???
                 addError(expression, "");
                 yield SpecialType.UNKNOWN;
             }
@@ -218,7 +219,7 @@ public class TypeChecker {
                 var returnType
         ))) {
             if (!TypeComparison.isSubtype(functionType, CALLABLE_TYPE)) {
-                addError(function, "Expected function or other callable, got " + functionType);
+                addError(function, "Expected function or other callable, got " + TypeFormatter.format(functionType));
             }
             return SpecialType.UNKNOWN;
         }
@@ -235,7 +236,7 @@ public class TypeChecker {
                 expectedType = SpecialType.UNKNOWN;
             }
             if (!TypeComparison.isSubtype(actualType, expectedType)) {
-                addError(arguments.get(i), "Expected " + expectedType + ", got " + actualType);
+                addError(arguments.get(i), "Expected " + TypeFormatter.format(expectedType) + ", got " + TypeFormatter.format(actualType));
             }
         }
 
@@ -298,12 +299,12 @@ public class TypeChecker {
         switch (op) {
             case NOT -> {
                 if (!TypeComparison.isSubtype(type, PrimitiveType.BOOLEAN)) {
-                    addError(input, "Expected boolean, got " + type);
+                    addError(input, "Expected boolean, got " + TypeFormatter.format(type));
                 }
             }
             case MINUS, BITWISE_NOT, INCREMENT, DECREMENT -> {
                 if (!TypeComparison.isSubtype(type, PrimitiveType.NUMBER)) {
-                    addError(input, "Expected number, got " + type);
+                    addError(input, "Expected number, got " + TypeFormatter.format(type));
                 }
             }
         }

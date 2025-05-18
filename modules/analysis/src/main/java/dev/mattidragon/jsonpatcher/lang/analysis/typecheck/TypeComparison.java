@@ -11,7 +11,9 @@ public class TypeComparison {
         if (subType.equals(superType)) return true;
 
         switch (superType) {
-            case LazyType lazyType -> isSubtype(subType, lazyType.get(), equalTypeArgs);
+            case LazyType lazyType -> {
+                return isSubtype(subType, lazyType.get(), equalTypeArgs);
+            }
             case SpecialType.ANY, SpecialType.UNKNOWN -> {
                 return true;
             }

@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 public record TypeCheckError(ProgramNode node, @Nullable SourceSpan pos, String message, Code code) implements Diagnostic {
     @Override
     public String id() {
-        return "TYPE-" + code;
+        return "TYPE-" + code.ordinal();
     }
 
     @Override
