@@ -99,9 +99,7 @@ public class DocumentState {
                     .toList();
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
 
-            var types = new DocTypeConverter();
-            types.loadTree(docHolder.getTree());
-            PreTypingPass.apply(program, treeMetadata, types, diagnostics);
+            PreTypingPass.apply(program, treeMetadata, docHolder.getTypeConverter(), diagnostics);
             TypeChecker.typeCheck(program, treeMetadata, diagnostics);
 
             var lookups = Lookups.get(program, treeMetadata);

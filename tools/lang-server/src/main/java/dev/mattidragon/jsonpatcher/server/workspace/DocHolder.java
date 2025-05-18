@@ -14,6 +14,7 @@ import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
+import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +35,7 @@ public class DocHolder {
     private final Map<String, ObjectData<DocEntry.GlobalEntry>> globals = new HashMap<>();
     private final Map<String, DocEntry.LibraryEntry> libraries = new HashMap<>();
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
+    private DocTypeConverter typeConverter = new DocTypeConverter();
 
     private Runnable onRebuild = () -> {};
 
@@ -180,6 +182,8 @@ public class DocHolder {
                 }
             }
         }
+        typeConverter = new DocTypeConverter();
+        typeConverter.loadTree(completeTree);
 
         onRebuild.run();
     }
@@ -211,6 +215,10 @@ public class DocHolder {
 
     public DocTree getTree() {
         return completeTree;
+    }
+
+    public DocTypeConverter getTypeConverter() {
+        return typeConverter;
     }
 
     public record FileData(
