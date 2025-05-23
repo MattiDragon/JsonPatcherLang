@@ -18,6 +18,7 @@ function sbAppend(sb, value) {
 
 #| property strings.matches: (string: string, regex: string) -> boolean
 #| Checks if the whole string matches a specific regular expression.
+#@ method string
 function matches(string, regex) {
     debug.assert(regex is string, "Regex must be a string");
     return _unwrap(string).matches(regex);
@@ -26,6 +27,7 @@ $matches = matches;
 
 #| property strings.replace: (string: string, pattern: string, replacement: string) -> string
 #| Replaces all instances of `pattern` in `string` with `replacement`.
+#@ method string
 function replace(string, pattern, replacement) {
     debug.assert(pattern is string, "Pattern must be a string");
     debug.assert(replacement is string, "Replacement must be a string");
@@ -35,6 +37,7 @@ $replace = replace;
 
 #| property strings.replaceRegex: (string: string, pattern: string, replacement: string) -> string
 #| Replaces all matches of the regular expression `pattern` in `string` with `replacement`.
+#@ method string
 function replaceRegex(string, pattern, replacement) {
     debug.assert(pattern is string, "Pattern must be a string");
     debug.assert(replacement is string, "Replacement must be a string");
@@ -44,6 +47,7 @@ $replaceRegex = replaceRegex;
 
 #| property strings.split: (string: string, delimiter: string) -> array
 #| Splits the string into into an array with the specified delimiter
+#@ method string
 function split(string, delimiter) {
     debug.assert(delimiter is string, "Delimiter must be a string");
     val jArray = _unwrap(string).'split(Ljava/lang/String;)[Ljava/lang/String;'(delimiter);
@@ -57,6 +61,7 @@ $split = split;
 
 #| property strings.toLowerCase: (string: string) -> string
 #| Converts the string to lowercase with the root locale
+#@ method string
 function toLowerCase(string) {
     return _unwrap(string).'toLowerCase(Ljava/util/Locale;)Ljava/lang/String;'(ROOT_LOCALE);
 }
@@ -64,6 +69,7 @@ $toLowerCase = toLowerCase;
 
 #| property strings.toUpperCase: (string: string) -> string
 #| Converts the string to uppercase with the root locale
+#@ method string
 function toUpperCase(string) {
     return _unwrap(string).'toUpperCase(Ljava/util/Locale;)Ljava/lang/String;'(ROOT_LOCALE);
 }
@@ -71,6 +77,7 @@ $toUpperCase = toUpperCase;
 
 #| property strings.trim: (string: string) -> string
 #| Trim the string by removing leading and trailing whitespace
+#@ method string
 function trim(string) {
     return _unwrap(string).strip();
 }
@@ -78,6 +85,7 @@ $trim = trim;
 
 #| property strings.trimStart: (string: string) -> string
 #| Trim the string by removing leading whitespace
+#@ method string
 function trimStart(string) {
     return _unwrap(string).stripLeading();
 }
@@ -85,6 +93,7 @@ $trimStart = trimStart;
 
 #| property strings.trimEnd: (string: string) -> string
 #| Trim the string by removing trailing whitespace
+#@ method string
 function trimEnd(string) {
     return _unwrap(string).stripTrailing();
 }
@@ -92,6 +101,7 @@ $trimEnd = trimEnd;
 
 #| property strings.startsWith: (string: string, prefix: string) -> boolean
 #| Returns true if the string starts with the specified prefix
+#@ method string
 function startsWith(string, prefix) {
     debug.assert(prefix is string, "Prefix must be a string");
     return _unwrap(string).'startsWith(Ljava/lang/String;)Z'(prefix);
@@ -100,6 +110,7 @@ $startsWith = startsWith;
 
 #| property strings.endsWith: (string: string, suffix: string) -> boolean
 #| Returns true if the string ends with the specified suffix
+#@ method string
 function endsWith(string, suffix) {
     debug.assert(suffix is string, "Suffix must be a string");
     return _unwrap(string).endsWith(suffix);
@@ -108,6 +119,7 @@ $endsWith = endsWith;
 
 #| property strings.contains: (string: string, substring: string) -> boolean
 #| Returns true if the string contains the specified substring
+#@ method string
 function contains(string, substring) {
     debug.assert(substring is string, "Substring must be a string");
     return _unwrap(string).contains(substring);
@@ -116,6 +128,7 @@ $contains = contains;
 
 #| property strings.length: (string: string) -> number
 #| Returns the length of the string in unicode code units
+#@ method string
 function length(string) {
     return _unwrap(string).length();
 }
@@ -123,6 +136,7 @@ $length = length;
 
 #| property strings.isEmpty: (string: string) -> boolean
 #| Returns true if the string is empty (length == 0)
+#@ method string
 function isEmpty(string) {
     return _unwrap(string).isEmpty();
 }
@@ -130,6 +144,7 @@ $isEmpty = isEmpty;
 
 #| property strings.isBlank: (string: string) -> boolean
 #| Returns true if the string only contains whitespace characters
+#@ method string
 function isBlank(string) {
     return _unwrap(string).isBlank();
 }
@@ -137,6 +152,7 @@ $isBlank = isBlank;
 
 #| property strings.charAt: (string: string, index: number) -> string
 #| Returns a string consisting of only the character at the specified index
+#@ method string
 function charAt(string, index) {
     return _unwrap(string).charAt(index);
 }
@@ -144,6 +160,7 @@ $charAt = charAt;
 
 #| property strings.chars: (string: string) -> array
 #| Returns an array of strings with each character from this string
+#@ method string
 function chars(string) {
     val jArray = _unwrap(string).toCharArray();
     val array = [];
@@ -156,6 +173,7 @@ $chars = chars;
 
 #| property strings.substring: (string: string, from: number, to?: number) -> string
 #| Returns a substring from the specified start index (inclusive) to the specified end index, if specified (exclusive)
+#@ method string
 function substring(string, from, to = null) {
     if (to == null) {
         return _unwrap(string).'substring(I)Ljava/lang/String;'(from);
@@ -164,6 +182,9 @@ function substring(string, from, to = null) {
     }
 }
 $substring = substring;
+
+# We don't want to expose join or asString, so we do this first. defineMethods copies the object
+internals.defineMethods("string", $);
 
 #| property strings.asString: (value: any) -> string
 #| Converts any value to a string
@@ -200,9 +221,6 @@ function asString(value) {
     return reflectionInternals.forceWrap(value).'toString()Ljava/lang/String;'();
 }
 $asString = asString;
-
-# We don't want to expose join, so we do this first. defineMethods copies the object
-internals.defineMethods("string", $);
 
 #| property strings.join: (array: array, string: delimiter) -> string
 #| Converts all values in the array to a string and concatenates them with the delimiter in between

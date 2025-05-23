@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.docs.data;
 
+import dev.mattidragon.jsonpatcher.docs.tag.DocTag;
 import dev.mattidragon.jsonpatcher.docs.type.DocType;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 
@@ -7,76 +8,59 @@ import java.util.List;
 import java.util.Optional;
 
 public sealed interface DocEntry extends MetadataHolder {
-    Optional<DocCondition> condition();
-    NamespaceDescription namespace();
-    String name();
-    String body();
+    SharedData sharedData();
+
+    default NamespaceDescription namespace() {
+        return sharedData().namespace();
+    }
+
+    default String name() {
+        return sharedData().name();
+    }
+
+    default String body() {
+        return sharedData().body();
+    }
 
     @Override
     default Iterable<? extends DocEntry> getChildren() {
         return List.of();
     }
 
-    record LibraryEntry(NamespaceDescription namespace, String name, Optional<String> location, Optional<DocCondition> condition, String body) implements DocEntry {
+    record LibraryEntry(SharedData sharedData, Optional<String> location) implements DocEntry {
     }
 
     sealed interface GlobalEntry extends DocEntry {
     }
 
-    record GlobalLibraryEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements GlobalEntry {
+    record GlobalLibraryEntry(SharedData sharedData) implements GlobalEntry {
     }
 
-    record GlobalValueEntry(NamespaceDescription namespace, String name, DocType type, Optional<DocCondition> condition, String body) implements GlobalEntry {
+    record GlobalValueEntry(SharedData sharedData, DocType type) implements GlobalEntry {
     }
 
     /**
-     * @param name May be {@code *} in addition to regular names
+     * The name may be {@code *} in addition to regular names
      */
-    record PropertyEntry(NamespaceDescription namespace, String owner, String name, DocType type, Optional<DocCondition> condition, String body) implements DocEntry {
+    record PropertyEntry(SharedData sharedData, String owner, DocType type) implements DocEntry {
     }
 
-    record TypeDeclarationEntry(NamespaceDescription namespace, String name, BaseType baseType, Optional<DocCondition> condition, String body) implements DocEntry {
+    record TypeDeclarationEntry(SharedData sharedData, BaseType baseType) implements DocEntry {
         public enum BaseType {
             OBJECT,
             SPECIAL
         }
     }
 
-    record TypeAliasEntry(NamespaceDescription namespace, String name, DocType definition, Optional<DocCondition> condition, String body) implements DocEntry {
+    record TypeAliasEntry(SharedData sharedData, DocType definition) implements DocEntry {
     }
 
-    record MetadataEntry(NamespaceDescription namespace, String name, DocType type, Optional<DocCondition> condition, String body) implements DocEntry {
+    record MetadataEntry(SharedData sharedData, DocType type) implements DocEntry {
     }
 
-    record NamespaceEntry(NamespaceDescription namespace, String name, Optional<DocCondition> condition, String body) implements DocEntry {
+    record NamespaceEntry(SharedData sharedData) implements DocEntry {
+    }
+
+    record SharedData(NamespaceDescription namespace, String name, String body, List<DocTag> tags) {
     }
 }
-
-/*
-library name
-library name at "lib_location"
-
-global library name
-global name : type
-
-property owner.name : type
-
-type name
-typealias name : definition
-
-metadata name : type
-
-
-
-number, string, boolean, null
-
-type[]
-
-(argType) -> returnType
-(argName: argType) -> returnType
-(argType1, argType2?) -> returnType
-<T> (T) -> T
-<T: type> (T[]) -> T
-
-
- */

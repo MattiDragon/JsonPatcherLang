@@ -37,7 +37,7 @@ public class TypeParser {
                 var error = "Unexpected token at start of type: " + token;
                 var errorPos = tokens.lastPos();
 
-                diagnostics.addDiagnostic(new DocParseError(errorPos, error, DocParseError.Type.TYPE_PARSE));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, error, DocParseDiagnostic.Type.TYPE_PARSE));
 
                 var errorType = new ErrorDocType(error);
                 metadata.put(errorType, MetadataKey.FULL_POS, errorPos);
@@ -251,7 +251,7 @@ public class TypeParser {
     }
 
     private void addDiagnostic(SourceSpan pos, String message) {
-        diagnostics.addDiagnostic(new DocParseError(pos, message, DocParseError.Type.TYPE_PARSE));
+        diagnostics.addDiagnostic(new DocParseDiagnostic(pos, message, DocParseDiagnostic.Type.TYPE_PARSE));
     }
 
     private DocType parseParens() {

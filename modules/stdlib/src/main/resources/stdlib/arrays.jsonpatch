@@ -11,6 +11,7 @@ function fixInsertIndex(index, size) {
 
 #| property arrays.insert: <$T>(array: $T[], index: number, value: $T) -> $T[]
 #| Inserts the specified value at the specified index. The inserted value will be found that the index after the insertion.
+#@ method array
 function insert(array, index, value) {
     debug.assert(array is array, "arrays.insert() called with non-array as first argument");
     debug.assert(index is number, "arrays.insert() called with non-number as second argument");
@@ -21,6 +22,7 @@ function insert(array, index, value) {
 
 #| property arrays.push: <$T>(array: $T[], value: $T) -> $T[]
 #| Appends the specified value to the end of the array. Returns the array.
+#@ method array
 function push(array, value) {
     debug.assert(array is array, "arrays.push() called with non-array as first argument");
     
@@ -30,6 +32,7 @@ function push(array, value) {
 
 #| property arrays.pop: <$T>(array: $T[]) -> $T
 #| Removes the last element from the array and returns it.
+#@ method array
 function pop(array) {
     debug.assert(array is array, "arrays.pop() called with non-array");
     
@@ -42,6 +45,7 @@ function pop(array) {
 
 #| property arrays.remove: <$T>(array: $T[], value: any) -> $T[]
 #| Removes the first occurrence of the specified value from the array. Returns the array.
+#@ method array
 function remove(array, value) {
     debug.assert(array is array, "arrays.remove() called with non-array as first argument");
     
@@ -56,6 +60,7 @@ function remove(array, value) {
 
 #| property arrays.removeAt: <$T>(array: $T[], index: number) -> $T
 #| Removes the value at the specified index from the array. Returns the removed element.
+#@ method array
 function removeAt(array, index) {
     debug.assert(array is array, "arrays.removeAt() called with non-array as first argument");
     debug.assert(index is number, "arrays.removeAt() called with non-number as second argument");
@@ -67,6 +72,7 @@ function removeAt(array, index) {
 
 #| property arrays.map: <$T, $U>(array: $T[], function: ($T) -> $U) -> $U[]
 #| Applies the specified function to each element in the array, creating a new array and returns the result.
+#@ method array
 function map(array, func) {
     debug.assert(array is array, "arrays.map() called with non-array as first argument");
     debug.assert(func is function, "arrays.map() called with non-function as second argument");
@@ -80,6 +86,7 @@ function map(array, func) {
 
 #| property arrays.replace: <$T, $U>(array: $T[], function: ($T) -> $U) -> $U[]
 #| Applies the specified function to each element in the array modifying them in place
+#@ method array
 function replace(array, func) {
     debug.assert(array is array, "arrays.replace() called with non-array as first argument");
     debug.assert(func is function, "arrays.replace() called with non-function as second argument");
@@ -92,6 +99,7 @@ function replace(array, func) {
 
 #| property arrays.filter: <$T>(array: $T[], predicate: ($T) -> boolean) -> $T[]
 #| Applies the specified function to each element in the array, creating a new array with only the elements that returned true.
+#@ method array
 function filter(array, predicate) {
     debug.assert(array is array, "arrays.filter() called with non-array as first argument");
     debug.assert(predicate is function, "arrays.filter() called with non-function as second argument");
@@ -107,6 +115,7 @@ function filter(array, predicate) {
 
 #| property arrays.removeIf: <$T>(array: $T[], predicate: ($T) -> boolean) -> $T[]
 #| Applies the specified function to each element in the array, removing the elements that returned true.
+#@ method array
 function removeIf(array, predicate) {
     debug.assert(array is array, "arrays.removeIf() called with non-array as first argument");
     debug.assert(predicate is function, "arrays.removeIf() called with non-function as second argument");
@@ -121,6 +130,7 @@ function removeIf(array, predicate) {
 
 #| property arrays.reduce: <$T, $A>(array: $T[], function: (value: $T, accumulator: $A) -> $A, initial: $A) -> $A
 #| Iterates through the array applying the specified function to each element and the current state, beginning with the initial value and being replaced by the returned value from the function. Returns the last state.
+#@ method array
 function reduce(array, func, initial) {
     debug.assert(array is array, "arrays.reduce() called with non-array as first argument");
     debug.assert(func is function, "arrays.reduce() called with non-function as second argument");
@@ -134,6 +144,7 @@ function reduce(array, func, initial) {
 
 #| property arrays.slice: <$T>(array: $T[], from: number, to: number?) -> $T[]
 #| Returns a slice of the array from the specified start index (inclusive) to the specified end index (exclusive)
+#@ method array
 function slice(array, from, to = array.length) {
     debug.assert(array is array, "arrays.slice() called with non-array as first argument");
     debug.assert(from is number, "arrays.slice() called with non-number as second argument");
@@ -148,6 +159,7 @@ function slice(array, from, to = array.length) {
 
 #| property arrays.indexOf: (array: array, value: any) -> number
 #| Returns the index of the index of the value in the array, or -1 if it isn't present
+#@ method array
 function indexOf(array, value) {
     debug.assert(array is array, "arrays.indexOf() called with non-array as first argument");
     

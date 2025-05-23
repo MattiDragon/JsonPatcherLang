@@ -1,18 +1,34 @@
 package dev.mattidragon.jsonpatcher.docs.data;
 
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.MetadataElement;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
-public sealed interface DocCondition {
-    record LibraryGroupCondition(String group) implements DocCondition {}
+public sealed interface DocCondition extends MetadataHolder {
+    @Override
+    Iterable<? extends MetadataHolder> getChildren();
+
+    record LibraryGroupCondition(String group) implements DocCondition {
+        @Override
+        public Iterable<MetadataHolder> getChildren() {
+            return List.of();
+        }
+    }
 
     record MetadataCondition(String key, Optional<MetadataElement> value) implements DocCondition {
         public boolean matches(PatchMetadata metadata) {
             if (!metadata.has(key)) return false;
             return value.map(required -> required.equals(metadata.get(key)))
                     .orElse(true);
+        }
+
+        @Override
+        public Iterable<MetadataHolder> getChildren() {
+            return value.stream().<MetadataHolder>map(Function.identity()).toList();
         }
     }
 
@@ -31,14 +47,42 @@ public sealed interface DocCondition {
             };
         }
 
+        @Override
+        public Iterable<MetadataHolder> getChildren() {
+            return List.of();
+        }
+
         public enum Mode {
             MAJOR, MINOR, EXACT, GREATER, LESSER
         }
     }
 
-    record OrCondition(DocCondition first, DocCondition second) implements DocCondition {}
+    record OrCondition(List<DocCondition> conditions) implements DocCondition {
+        public OrCondition {
+            conditions = List.copyOf(conditions);
+        }
 
-    record AndCondition(DocCondition first, DocCondition second) implements DocCondition {}
+        @Override
+        public Iterable<DocCondition> getChildren() {
+            return conditions;
+        }
+    }
 
-    record NotCondition(DocCondition condition) implements DocCondition {}
+    record AndCondition(List<DocCondition> conditions) implements DocCondition {
+        public AndCondition {
+            conditions = List.copyOf(conditions);
+        }
+
+        @Override
+        public Iterable<DocCondition> getChildren() {
+            return conditions;
+        }
+    }
+
+    record NotCondition(DocCondition condition) implements DocCondition {
+        @Override
+        public Iterable<DocCondition> getChildren() {
+            return List.of(condition);
+        }
+    }
 }

@@ -1,8 +1,8 @@
 package dev.mattidragon.jsonpatcher.docs.write;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
-import dev.mattidragon.jsonpatcher.docs.type.FunctionDocType;
 import dev.mattidragon.jsonpatcher.docs.type.DocType;
+import dev.mattidragon.jsonpatcher.docs.type.FunctionDocType;
 import org.commonmark.node.*;
 import org.jspecify.annotations.Nullable;
 
@@ -57,14 +57,10 @@ public class DocEntryWriter {
             metadata.appendChild(new HardLineBreak());
         }
 
-        entry.condition().ifPresent(condition -> {
-            var strong = new StrongEmphasis();
-            strong.appendChild(new Text("Requires:"));
-            metadata.appendChild(strong);
-            metadata.appendChild(new Text(" "));
-            metadata.appendChild(new Code(DocConditionWriter.write(condition)));
+        for (var tag : entry.sharedData().tags()) {
+            tag.formattedContent().forEach(metadata::appendChild);
             metadata.appendChild(new HardLineBreak());
-        });
+        }
 
         document.appendChild(metadata);
     }

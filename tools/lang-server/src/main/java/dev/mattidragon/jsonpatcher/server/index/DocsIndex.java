@@ -24,15 +24,15 @@ public class DocsIndex extends LookupIndex {
         }
 
         switch (entry) {
-            case DocEntry.GlobalLibraryEntry(var namespace, var name, var condition, var body) -> {
+            case DocEntry.GlobalLibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags)) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.GlobalValueEntry(var namespace, var name, var type, var condition, var body) -> {
+            case DocEntry.GlobalValueEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var type) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.LibraryEntry(var namespace, var name, var location, var condition, var body) -> {
+            case DocEntry.LibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var location) -> {
                 var symbol = new LibrarySymbol(location.orElse(name));
                 addSymbol(entry, new IndexEntry(symbol, true), metadata, MetadataKey.IMPORT_LOCATION_POS);
             }
@@ -42,7 +42,7 @@ public class DocsIndex extends LookupIndex {
             }
             case DocEntry.NamespaceEntry namespaceEntry -> {
             }
-            case DocEntry.PropertyEntry(var namespace, var owner, var name, var type, var condition, var body) -> {
+            case DocEntry.PropertyEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var owner, var type) -> {
                 addSymbol(entry, new IndexEntry(new DocEntrySymbol(namespace, owner), false), metadata, DocMetadataKeys.PROPERTY_OWNER_POS);
                 addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
             }

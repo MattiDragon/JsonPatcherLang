@@ -2,13 +2,15 @@ package dev.mattidragon.jsonpatcher.docs.write;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocCondition;
 
-class DocConditionWriter {
+import java.util.stream.Collectors;
+
+public class DocConditionWriter {
     public static String write(DocCondition condition) {
         return switch (condition) {
             case DocCondition.AndCondition andCondition
                     -> writeAnd(andCondition);
             case DocCondition.LibraryGroupCondition(var name)
-                    -> "#" + name;
+                    -> "libgroup(" + name + ")";
             case DocCondition.MetadataCondition metadataCondition
                     -> writeMetadata(metadataCondition);
             case DocCondition.NotCondition notCondition
@@ -21,45 +23,34 @@ class DocConditionWriter {
     }
 
     private static String writeAnd(DocCondition.AndCondition condition) {
-        return write(condition.first()) + " & " + condition.second();
+        return condition.conditions()
+                .stream()
+                .map(DocConditionWriter::write)
+                .collect(Collectors.joining(", ", "all(", ")"));
     }
 
     private static String writeOr(DocCondition.OrCondition condition) {
-        var builder = new StringBuilder();
-
-        var firstNeedsParens = condition.first() instanceof DocCondition.AndCondition;
-        if (firstNeedsParens) builder.append("(");
-        builder.append(write(condition.first()));
-        if (firstNeedsParens) builder.append(")");
-
-        builder.append(" | ");
-
-        var secondNeedsParens = condition.second() instanceof DocCondition.AndCondition;
-        if (secondNeedsParens) builder.append("(");
-        builder.append(write(condition.second()));
-        if (secondNeedsParens) builder.append(")");
-
-        return builder.toString();
+        return condition.conditions()
+                .stream()
+                .map(DocConditionWriter::write)
+                .collect(Collectors.joining(", ", "any(", ")"));
     }
 
     private static String writeNot(DocCondition.NotCondition condition) {
-        var builder = new StringBuilder("!");
-
-        var needsParens = condition.condition() instanceof DocCondition.AndCondition
-                || condition.condition() instanceof DocCondition.OrCondition;
-
-        if (needsParens) builder.append("(");
-        builder.append(write(condition.condition()));
-        if (needsParens) builder.append(")");
-
-        return builder.toString();
+        if (condition instanceof DocCondition.NotCondition(DocCondition.AndCondition(var children))) {
+            return children.stream()
+                    .map(DocConditionWriter::write)
+                    .collect(Collectors.joining(", ", "none(", ")"));
+        } else {
+            return "not(" + write(condition.condition()) + ")";
+        }
     }
 
     private static String writeMetadata(DocCondition.MetadataCondition condition) {
         if (condition.value().isPresent()) {
             throw new UnsupportedOperationException("Value in metadata condition is not yet supported");
         }
-        return "@" + condition.key();
+        return "metadata(" + condition.key() + ")";
     }
 
     private static String writeVersion(DocCondition.VersionCondition condition) {
@@ -70,6 +61,6 @@ class DocConditionWriter {
             case GREATER -> '>';
             case LESSER -> '<';
         };
-        return "v" + modeSymbol + condition.major() + "." + condition.minor() + "." + condition.patch();
+        return "version(" + modeSymbol + condition.major() + "." + condition.minor() + "." + condition.patch() + ")";
     }
 }

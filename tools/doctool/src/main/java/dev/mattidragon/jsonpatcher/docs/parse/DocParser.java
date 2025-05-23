@@ -1,43 +1,58 @@
 package dev.mattidragon.jsonpatcher.docs.parse;
 
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
-import dev.mattidragon.jsonpatcher.docs.data.DocCondition;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
+import dev.mattidragon.jsonpatcher.docs.tag.DocTag;
+import dev.mattidragon.jsonpatcher.docs.tag.PositionedString;
+import dev.mattidragon.jsonpatcher.docs.tag.TagProcessor;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class DocParser {
+    private static final Pattern TAG_PATTERN = Pattern.compile("(?<type>\\w*) *(?<content>.*)");
+
     private final Tokenizer tokens;
     private final String body;
+    private final List<CommentHandler.Comment> tagLines;
     private final DiagnosticsBuilder diagnostics;
     private final SourcePos headerStartPos;
     private final TreeMetadata metadata;
+
+    private final List<DocTag> mutableTagList;
+    private final List<DocTag> immutableTagList;
+
     private List<SourceSpan> dottedNamePositions = List.of();
 
-    private DocParser(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    private DocParser(String header, String body, List<CommentHandler.Comment> tagLines, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         this.tokens = new Tokenizer(header, headerStartPos);
         this.body = body;
+        this.tagLines = tagLines;
         this.diagnostics = diagnostics;
         this.headerStartPos = headerStartPos;
         this.metadata = metadata;
+        mutableTagList = new ArrayList<>(tagLines.size());
+        immutableTagList = Collections.unmodifiableList(mutableTagList);
     }
 
-    public static @Nullable DocEntry parse(String header, String body, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    public static @Nullable DocEntry parse(String header, String body, List<CommentHandler.Comment> tags, SourcePos headerStartPos, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
         try {
-            return new DocParser(header, body, headerStartPos, metadata, diagnostics).parse();
+            return new DocParser(header, body, tags, headerStartPos, metadata, diagnostics).parse();
         } catch (FailException e) {
             return null;
         } catch (Tokenizer.EolException e) {
-            diagnostics.addDiagnostic(new DocParseError(e.getPos().toSpan(), "Unexpected end of line", DocParseError.Type.EOL));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(e.getPos().toSpan(), "Unexpected end of line", DocParseDiagnostic.Type.EOL));
             return null;
         }
     }
@@ -46,12 +61,12 @@ public class DocParser {
         var hadNext = tokens.hasNext();
         if (!hadNext || !(tokens.next() instanceof DocToken.Name(var firstToken))) {
             var pos = hadNext ? tokens.lastPos() : new SourceSpan(headerStartPos, headerStartPos);
-            diagnostics.addDiagnostic(new DocParseError(pos, "Illegal start of doc comment", DocParseError.Type.DOC_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Illegal start of doc comment", DocParseDiagnostic.Type.DOC_PARSE));
             throw new FailException();
         }
         var keywordPos = tokens.lastPos();
 
-        return switch (firstToken) {
+        var entry = switch (firstToken) {
             case "library" -> parseLibrary(keywordPos);
             case "global" -> {
                 if (tokens.peek() instanceof DocToken.Name(var libraryString) && libraryString.equals("library")) {
@@ -76,9 +91,9 @@ public class DocParser {
                     tokens.next();
                     location = expectQuotedString();
                 }
-                var condition = checkCondition();
                 expectEol();
-                yield new DocEntry.LibraryEntry(NamespaceDescription.EMPTY, name, Optional.ofNullable(location), condition, body);
+                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList);
+                yield new DocEntry.LibraryEntry(sharedData, Optional.ofNullable(location));
             }
             case "value" -> {
                 var owner = expectName();
@@ -86,25 +101,56 @@ public class DocParser {
                 var name = expectName();
                 expectSymbol(DocToken.Symbol.COLON);
                 var type = OldTypeParser.parse(tokens, metadata, diagnostics);
-                var condition = checkCondition();
                 expectEol();
-                yield new DocEntry.PropertyEntry(NamespaceDescription.EMPTY, owner, name, type, condition, body);
+                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList);
+                yield new DocEntry.PropertyEntry(sharedData, owner, type);
             }
             default -> {
                 var pos = tokens.lastPos();
-                diagnostics.addDiagnostic(new DocParseError(pos, "Unknown doc comment type: " + firstToken, DocParseError.Type.DOC_PARSE));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Unknown doc comment type: " + firstToken, DocParseDiagnostic.Type.DOC_PARSE));
                 throw new FailException();
             }
         };
+
+        parseTags(entry);
+        return entry;
+    }
+
+    private void parseTags(DocEntry entry) {
+        for (var tagLine : tagLines) {
+            var matcher = TAG_PATTERN.matcher(tagLine.text());
+            if (!matcher.matches()) {
+                throw new IllegalStateException("Tag pattern failed to match '%s' (it should match any string)"
+                        .formatted(tagLine.text()));
+            }
+            var type = matcher.group("type");
+            var content = matcher.group("content");
+
+            var startPos = tagLine.start();
+            var namePos = new SourceSpan(startPos, startPos.offset(type.length()));
+            var contentPos = new SourceSpan(startPos.offset(matcher.start("content")), startPos.offset(tagLine.text().length()));
+
+            var formatted = TagProcessor.COMBINED.process(new PositionedString(type, namePos),
+                    new PositionedString(content, contentPos),
+                    entry,
+                    metadata,
+                    diagnostics);
+
+            var tag = new DocTag(type, content, formatted);
+            metadata.put(tag, MetadataKey.NAME_POS, namePos);
+            metadata.put(tag, MetadataKey.FULL_POS, new SourceSpan(startPos, startPos.offset(tagLine.text().length())));
+
+            mutableTagList.add(tag);
+        }
     }
 
     private DocEntry.NamespaceEntry parseNamespace(SourceSpan keywordPos) throws FailException {
         var dottedNames = readDottedNames();
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.NamespaceEntry(new NamespaceDescription(dottedNames), name, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var entry = new DocEntry.NamespaceEntry(sharedData);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
@@ -115,9 +161,9 @@ public class DocParser {
         var namePos = dottedNamePositions.removeLast();
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.MetadataEntry(new NamespaceDescription(dottedNames), name, type, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var entry = new DocEntry.MetadataEntry(sharedData, type);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
@@ -128,9 +174,9 @@ public class DocParser {
         var namePos = dottedNamePositions.removeLast();
         expectSymbol(DocToken.Symbol.COLON);
         var definition = TypeParser.parse(tokens, metadata, diagnostics);
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.TypeAliasEntry(new NamespaceDescription(dottedNames), name, definition, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var entry = new DocEntry.TypeAliasEntry(sharedData, definition);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
     }
@@ -145,14 +191,14 @@ public class DocParser {
             case DocToken.Name(var s) when s.equals("special") -> DocEntry.TypeDeclarationEntry.BaseType.SPECIAL;
             default -> {
                 var pos = tokens.lastPos();
-                diagnostics.addDiagnostic(new DocParseError(pos, "Unknown base type. Must be either object or special", DocParseError.Type.DOC_PARSE));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Unknown base type. Must be either object or special", DocParseDiagnostic.Type.DOC_PARSE));
                 yield DocEntry.TypeDeclarationEntry.BaseType.OBJECT;
             }
         };
         var baseTypePos = tokens.lastPos();
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.TypeDeclarationEntry(new NamespaceDescription(dottedNames), name, baseType, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var entry = new DocEntry.TypeDeclarationEntry(sharedData, baseType);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.BASE_TYPE_POS, baseTypePos);
         return entry;
@@ -166,7 +212,7 @@ public class DocParser {
         SourceSpan ownerPos;
         if (dottedNames.isEmpty()) {
             var pos = tokens.lastPos();
-            diagnostics.addDiagnostic(new DocParseError(pos, "Property must have owner", DocParseError.Type.DOC_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Property must have owner", DocParseDiagnostic.Type.DOC_PARSE));
             owner = "";
             ownerPos = new SourceSpan(pos.to().offset(1), pos.to().offset(1));
         } else {
@@ -175,9 +221,9 @@ public class DocParser {
         }
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.PropertyEntry(new NamespaceDescription(dottedNames), owner, name, type, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var entry = new DocEntry.PropertyEntry(sharedData, owner, type);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.PROPERTY_OWNER_POS, ownerPos);
         return entry;
@@ -189,9 +235,9 @@ public class DocParser {
         var globalNamePos = dottedNamePositions.removeLast();
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.GlobalValueEntry(new NamespaceDescription(dottedNames), globalName, type, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), globalName, body, immutableTagList);
+        var entry = new DocEntry.GlobalValueEntry(sharedData, type);
         attachStandardMetadata(entry, keywordPos, globalNamePos);
         return entry;
     }
@@ -200,8 +246,8 @@ public class DocParser {
         var dottedNames = readDottedNames();
         var libName = dottedNames.removeLast();
         var libNamePos = dottedNamePositions.removeLast();
-        var condition = checkCondition();
-        var entry = new DocEntry.GlobalLibraryEntry(new NamespaceDescription(dottedNames), libName, condition, body);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), libName, body, immutableTagList);
+        var entry = new DocEntry.GlobalLibraryEntry(sharedData);
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.SECONDARY_KEYWORD_POS, secondKeywordPos);
         return entry;
@@ -214,9 +260,9 @@ public class DocParser {
         var namespace = new NamespaceDescription(dottedNames);
         var location = checkLibraryLocation();
         var locationsPos = location == null ? null : tokens.lastPos();
-        var condition = checkCondition();
         expectEol();
-        var entry = new DocEntry.LibraryEntry(namespace, libName, Optional.ofNullable(location), condition, body);
+        var sharedData = new DocEntry.SharedData(namespace, libName, body, immutableTagList);
+        var entry = new DocEntry.LibraryEntry(sharedData, Optional.ofNullable(location));
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.IMPORT_LOCATION_POS, locationsPos != null ? locationsPos : libNamePos);
         return entry;
@@ -227,88 +273,6 @@ public class DocParser {
         metadata.put(entry, MetadataKey.NAME_POS, namePos);
         metadata.put(entry, MetadataKey.KEYWORD_POS, keywordPos);
         metadata.put(entry, MetadataKey.FULL_POS, SourceSpan.between(keywordPos, tokens.lastPos()));
-    }
-
-    private Optional<DocCondition> checkCondition() {
-        if (!tokens.hasNext() || !(tokens.peek() instanceof DocToken.Name(var whenString)) || !whenString.equals("when")) {
-            return Optional.empty();
-        }
-        tokens.next();
-
-        try {
-            return Optional.of(parseCondition());
-        } catch (FailException e) {
-            return Optional.empty();
-        }
-    }
-
-    // TODO: make conditions metadata holders and attach positions
-    private DocCondition parseCondition() throws FailException {
-        var condition = switch (tokens.next()) {
-            case DocToken.Symbol.AT -> {
-                var name = expectName();
-
-                // TODO: parse value
-
-                yield new DocCondition.MetadataCondition(name, Optional.empty());
-            }
-            case DocToken.Symbol.HASH -> {
-                var group = expectName();
-                yield new DocCondition.LibraryGroupCondition(group);
-            }
-            case DocToken.Name(var s) when s.equals("v") -> {
-                var modeSymbol = expectSymbol();
-                var mode = switch (modeSymbol) {
-                    case DocToken.Symbol.BEGIN_ANGLE -> DocCondition.VersionCondition.Mode.LESSER;
-                    case DocToken.Symbol.END_ANGLE -> DocCondition.VersionCondition.Mode.GREATER;
-                    case DocToken.Symbol.EQUAL -> DocCondition.VersionCondition.Mode.EXACT;
-                    case DocToken.Symbol.CARET -> DocCondition.VersionCondition.Mode.MAJOR;
-                    case DocToken.Symbol.TILDE -> DocCondition.VersionCondition.Mode.MINOR;
-                    default -> {
-                        var pos = tokens.lastPos();
-                        diagnostics.addDiagnostic(new DocParseError(pos, "Unknown version comparison mode: " + modeSymbol, DocParseError.Type.DOC_PARSE));
-                        yield DocCondition.VersionCondition.Mode.EXACT;
-                    }
-                };
-                var major = expectNumber();
-                expectSymbol(DocToken.Symbol.DOT);
-                var minor = expectNumber();
-                expectSymbol(DocToken.Symbol.DOT);
-                var patch = expectNumber();
-
-                yield new DocCondition.VersionCondition(major, minor, patch, mode);
-            }
-            case DocToken.Symbol.BANG -> {
-                var inner = parseCondition();
-                yield new DocCondition.NotCondition(inner);
-            }
-            case DocToken.Symbol.BEGIN_PAREN -> {
-                var inner = parseCondition();
-                if (tokens.next() != DocToken.Symbol.END_PAREN) {
-                    var pos = tokens.lastPos().to().offset(1).toSpan();
-                    diagnostics.addDiagnostic(new DocParseError(pos, "Expected closing ')'", DocParseError.Type.DOC_PARSE));
-                }
-                yield inner;
-            }
-            default -> {
-                diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Unexpected token", DocParseError.Type.DOC_PARSE));
-                throw new FailException();
-            }
-        };
-
-        if (!tokens.hasNext()) return condition;
-
-        while (tokens.peek() == DocToken.Symbol.AND) {
-            tokens.next();
-            condition = new DocCondition.AndCondition(condition, parseCondition());
-        }
-
-        while (tokens.peek() == DocToken.Symbol.BAR) {
-            tokens.next();
-            condition = new DocCondition.OrCondition(condition, parseCondition());
-        }
-
-        return condition;
     }
 
     private @Nullable String checkLibraryLocation() {
@@ -322,7 +286,7 @@ public class DocParser {
 
         if (!tokens.hasNext() || !(tokens.next() instanceof DocToken.Quoted(var location))) {
             var pos = tokens.lastPos();
-            diagnostics.addDiagnostic(new DocParseError(pos, "Expected location after 'at'", DocParseError.Type.DOC_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Expected location after 'at'", DocParseDiagnostic.Type.DOC_PARSE));
             return null;
         }
 
@@ -356,7 +320,7 @@ public class DocParser {
                 names.add("*");
                 dottedNamePositions.add(tokens.lastPos());
                 if (tokens.hasNext() && tokens.peek() == DocToken.Symbol.DOT) {
-                    diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Unexpected '.' after '*'", DocParseError.Type.DOC_PARSE));
+                    diagnostics.addDiagnostic(new DocParseDiagnostic(tokens.lastPos(), "Unexpected '.' after '*'", DocParseDiagnostic.Type.DOC_PARSE));
                 }
                 break;
             } else {
@@ -373,17 +337,7 @@ public class DocParser {
         }
         var lastPos = tokens.lastPos();
         var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
-        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected name", DocParseError.Type.DOC_PARSE));
-        throw new FailException();
-    }
-
-    private int expectNumber() throws FailException {
-        if (tokens.hasNext() && tokens.next() instanceof DocToken.Number(var number)) {
-            return number;
-        }
-        var lastPos = tokens.lastPos();
-        var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
-        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected number", DocParseError.Type.DOC_PARSE));
+        diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, "Expected name", DocParseDiagnostic.Type.DOC_PARSE));
         throw new FailException();
     }
 
@@ -393,7 +347,7 @@ public class DocParser {
         }
         var lastPos = tokens.lastPos();
         var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
-        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected string", DocParseError.Type.DOC_PARSE));
+        diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, "Expected string", DocParseDiagnostic.Type.DOC_PARSE));
         throw new FailException();
     }
 
@@ -403,24 +357,14 @@ public class DocParser {
         }
         var lastPos = tokens.lastPos();
         var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
-        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected " + symbol, DocParseError.Type.DOC_PARSE));
-        throw new FailException();
-    }
-
-    private DocToken.Symbol expectSymbol() throws FailException {
-        if (tokens.hasNext() && tokens.next() instanceof DocToken.Symbol symbol) {
-            return symbol;
-        }
-        var lastPos = tokens.lastPos();
-        var errorPos = new SourceSpan(lastPos.to().offset(1), lastPos.to().offset(1));
-        diagnostics.addDiagnostic(new DocParseError(errorPos, "Expected symbol", DocParseError.Type.DOC_PARSE));
+        diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, "Expected " + symbol, DocParseDiagnostic.Type.DOC_PARSE));
         throw new FailException();
     }
 
     private void expectEol() {
         if (tokens.hasNext()) {
             var pos = tokens.lastPos();
-            diagnostics.addDiagnostic(new DocParseError(pos, "Expected end of line", DocParseError.Type.DOC_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Expected end of line", DocParseDiagnostic.Type.DOC_PARSE));
         }
     }
 

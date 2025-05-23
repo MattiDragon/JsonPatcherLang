@@ -36,7 +36,7 @@ public class OldTypeParser {
                 var error = "Unexpected token at start of type: " + token;
                 var errorPos = tokens.lastPos();
 
-                diagnostics.addDiagnostic(new DocParseError(errorPos, error, DocParseError.Type.TYPE_PARSE));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, error, DocParseDiagnostic.Type.TYPE_PARSE));
 
                 var errorType = new ErrorDocType(error);
                 metadata.put(errorType, MetadataKey.FULL_POS, errorPos);
@@ -58,7 +58,7 @@ public class OldTypeParser {
             var error = "Expected '}' to close object type";
             var errorPos = tokens.lastPos();
 
-            diagnostics.addDiagnostic(new DocParseError(errorPos, error, DocParseError.Type.TYPE_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, error, DocParseDiagnostic.Type.TYPE_PARSE));
         }
         return new MapDocType(inner);
     }
@@ -69,7 +69,7 @@ public class OldTypeParser {
             var error = "Expected ']' to close array type";
             var errorPos = tokens.lastPos();
 
-            diagnostics.addDiagnostic(new DocParseError(errorPos, error, DocParseError.Type.TYPE_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, error, DocParseDiagnostic.Type.TYPE_PARSE));
         }
         return new ArrayDocType(inner);
     }
@@ -97,7 +97,7 @@ public class OldTypeParser {
                 var error = "Expected ':' after argument name in function type";
                 var errorPos = tokens.lastPos();
 
-                diagnostics.addDiagnostic(new DocParseError(errorPos, error, DocParseError.Type.TYPE_PARSE));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(errorPos, error, DocParseDiagnostic.Type.TYPE_PARSE));
             }
 
             var type = root(tokens.next());
@@ -110,18 +110,18 @@ public class OldTypeParser {
                     break args;
                 }
                 default -> {
-                    diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Expected ',' or ')' after argument in function type", DocParseError.Type.TYPE_PARSE));
+                    diagnostics.addDiagnostic(new DocParseDiagnostic(tokens.lastPos(), "Expected ',' or ')' after argument in function type", DocParseDiagnostic.Type.TYPE_PARSE));
                     break args;
                 }
             }
         }
 
         if (tokens.next() != DocToken.Symbol.END_PAREN) {
-            diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Expected ')' to close function type", DocParseError.Type.TYPE_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(tokens.lastPos(), "Expected ')' to close function type", DocParseDiagnostic.Type.TYPE_PARSE));
         }
 
         if (tokens.next() != DocToken.Symbol.ARROW) {
-            diagnostics.addDiagnostic(new DocParseError(tokens.lastPos(), "Expected '->' after function arguments", DocParseError.Type.TYPE_PARSE));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(tokens.lastPos(), "Expected '->' after function arguments", DocParseDiagnostic.Type.TYPE_PARSE));
         }
 
         var returnType = root(tokens.next());

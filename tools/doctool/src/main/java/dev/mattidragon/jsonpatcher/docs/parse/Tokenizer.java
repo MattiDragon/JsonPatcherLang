@@ -3,17 +3,17 @@ package dev.mattidragon.jsonpatcher.docs.parse;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.jspecify.annotations.Nullable;
 
 public class Tokenizer {
     private final String text;
     private final SourcePos firstPos;
     private int index = 0;
-    private @Nullable SourcePos startPos;
+    private SourcePos startPos;
 
     public Tokenizer(String text, SourcePos firstPos) {
         this.text = text;
         this.firstPos = firstPos;
+        this.startPos = firstPos;
     }
 
     DocToken next() {
@@ -126,7 +126,6 @@ public class Tokenizer {
     }
 
     SourceSpan lastPos() {
-        if (startPos == null) throw new IllegalStateException("No position recorded");
         return new SourceSpan(startPos, firstPos.offset(index - 1));
     }
 

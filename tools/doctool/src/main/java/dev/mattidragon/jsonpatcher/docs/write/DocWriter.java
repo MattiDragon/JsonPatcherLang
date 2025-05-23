@@ -17,7 +17,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 public class DocWriter {
     public static final List<Extension> EXTENSIONS = List.of(TablesExtension.create(), StrikethroughExtension.create());
@@ -69,12 +68,14 @@ public class DocWriter {
             return namespaceEntry;
         }
         return new DocEntry.NamespaceEntry(
-                namespace.description().withoutLast(),
-                namespace.description().parts().isEmpty()
-                        ? ""
-                        : namespace.description().parts().getLast(),
-                Optional.empty(),
-                ""
+                new DocEntry.SharedData(
+                        namespace.description().withoutLast(),
+                        namespace.description().parts().isEmpty()
+                                ? ""
+                                : namespace.description().parts().getLast(),
+                        "",
+                        List.of()
+                )
         );
     }
 }

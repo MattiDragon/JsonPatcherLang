@@ -6,7 +6,7 @@ import "@internals" as internals;
 
 #| property functions.bind: (function: function, arg: any, index: number?) -> function
 #| Binds the specified argument to the function at the specified index or 0 if none is provided.
-#| *Can be used as a method*
+#@ method function
 function bind(this, arg, index = 0) {
     debug.assert(this is function, "First argument to bind must be function");
     debug.assert(index is number, "Third argument to bind must be function");
@@ -16,13 +16,15 @@ $bind = bind;
 
 #| property functions.then: (function: function, then: function) -> function
 #| Creates a new function that calls the first function and then calls the second function on it's return value.
-#| *Can be used as a method*
+#@ method function
 function then(this, then) {
     debug.assert(this is function, "First argument to then must be function");
     debug.assert(then is function, "Second argument to then must be function");
     return internals.then(this, then);
 }
 $then = then;
+
+internals.defineMethods("function", $);
 
 #| property functions.identity: () -> {<$T>(value: $T) -> $T}
 #| Returns a function that returns its single argument.

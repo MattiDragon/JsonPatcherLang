@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 public class DocCommentHandler implements CommentHandler {
     private final List<DocEntry> entries = new ArrayList<>();
+    private final List<Comment> freeTags = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
     private final TreeMetadata metadata;
 
@@ -23,29 +24,42 @@ public class DocCommentHandler implements CommentHandler {
 
     @Override
     public void acceptBlock(List<Comment> block) {
-        var docBlocks = new ArrayList<List<Comment>>();
-        var current = new ArrayList<CommentHandler.Comment>();
+        var docBlocks = new ArrayList<DocBlock>();
+        var tagLines = new ArrayList<Comment>();
+        var docLines = new ArrayList<Comment>();
+
         for (var line : block) {
-            if (line.text().startsWith("|")) {
-                current.add(trimStart(line));
-            } else if (!current.isEmpty()) {
-                docBlocks.add(current);
+            if (line.text().startsWith("@")) {
+                tagLines.add(trimStart(line));
+            } else if (line.text().startsWith("|")) {
+                docLines.add(trimStart(line));
+            } else if (!docLines.isEmpty()) {
+                docBlocks.add(new DocBlock(docLines, tagLines));
+                tagLines = new ArrayList<>();
+                docLines = new ArrayList<>();
+            } else if (!tagLines.isEmpty()) {
+                freeTags.addAll(tagLines);
+                tagLines = new ArrayList<>();
             }
         }
-        if (!current.isEmpty()) {
-            docBlocks.add(current);
+        if (!docLines.isEmpty()) {
+            docBlocks.add(new DocBlock(docLines, tagLines));
+        } else if (!tagLines.isEmpty()) {
+            freeTags.addAll(tagLines);
         }
 
         for (var docBlock : docBlocks) {
-            var body = docBlock.stream()
+            var body = docBlock.docLines()
+                    .stream()
                     .skip(1)
                     .map(Comment::text)
                     .collect(Collectors.joining("\n"));
 
             var entry = DocParser.parse(
-                    docBlock.getFirst().text(),
+                    docBlock.docLines().getFirst().text(),
                     body,
-                    docBlock.getFirst().start(),
+                    docBlock.tagLines(),
+                    docBlock.docLines().getFirst().start(),
                     metadata,
                     diagnostics
             );
@@ -60,11 +74,18 @@ public class DocCommentHandler implements CommentHandler {
         return Collections.unmodifiableList(entries);
     }
 
-    private static CommentHandler.Comment trimStart(CommentHandler.Comment line) {
+    public List<Comment> freeTags() {
+        return Collections.unmodifiableList(freeTags);
+    }
+
+    private static Comment trimStart(Comment line) {
         var origPos = line.start();
         var preTrim = line.text().substring(1);
         var postTrim = preTrim.stripLeading();
         var pos = origPos.offset(1 + (preTrim.length() - postTrim.length()));
-        return new CommentHandler.Comment(postTrim.stripTrailing(), pos);
+        return new Comment(postTrim.stripTrailing(), pos);
+    }
+
+    private record DocBlock(List<Comment> docLines, List<Comment> tagLines) {
     }
 }
