@@ -24,10 +24,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class WorkspaceDocManager {
     private final Map<Path, Entry> entries = new HashMap<>();
-    private final DocHolder holder;
+    private final DocHolder docHolder;
 
     public WorkspaceDocManager() {
-        holder = new DocHolder();
+        docHolder = new DocHolder();
     }
 
     private static Optional<Path> getPath(String path) {
@@ -48,7 +48,7 @@ public class WorkspaceDocManager {
     }
     
     public void resetAll(List<String> folders) {
-        holder.clear();
+        docHolder.clear();
         for (var folder : folders) {
             var path = getPath(folder);
             if (path.isEmpty()) continue;
@@ -83,11 +83,11 @@ public class WorkspaceDocManager {
                 removed.alive = false;
             }
         }
-        holder.deleteFile(uri);
+        docHolder.deleteFile(uri);
     }
 
     public DocHolder getHolder() {
-        return holder;
+        return docHolder;
     }
 
     private class Entry {
@@ -102,7 +102,7 @@ public class WorkspaceDocManager {
         }
         
         private void update() {
-            record TreeAndIndex(DocTree tree, Index index) {}
+            record OutputTuple(DocTree tree, Index index, TreeMetadata metadata) {}
 
             var docs = CompletableFuture.supplyAsync(() -> {
                 try {
@@ -117,15 +117,15 @@ public class WorkspaceDocManager {
                     index.index(commentHandler.entries(), metadata);
 
                     var tree = new DocTree(commentHandler.entries());
-                    return new TreeAndIndex(tree, index);
+                    return new OutputTuple(tree, index, metadata);
                 } catch (IOException e) {
-                    return new TreeAndIndex(new DocTree(List.of()), new EmptyIndex());
+                    return new OutputTuple(new DocTree(List.of()), new EmptyIndex(), new TreeMetadata());
                 }
             }, Util.EXECUTOR);
-            docs.thenAccept(pair -> {
+            docs.thenAccept(tuple -> {
                 synchronized (this) {
                     if (alive) {
-                        holder.updateFile(uri, pair.tree, pair.index);
+                        docHolder.updateFile(uri, tuple.tree, tuple.metadata, tuple.index);
                     }
                 }
             });

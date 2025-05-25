@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
@@ -12,6 +13,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,15 +25,17 @@ public class TypeChecker {
 
     private final TreeMetadata metadata;
     private final DiagnosticsBuilder diagnostics;
+    private final PrimitiveProperties primitiveProperties;
     private final Deque<Consumer<Type>> returnTypeConsumers = new ArrayDeque<>();
 
-    private TypeChecker(TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+    private TypeChecker(TreeMetadata metadata, DiagnosticsBuilder diagnostics, PrimitiveProperties primitiveProperties) {
         this.metadata = metadata;
         this.diagnostics = diagnostics;
+        this.primitiveProperties = primitiveProperties;
     }
 
-    public static void typeCheck(ProgramNode node, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
-        new TypeChecker(metadata, diagnostics).typeCheck(node);
+    public static void typeCheck(ProgramNode node, TreeMetadata metadata, PrimitiveProperties primitiveProperties, DiagnosticsBuilder diagnostics) {
+        new TypeChecker(metadata, diagnostics, primitiveProperties).typeCheck(node);
     }
 
     private void typeCheck(ProgramNode node) {
@@ -142,48 +146,63 @@ public class TypeChecker {
         while (result instanceof LazyType lazyType) {
             result = lazyType.get();
         }
+
+        metadata.put(expression, TYPE, result);
+
         return result;
     }
 
     private Type checkPropertyAccess(Expression parent, Expression expression, String name) {
         var parentType = checkExpression(parent);
+        var type = getPropertyType(name, parentType);
+        if (type == null) {
+            addError(expression, "Property '" + name + "' not found on type " + TypeFormatter.format(parentType));
+            return SpecialType.UNKNOWN;
+        }
+
+        return type;
+    }
+
+    private @Nullable Type getPropertyType(String name, Type parentType) {
         return switch (parentType) {
             case ObjectType(var component) -> component;
 
-            case ArrayType(var component) -> checkArrayProperty(expression, name);
-            case PrimitiveType.ARRAY -> checkArrayProperty(expression, name);
+            case ArrayType(var component) -> primitiveProperties.getPrimitivePropertyType(ValueType.ARRAY, name);
+            case PrimitiveType.ARRAY -> primitiveProperties.getPrimitivePropertyType(ValueType.ARRAY, name);
+            case PrimitiveType.NUMBER -> primitiveProperties.getPrimitivePropertyType(ValueType.NUMBER, name);
+            case PrimitiveType.STRING -> primitiveProperties.getPrimitivePropertyType(ValueType.STRING, name);
+            case PrimitiveType.BOOLEAN -> primitiveProperties.getPrimitivePropertyType(ValueType.BOOLEAN, name);
+            case FunctionType functionType -> primitiveProperties.getPrimitivePropertyType(ValueType.FUNCTION, name);
+            case PrimitiveType.FUNCTION -> primitiveProperties.getPrimitivePropertyType(ValueType.FUNCTION, name);
 
-            // TODO: primitives with stdlib
+            case PrimitiveType.NULL, SpecialType.ANY -> null;
 
             case NamedType(var supertype, var properties, var wildcardPropertyType, var callSignature, var typeName) -> {
                 var propType = properties.get(name);
                 if (propType != null) {
                     yield propType;
-                } if (wildcardPropertyType.isPresent()) {
+                }
+                if (wildcardPropertyType.isPresent()) {
                     yield wildcardPropertyType.get();
                 } else {
-                    addError(expression, "Unknown property " + name + " on type " + typeName);
-                    yield SpecialType.UNKNOWN;
+                    yield null;
                 }
             }
 
-            case PrimitiveType.OBJECT, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
-            default -> {
-                // TODO: What does this mean???
-                addError(expression, "");
-                yield SpecialType.UNKNOWN;
-            }
-        };
-    }
+            case PrimitiveType.OBJECT, PrimitiveType.SPECIAL, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            case SpecialType.NEVER -> SpecialType.NEVER;
 
-    private Type checkArrayProperty(Expression expression, String name) {
-        // TODO: stdlib
-        if (name.equals("length")) {
-            return PrimitiveType.NUMBER;
-        } else {
-            addError(expression, "Array does not have property " + name);
-            return SpecialType.UNKNOWN;
-        }
+            case TypeArgument typeArgument -> getPropertyType(name, typeArgument.bound());
+            case UnionType unionType ->
+                    UnionType.union(unionType.children()
+                            .stream()
+                            .map(type -> getPropertyType(name, type))
+                            .filter(Objects::nonNull)
+                            .toList());
+
+            // Don't think this will actually ever happen, but it's easy to do
+            case LazyType lazyType -> getPropertyType(name, lazyType.get());
+        };
     }
 
     private Type checkFunctionDeclaration(Statement body, FunctionArguments args) {

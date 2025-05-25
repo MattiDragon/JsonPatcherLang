@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.PrimitiveProperties;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeComparison;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
@@ -170,13 +171,6 @@ public class AutoCompleteHelper {
                     .stream()
                     .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue()))
                     .collect(Collectors.toSet());
-            // TODO: methods
-            case FunctionType functionType -> List.of();
-            case PrimitiveType primitiveType -> List.of();
-            case ArrayType arrayType -> List.of();
-            // No innate properties, and we don't know additional ones
-            case ObjectType objectType -> List.of();
-            case SpecialType specialType -> List.of();
             // This is unlikely to ever actually come up, but this should work
             case TypeArgument typeArgument -> getTypeProperties(typeArgument.bound());
             // Technically this should be an intersection, not a union of properties,
@@ -185,6 +179,11 @@ public class AutoCompleteHelper {
                     .stream()
                     .map(this::getTypeProperties)
                     .flatMap(Collection::stream)
+                    .collect(Collectors.toSet());
+            default -> docs.getPrimitivePropertyTypes().get(PrimitiveProperties.convertType(type))
+                    .entrySet()
+                    .stream()
+                    .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue()))
                     .collect(Collectors.toSet());
         };
     }

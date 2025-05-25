@@ -11,6 +11,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.server.index.IndexingDiagnostic;
+import dev.mattidragon.jsonpatcher.toolcommon.typing.DocTypeConverter;
 
 public class PreTypingPass {
     private final TreeMetadata metadata;

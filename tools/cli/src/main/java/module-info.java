@@ -7,9 +7,11 @@ module jsonpatcher.tools.cli {
 
     requires jsonpatcher.tools.doctool;
     requires jsonpatcher.tools.formatter;
+    requires jsonpatcher.tools.toolcommon;
     requires jsonpatcher.lang.ast;
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.analysis;
+    requires jsonpatcher.lang.stdlib;
 
     requires info.picocli;
     requires org.commonmark;

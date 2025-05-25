@@ -16,14 +16,12 @@ module jsonpatcher.tools.doctool {
     requires org.commonmark.ext.gfm.tables;
 
     requires jsonpatcher.lang.parser;
-    requires jdk.compiler;
-    requires java.desktop;
 
     exports dev.mattidragon.jsonpatcher.docs.data;
     exports dev.mattidragon.jsonpatcher.docs.tree;
     exports dev.mattidragon.jsonpatcher.docs.type;
     exports dev.mattidragon.jsonpatcher.docs.write;
     exports dev.mattidragon.jsonpatcher.docs.tag;
-    exports dev.mattidragon.jsonpatcher.docs;
     exports dev.mattidragon.jsonpatcher.docs.tag.builtin;
+    exports dev.mattidragon.jsonpatcher.docs;
 }

@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.server.index.typing;
+package dev.mattidragon.jsonpatcher.toolcommon.typing;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
@@ -149,3 +149,4 @@ public class DocTypeConverter {
         return namedTypes.computeIfAbsent(fullName, k -> new LazyType());
     }
 }
+

@@ -4,15 +4,16 @@ import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
+import dev.mattidragon.jsonpatcher.server.workspace.PrimitivePropertyAccess;
 
 public class DocumentIndex extends AstIndex {
     public DocumentIndex(String fileName) {
         super(fileName);
     }
 
-    public void index(Program program, PatchMetadata patchMetadata, TreeMetadata metadata, VariableAnalysis variableAnalysis) {
+    public void index(Program program, PatchMetadata patchMetadata, TreeMetadata metadata, VariableAnalysis variableAnalysis, PrimitivePropertyAccess primitivePropertyAccess) {
         indexVariables(variableAnalysis, metadata);
         indexMetadata(patchMetadata, metadata);
-        indexTree(program, metadata);
+        indexTree(program, metadata, primitivePropertyAccess);
     }
 }

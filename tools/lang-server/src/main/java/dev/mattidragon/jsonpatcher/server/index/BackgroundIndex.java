@@ -8,15 +8,16 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
-import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
+import dev.mattidragon.jsonpatcher.server.workspace.PrimitivePropertyAccess;
+import dev.mattidragon.jsonpatcher.toolcommon.typing.DocTypeConverter;
 
 public class BackgroundIndex extends AstIndex {
     public BackgroundIndex(String fileName) {
         super(fileName);
     }
 
-    public void index(SourceFile file, DocTypeConverter types) {
+    public void index(SourceFile file, DocTypeConverter types, PrimitivePropertyAccess primitiveProperties) {
         var diagnostics = new DiagnosticsBuilder();
         var metadata = new TreeMetadata();
         var docHandler = new DocCommentHandler(diagnostics, metadata);
@@ -27,9 +28,9 @@ public class BackgroundIndex extends AstIndex {
 
         VariableAnalyser.analyse(program, metadata, diagnostics, types.getGlobalNames());
         PreTypingPass.apply(program, metadata, types, diagnostics);
-        TypeChecker.typeCheck(program, metadata, diagnostics);
+        TypeChecker.typeCheck(program, metadata, primitiveProperties, diagnostics);
 
-        indexTree(program, metadata);
+        indexTree(program, metadata, primitiveProperties);
         indexMetadata(parse.metadata(), metadata);
     }
 }

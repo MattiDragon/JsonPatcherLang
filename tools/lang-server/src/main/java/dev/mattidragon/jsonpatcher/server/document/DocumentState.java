@@ -99,12 +99,12 @@ public class DocumentState {
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
 
             PreTypingPass.apply(program, treeMetadata, docHolder.getTypeConverter(), diagnostics);
-            TypeChecker.typeCheck(program, treeMetadata, diagnostics);
+            TypeChecker.typeCheck(program, treeMetadata, docHolder, diagnostics);
 
             var lookups = Lookups.get(program, treeMetadata);
 
             var index = new DocumentIndex(internalName);
-            index.index(program, metadata, treeMetadata, variableAnalysis);
+            index.index(program, metadata, treeMetadata, variableAnalysis, docHolder);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
             return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.entries(), lookups, tokenLookup, index);

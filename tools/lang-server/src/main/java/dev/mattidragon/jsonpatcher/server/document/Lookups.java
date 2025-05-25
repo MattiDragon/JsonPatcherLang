@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.PropertyAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.VariableAccessExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
@@ -69,8 +70,11 @@ public class Lookups {
                 statement.getChildren().forEach(this::search);
             }
             case PropertyAccessExpression expression -> {
-                metadata.get(expression, MetadataKey.NAME_POS)
-                        .ifPresent(pos -> propertyAccesses.add(pos, expression));
+                var keywordPos = metadata.get(expression, MetadataKey.KEYWORD_POS);
+                var namePos = metadata.get(expression, MetadataKey.NAME_POS);
+                if (keywordPos.isPresent() && namePos.isPresent()) {
+                    propertyAccesses.add(SourceSpan.between(keywordPos.get(), namePos.get()), expression);
+                }
                 expression.getChildren().forEach(this::search);
             }
             case ProgramNode other -> other.getChildren().forEach(this::search);

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
+// TODO: apparently this class uses unchecked: fix or suppress
 /**
  * A layered equality map for type arguments. Used to check if two type arguments are equal while checking compatibility
  * between two function types. Needs to be layered as the same type argument might appear multiple times from different

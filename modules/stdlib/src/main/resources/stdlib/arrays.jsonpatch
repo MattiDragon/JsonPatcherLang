@@ -171,6 +171,10 @@ function indexOf(array, value) {
     return -1;
 }
 
+#| property array.length: number
+#| The amount of elements in the array
+#@ method array
+
 $insert = insert;
 $push = push;
 $pop = pop;

@@ -3,9 +3,13 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
+import dev.mattidragon.jsonpatcher.docs.tag.builtin.MethodTagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
+import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.Type;
+import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -14,7 +18,7 @@ import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
-import dev.mattidragon.jsonpatcher.server.index.typing.DocTypeConverter;
+import dev.mattidragon.jsonpatcher.toolcommon.typing.DocTypeConverter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,14 +32,19 @@ import java.util.concurrent.CompletionException;
  * Many methods of this class are {@code synchronized} because it's possible for this class to be modified from multiple threads.
  * Only one instance of this class should exist and that instance should be managed by the {@link WorkspaceDocManager}.
  */
-public class DocHolder {
+public class DocHolder implements PrimitivePropertyAccess {
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
     private final DocTree completeTree = new DocTree(List.of());
     private final Map<String, ObjectData<DocEntry.GlobalEntry>> globals = new HashMap<>();
     private final Map<String, DocEntry.MetadataEntry> metadataTags = new HashMap<>();
     private final Map<String, DocEntry.LibraryEntry> libraries = new HashMap<>();
+
+    private final Map<ValueType, Map<String, Type>> primitivePropertyTypes = new HashMap<>();
+    private final Map<PrimitivePropertyKey, DocEntry.PropertyEntry> primitivePropertyDocs = new HashMap<>();
+
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
+
     private DocTypeConverter typeConverter = new DocTypeConverter();
 
     private Runnable onRebuild = () -> {};
@@ -94,7 +103,7 @@ public class DocHolder {
                 var index = new DocsIndex(uri);
                 index.index(commentHandler.entries(), metadata);
 
-                return new FileData(uri, new DocTree(commentHandler.entries()), index);
+                return new FileData(uri, new DocTree(commentHandler.entries()), metadata, index);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to extract stdlib docs", e);
             }
@@ -105,8 +114,8 @@ public class DocHolder {
      * Notifies the doc holder that a file has changed and its docs need to be reevaluated.
      * @param uri The uri of the changed file.
      */
-    public synchronized void updateFile(String uri, DocTree tree, Index index) {
-        var file = new FileData(uri, tree, index);
+    public synchronized void updateFile(String uri, DocTree tree, TreeMetadata metadata, Index index) {
+        var file = new FileData(uri, tree, metadata, index);
         var old = files.put(uri, file);
         if (old != null) {
             docIndex.removeChild(old.index);
@@ -149,8 +158,8 @@ public class DocHolder {
 
     private synchronized void rebuildLookups() {
         completeTree.clear();
-        for (var value : files.values()) {
-            completeTree.addAll(value.newData());
+        for (var fileData : files.values()) {
+            completeTree.addAll(fileData.tree());
         }
 
         globals.clear();
@@ -176,7 +185,35 @@ public class DocHolder {
         typeConverter = new DocTypeConverter();
         typeConverter.loadTree(completeTree);
 
+        primitivePropertyDocs.clear();
+        primitivePropertyTypes.clear();
+        // Needs to be done after type converter is built
+        for (var fileData : files.values()) {
+            updatePrimitiveProperties(fileData.tree, fileData.metadata);
+        }
+
         onRebuild.run();
+    }
+
+    private void updatePrimitiveProperties(DocTree tree, TreeMetadata metadata) {
+        tree.namespaces().values()
+                .stream()
+                .map(DocTreeNamespace::objects)
+                .map(Map::values)
+                .flatMap(Collection::stream)
+                .map(DocTreeObject::properties)
+                .map(Map::values)
+                .flatMap(Collection::stream)
+                .map(DocTreeProperty::entry)
+                .forEach(entry -> metadata.get(entry, MethodTagProcessor.METHOD_TYPE)
+                        .ifPresent(valueType -> {
+                            var type = typeConverter.convert(entry.type());
+                            var key = new PrimitivePropertyKey(valueType, entry.name());
+                            primitivePropertyTypes.computeIfAbsent(valueType, k -> new HashMap<>())
+                                    .put(entry.name(), type);
+                            primitivePropertyDocs.put(key, entry);
+                        }));
+
     }
 
     public synchronized Optional<ObjectData<DocEntry.GlobalEntry>> getGlobal(String name) {
@@ -232,9 +269,23 @@ public class DocHolder {
         return Optional.ofNullable(metadataTags.get(name));
     }
 
+    @Override
+    public Map<ValueType, Map<String, Type>> getPrimitivePropertyTypes() {
+        return primitivePropertyTypes;
+    }
+
+    @Override
+    public Optional<DocEntry.PropertyEntry> getPrimitivePropertyDocs(ValueType type, String name) {
+        return Optional.ofNullable(primitivePropertyDocs.get(new PrimitivePropertyKey(type, name)));
+    }
+
+    public record PrimitivePropertyKey(ValueType type, String name) {
+    }
+
     public record FileData(
             String uri,
-            DocTree newData,
+            DocTree tree,
+            TreeMetadata metadata,
             Index index) {
         @Override
         public String toString() {

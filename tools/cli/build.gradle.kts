@@ -5,9 +5,9 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":doctool"))
     implementation(project(":formatter"))
-    implementation(project(":analysis"))
+    implementation(project(":stdlib"))
+    implementation(project(":tool-common"))
     implementation(libs.picocli)
     annotationProcessor(libs.picocli.codegen)
 }

@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.PrimitiveProperties;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.NamedType;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysis;
@@ -12,8 +13,10 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.PatchMetadata;
 import dev.mattidragon.jsonpatcher.server.index.symbol.*;
+import dev.mattidragon.jsonpatcher.server.workspace.PrimitivePropertyAccess;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 abstract class AstIndex extends LookupIndex {
     AstIndex(String fileName) {
@@ -52,18 +55,29 @@ abstract class AstIndex extends LookupIndex {
         }
     }
 
-    protected void indexTree(ProgramNode node, TreeMetadata metadata) {
+    protected void indexTree(ProgramNode node, TreeMetadata metadata, PrimitivePropertyAccess docAccess) {
         switch (node) {
             case PropertyAccessExpression(var parent, var name) -> {
                 var parentType = metadata.get(parent, TypeChecker.TYPE).orElse(null);
-                if (!(parentType instanceof NamedType namedType)) break;
-                if (!namedType.properties().containsKey(name)) break;
+                if (parentType instanceof NamedType namedType) {
+                    if (!namedType.properties().containsKey(name)) break;
 
-                var symbol = makePropertySymbol(namedType.name(), name);
-                var entry = new IndexEntry(symbol, false);
+                    var symbol = makePropertySymbol(namedType.name(), name);
+                    var entry = new IndexEntry(symbol, false);
 
-                metadata.get(node, MetadataKey.NAME_POS)
-                        .ifPresent(pos -> lookup.add(pos, entry));
+                    metadata.get(node, MetadataKey.NAME_POS)
+                            .ifPresent(pos -> lookup.add(pos, entry));
+                } else if (parentType != null) {
+                    Optional.ofNullable(PrimitiveProperties.convertType(parentType))
+                            .flatMap(t -> docAccess.getPrimitivePropertyDocs(t, name))
+                            .ifPresent(property -> {
+                                var symbol = new PropertySymbol(property.namespace(), property.owner(), property.name());
+                                var entry = new IndexEntry(symbol, false);
+
+                                metadata.get(node, MetadataKey.NAME_POS)
+                                        .ifPresent(pos -> lookup.add(pos, entry));
+                            });
+                }
             }
             case ImportStatement(var libraryName, var variableName) -> {
                 var entry = new IndexEntry(new LibrarySymbol(libraryName), false);
@@ -73,7 +87,7 @@ abstract class AstIndex extends LookupIndex {
             default -> {}
         }
         for (var child : node.getChildren()) {
-            indexTree(child, metadata);
+            indexTree(child, metadata, docAccess);
         }
     }
 

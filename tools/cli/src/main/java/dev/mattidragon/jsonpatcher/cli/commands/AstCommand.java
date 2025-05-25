@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.cli.commands;
 
+import dev.mattidragon.jsonpatcher.cli.impl.PrimitivePropertiesLoader;
 import dev.mattidragon.jsonpatcher.cli.impl.VersionProvider;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
@@ -385,7 +386,7 @@ public class AstCommand implements Callable<Integer> {
         TYPE_CHECK {
             @Override
             void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
-                TypeChecker.typeCheck(ast, metadata, diagnostics);
+                TypeChecker.typeCheck(ast, metadata, PrimitivePropertiesLoader.PROPERTIES, diagnostics);
             }
         };
 
