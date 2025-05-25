@@ -12,6 +12,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.ForEachLoopStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
@@ -245,7 +246,11 @@ public class SemanticTokenizer {
                 tokenize(statement.getChildren());
             }
             case ImportStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
-            
+            case ForEachLoopStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+                tokenize(statement.getChildren());
+            }
+
             case ProgramNode other -> tokenize(other.getChildren());
         }
     } 
