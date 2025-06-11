@@ -2,9 +2,9 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import org.jspecify.annotations.Nullable;
 
-sealed abstract class MutableScope implements Scope permits ApplyScope, BlockScope, FunctionScope, ProgramScope {
+sealed interface MutableScope extends Scope permits ApplyScope, BlockScope, FunctionScope, ProgramScope {
     @Nullable
-    VariableRef find(String name) {
+    default Variable find(String name) {
         for (var variable : variables()) {
             if (variable.name().equals(name)) return variable;
         }
@@ -14,7 +14,7 @@ sealed abstract class MutableScope implements Scope permits ApplyScope, BlockSco
         };
     }
 
-    public boolean has(String name) {
+    default boolean has(String name) {
         for (var variable : variables()) {
             if (variable.name().equals(name)) return true;
         }
@@ -24,7 +24,7 @@ sealed abstract class MutableScope implements Scope permits ApplyScope, BlockSco
         };
     }
 
-    public void define(Variable variable) {
+    default void define(Variable variable) {
         variables().add(variable);
     }
 }

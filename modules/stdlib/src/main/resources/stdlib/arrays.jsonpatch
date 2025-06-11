@@ -150,11 +150,11 @@ function slice(array, from, to = array.length) {
     debug.assert(from is number, "arrays.slice() called with non-number as second argument");
     debug.assert(to is number, "arrays.slice() called with non-number as third argument");
     
-    val slice = [];
+    val out = [];
     for (var i = from; i < to; i++) {
-        $push(slice, array[i]);
+        $push(out, array[i]);
     }
-    return slice;
+    return out;
 }
 
 #| property arrays.indexOf: (array: array, value: any) -> number

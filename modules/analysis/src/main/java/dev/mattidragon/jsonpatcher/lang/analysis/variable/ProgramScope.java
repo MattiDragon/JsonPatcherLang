@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ProgramScope extends MutableScope {
+public final class ProgramScope implements MutableScope {
     private final Program program;
     private final RootVariable root;
     private final List<Variable> variables;

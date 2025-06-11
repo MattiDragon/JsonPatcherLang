@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class Variable implements VariableRef, MetadataHolder {
+public final class Variable implements MetadataHolder {
     private final String name;
     private final boolean mutable;
     private final ProgramNode definition;

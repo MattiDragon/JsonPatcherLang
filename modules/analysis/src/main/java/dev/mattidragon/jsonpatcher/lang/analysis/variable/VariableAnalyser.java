@@ -20,7 +20,7 @@ public class VariableAnalyser {
     public static final MetadataKey<Scope> SCOPE = new MetadataKey<>("VariableAnalyser/SCOPE");
     
     private final TreeMetadata metadata;
-    private final Map<VariableAccessExpression, LazyRef> lazyRefs = new IdentityHashMap<>();
+    private final Map<VariableAccessExpression, MutableScope> missingVariables = new IdentityHashMap<>();
     private final List<Scope> scopes = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
 
@@ -52,15 +52,16 @@ public class VariableAnalyser {
             globalScope.define(new Variable(global, false, program));
         }
         analyseAll(program.getChildren(), globalScope);
-        lazyRefs.forEach((access, lazyRef) -> {
-            lazyRef.resolve();
-            var variable = lazyRef.getValue();
+        missingVariables.forEach((access, scope) -> {
+            var name = access.name();
+            var variable = scope.find(name);
             if (variable == null) {
-                diagnostics.addDiagnostic(VariableAnalysisDiagnostic.missingVariable(lazyRef.getName(), metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
-                return;
+                diagnostics.addDiagnostic(VariableAnalysisDiagnostic.missingVariable(name, metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
+            } else {
+                diagnostics.addDiagnostic(VariableAnalysisDiagnostic.unavailableVariable(name, metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
+                // Attach the variable anyway for lsp as we know what the user intended
+                metadata.put(access, VARIABLE_REFERENCE, variable);
             }
-            variable.addUsage(access);
-            metadata.put(access, VARIABLE_REFERENCE, variable);
         });
         verifyMutations(program);
         checkUnused();
@@ -119,10 +120,10 @@ public class VariableAnalyser {
                 metadata.put(statement, VARIABLE_REFERENCE, variable);
             }
             case FunctionDeclarationStatement statement -> {
-                analyse(statement.value(), current);
                 var variable = new Variable(statement.name(), false, statement);
                 define(variable, current, statement);
                 metadata.put(statement, VARIABLE_REFERENCE, variable);
+                analyse(statement.value(), current);
             }
             case ForEachLoopStatement statement -> {
                 analyse(statement.iterable(), current);
@@ -161,12 +162,12 @@ public class VariableAnalyser {
             }
             case VariableAccessExpression access -> {
                 switch (current.find(access.name())) {
-                    case LazyRef lazyRef -> lazyRefs.put(access, lazyRef);
                     case Variable variable -> {
                         metadata.put(access, VARIABLE_REFERENCE, variable);
                         variable.addUsage(access);
                     }
-                    case null -> diagnostics.addDiagnostic(VariableAnalysisDiagnostic.missingVariable(access.name(), metadata.get(access, MetadataKey.MAIN_POS).orElse(null), access));
+                    // Process missing variables later in order to get better errors
+                    case null -> missingVariables.put(access, current);
                 }
             }
             case RootExpression expression -> metadata.put(expression, ROOT_REFERENCE, current.root());

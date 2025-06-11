@@ -10,7 +10,10 @@ import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStateme
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.CompilationException;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.util.CheckClassAdapter;
 
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +34,9 @@ public class ScriptCompiler {
         compiler.compileMain();
         functions.keySet().forEach(compiler::compileLambda);
 
-        return compiler.getBytes();
+        var bytes = compiler.getBytes();
+        CheckClassAdapter.verify(new ClassReader(bytes), ScriptCompiler.class.getClassLoader(), false, new PrintWriter(System.err));
+        return bytes;
     }
 
     private static void findLambdas(ProgramNode node, Map<FunctionExpression, String> lambdas, String current) {

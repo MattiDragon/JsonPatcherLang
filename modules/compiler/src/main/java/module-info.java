@@ -10,6 +10,7 @@ module jsonpatcher.lang.compiler {
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.analysis;
     requires jsonpatcher.lang.stdlib;
+    requires org.objectweb.asm.util;
 
     exports dev.mattidragon.jsonpatcher.lang.runtime.bytecode;
     exports dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;

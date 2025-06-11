@@ -2,10 +2,11 @@ package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-public final class FunctionScope extends MutableScope {
+public final class FunctionScope implements MutableScope {
     private final FunctionExpression function;
     private final RootVariable root = new RootVariable();
     private final List<Variable> variables;
@@ -20,23 +21,12 @@ public final class FunctionScope extends MutableScope {
     }
 
     @Override
-    VariableRef find(String name) {
-        for (var variable : variables()) {
-            if (variable.name().equals(name)) {
-                return variable;
-            }
+    public @Nullable Variable find(String name) {
+        var variable = MutableScope.super.find(name);
+        if (variable != null && !variables.contains(variable)) {
+            addCapture(variable);
         }
-
-        var ref = parent.find(name);
-        if (!(ref instanceof Variable)) {
-            ref = new LazyRef(name, parent);
-        }
-        switch (ref) {
-            case LazyRef lazyRef -> lazyRef.onResolve(this::addCapture);
-            case Variable variable -> addCapture(variable);
-        }
-
-        return ref;
+        return variable;
     }
 
     private void addCapture(Variable variable) {
@@ -64,7 +54,7 @@ public final class FunctionScope extends MutableScope {
 
     @Override
     @NonNull
-    public MutableScope parent() {
+    public Scope parent() {
         return parent;
     }
 }

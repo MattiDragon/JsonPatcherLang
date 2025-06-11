@@ -61,4 +61,14 @@ record VariableAnalysisDiagnostic(
                 node
         );
     }
+
+    public static Diagnostic unavailableVariable(String variable, @Nullable SourceSpan pos, ProgramNode node) {
+        return new VariableAnalysisDiagnostic(
+                Kind.ERROR,
+                VariableAnalysisDiagnostics.UNAVAILABLE_VARIABLE,
+                "Cannot use variable '%s' before declaration".formatted(variable),
+                pos,
+                node
+        );
+    }
 }

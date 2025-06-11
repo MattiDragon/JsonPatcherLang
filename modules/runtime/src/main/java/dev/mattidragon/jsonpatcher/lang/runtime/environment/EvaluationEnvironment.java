@@ -76,6 +76,8 @@ public class EvaluationEnvironment {
             var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
 
+            checkStdlibDiagnostics(name, diagnosticsBuilder);
+
             var instance = classLoader.addScript(
                     ProgramData.builder(parse)
                             .scriptName("stdlib/" + name + ".jsonpatch")
@@ -98,6 +100,8 @@ public class EvaluationEnvironment {
             var content = Stdlib.LIBRARY_CONTENTS.get(name);
             var lex = Lexer.lex(content, "stdlib/" + name + ".jsonpatch", diagnosticsBuilder);
             var parse = Parser.parse(lex.tokens(), diagnosticsBuilder);
+
+            checkStdlibDiagnostics(name, diagnosticsBuilder);
 
             var instance = classLoader.addScript(
                     ProgramData.builder(parse)
@@ -132,6 +136,16 @@ public class EvaluationEnvironment {
             throw new IllegalStateException("Failed to bootstrap evaluation environment:\n"
                                             + errors.stream().map(Diagnostic::toDisplay).collect(Collectors.joining("\n\n")));
         }
+    }
+
+    private void checkStdlibDiagnostics(String libName, DiagnosticsBuilder builder) {
+        var errors = builder.build().errors();
+        if (errors.isEmpty()) return;
+        var msg = new StringBuilder("Errors while compiling stdlib '" + libName + "'");
+        for (var error : errors) {
+            msg.append("\n").append(error.toDisplay());
+        }
+        throw new IllegalStateException(msg.toString());
     }
 
     public void addLibrary(Library library) {

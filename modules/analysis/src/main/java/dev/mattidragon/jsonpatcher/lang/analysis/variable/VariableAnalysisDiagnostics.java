@@ -10,6 +10,7 @@ public class VariableAnalysisDiagnostics {
     public static final String ILLEGAL_MUTATION = BASE + 2;
     public static final String UNUSED_VARIABLE = BASE + 3;
     public static final String UNNECESSARY_MUTABLE = BASE + 4;
+    public static final String UNAVAILABLE_VARIABLE = BASE + 5;
 
     private VariableAnalysisDiagnostics() {}
 }

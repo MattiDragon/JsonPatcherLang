@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * A simple lexical scope that contains its own variables
  */
-public final class BlockScope extends MutableScope {
+public final class BlockScope implements MutableScope {
     private final Statement block;
     private final List<Variable> variables;
     private final MutableScope parent;

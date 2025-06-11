@@ -16,6 +16,42 @@ function sbAppend(sb, value) {
 #| global library strings
 #| Provides utilities for manipulating strings. Many of the methods in this module can be used as methods.
 
+#| property strings.asString: (value: any) -> string
+#| Converts any value to a string
+function asString(value) {
+    if (value is string) return value;
+    if (value is number) return reflectionInternals.unwrapValue(value).'toString()Ljava/lang/String;'();
+    if (value == true) return "true";
+    if (value == false) return "false";
+    if (value == null) return "null";
+    if (value is array) {
+        val out = StringBuilder();
+        sbAppend(out, "[");
+        for (var i = 0; i < value.length; i++) {
+            if (i > 0) sbAppend(out, ", ");
+            sbAppend(out, asString(value[i]));
+        }
+        sbAppend(out, "]");
+        return out.toString();
+    }
+    if (value is object) {
+        val out = StringBuilder();
+        sbAppend(out, "{");
+        var first = true;
+        foreach (key in objects.keys(value)) {
+            if (!first) sbAppend(out, ", ");
+            first = false;
+            sbAppend(out, asString(key));
+            sbAppend(out, ": ");
+            sbAppend(out, asString(value[key]));
+        }
+        sbAppend(out, "}");
+        return out.toString();
+    }
+    return reflectionInternals.forceWrap(value).'toString()Ljava/lang/String;'();
+}
+$asString = asString;
+
 #| property strings.matches: (string: string, regex: string) -> boolean
 #| Checks if the whole string matches a specific regular expression.
 #@ method string
@@ -185,42 +221,6 @@ $substring = substring;
 
 # We don't want to expose join or asString, so we do this first. defineMethods copies the object
 internals.defineMethods("string", $);
-
-#| property strings.asString: (value: any) -> string
-#| Converts any value to a string
-function asString(value) {
-    if (value is string) return value;
-    if (value is number) return reflectionInternals.unwrapValue(value).'toString()Ljava/lang/String;'();
-    if (value == true) return "true";
-    if (value == false) return "false";
-    if (value == null) return "null";
-    if (value is array) {
-        val out = StringBuilder();
-        sbAppend(out, "[");
-        for (var i = 0; i < value.length; i++) {
-            if (i > 0) sbAppend(out, ", ");
-            sbAppend(out, asString(value[i]));
-        }
-        sbAppend(out, "]");
-        return out.toString();
-    }
-    if (value is object) {
-        val out = StringBuilder();
-        sbAppend(out, "{");
-        var first = true;
-        foreach (key in objects.keys(value)) {
-            if (!first) sbAppend(out, ", ");
-            first = false;
-            sbAppend(out, asString(key));
-            sbAppend(out, ": ");
-            sbAppend(out, asString(value[key]));
-        }
-        sbAppend(out, "}");
-        return out.toString();
-    }
-    return reflectionInternals.forceWrap(value).'toString()Ljava/lang/String;'();
-}
-$asString = asString;
 
 #| property strings.join: (array: array, string: delimiter) -> string
 #| Converts all values in the array to a string and concatenates them with the delimiter in between

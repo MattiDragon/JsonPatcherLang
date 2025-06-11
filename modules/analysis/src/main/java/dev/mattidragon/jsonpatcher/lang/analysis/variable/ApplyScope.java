@@ -8,7 +8,7 @@ import java.util.List;
  * The scope of an apply statement. 
  * Apply statements have a unique situation where they override the root value and don't introduce a new variable scope.
  */
-public final class ApplyScope extends MutableScope {
+public final class ApplyScope implements MutableScope {
     private final ApplyStatement statement;
     private final RootVariable root;
     private final MutableScope parent;
