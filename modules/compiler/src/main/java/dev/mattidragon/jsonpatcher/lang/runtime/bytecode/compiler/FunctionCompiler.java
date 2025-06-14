@@ -8,6 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.VariableUtil;
 import org.objectweb.asm.*;
 
 import java.util.*;
@@ -78,7 +79,7 @@ public class FunctionCompiler implements Opcodes {
 
         var visitor = classVisitor.visitMethod(ACC_PRIVATE | ACC_SYNTHETIC,
                 name,
-                getLambdaMethodDescriptor(scope, capturesRoot, arguments),
+                getLambdaMethodDescriptor(scope, capturesRoot, arguments, metadata),
                 null,
                 null);
 
@@ -96,11 +97,12 @@ public class FunctionCompiler implements Opcodes {
         visitor.visitEnd();
     }
 
-    private static String getLambdaMethodDescriptor(FunctionScope scope, boolean capturesRoot, List<FunctionArgument> functionArgs) {
+    private static String getLambdaMethodDescriptor(FunctionScope scope, boolean capturesRoot, List<FunctionArgument> functionArgs, TreeMetadata metadata) {
         var args = new ArrayList<Type>();
 
-        for (int i = 0; i < scope.captures().size(); i++) {
-            args.add(Type.getType(Types.BOX.getDescriptor()));
+        for (var capture : scope.captures()) {
+            var type = VariableUtil.needsBoxing(capture, metadata) ? Types.BOX : Types.VALUE;
+            args.add(type);
         }
         if (capturesRoot) args.add(Types.OBJECT_VALUE);
         for (int i = 0; i < functionArgs.size(); i++) {
@@ -122,23 +124,25 @@ public class FunctionCompiler implements Opcodes {
 
     private void compileLambdaArgProcessing(TreeMetadata metadata, List<FunctionArgument> arguments, MethodVisitor visitor) {
         for (var argument : arguments) {
-            boolean captured;
+            boolean needsBoxing;
             int varIndex;
             switch (argument.target()) {
                 case FunctionArgument.Target.Root root -> {
                     varIndex = getOrAllocateRoot(metadata.get(argument, VariableAnalyser.ROOT_REFERENCE).orElseThrow());
-                    captured = false;
+                    needsBoxing = false;
                     visitor.visitParameter("$", 0);
                 }
                 case FunctionArgument.Target.Variable variable -> {
                     var analysedVariable = metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
                     varIndex = getOrAllocateVariable(analysedVariable);
-                    captured = analysedVariable.isCaptured();
+                    needsBoxing = VariableUtil.needsBoxing(analysedVariable, metadata);
                     visitor.visitParameter(variable.name(), 0);
                 }
             }
 
-            if (captured) {
+            if (!needsBoxing && argument.defaultValue().isEmpty()) continue;
+
+            if (needsBoxing) {
                 visitor.visitTypeInsn(NEW, Types.BOX.getInternalName());
                 visitor.visitInsn(DUP);
             }
@@ -151,7 +155,7 @@ public class FunctionCompiler implements Opcodes {
                 compileExpression(argument.defaultValue().get());
             }
 
-            if (captured) {
+            if (needsBoxing) {
                 visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
             }
 
@@ -167,14 +171,18 @@ public class FunctionCompiler implements Opcodes {
     private void addGlobalMetadata(Program program, Scope scope, MethodVisitor visitor, Label startLabel, Label endLabel) {
         for (var variable : scope.variables()) {
             if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
-            visitor.visitLocalVariable(variable.name(), variable.isCaptured() ? Types.BOX.getDescriptor() : Types.VALUE.getDescriptor(), null, startLabel, endLabel, getOrAllocateVariable(variable));
+            visitor.visitLocalVariable(variable.name(), VariableUtil.needsBoxing(variable, metadata)
+                    ? Types.BOX.getDescriptor()
+                    : Types.VALUE.getDescriptor(), null, startLabel, endLabel, getOrAllocateVariable(variable));
         }
     }
 
     private void compileGlobalLoading(Program program, Scope scope, MethodVisitor visitor) {
         for (var variable : scope.variables()) {
             if (variable.definition() != program) continue; // Filter globals, they are defined by the root node
-            if (variable.isCaptured()) {
+            if (variable.usages().isEmpty()) continue; // Skip unused globals
+
+            if (VariableUtil.needsBoxing(variable, metadata)) {
                 visitor.visitTypeInsn(NEW, Types.BOX.getInternalName());
                 visitor.visitInsn(DUP);
                 visitor.visitMethodInsn(INVOKESPECIAL, Types.BOX.getInternalName(), "<init>", "()V", false);
@@ -221,13 +229,24 @@ public class FunctionCompiler implements Opcodes {
     
     public void compileVariableCreation(Variable variable, Runnable valueExpressionInserter) {
         var index = getOrAllocateVariable(variable);
-        if (variable.isCaptured()) {
+        if (VariableUtil.needsBoxing(variable, metadata)) {
             visitor.visitVarInsn(ALOAD, index);
             valueExpressionInserter.run();
             visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
         } else {
             valueExpressionInserter.run();
             visitor.visitVarInsn(ASTORE, index);
+        }
+    }
+
+    public void compileVariableAssignment(Variable variable) {
+        var varIndex = getOrAllocateVariable(variable);
+        if (VariableUtil.needsBoxing(variable, metadata)) {
+            visitor.visitVarInsn(ALOAD, varIndex);
+            visitor.visitInsn(SWAP);
+            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
+        } else {
+            visitor.visitVarInsn(ASTORE, varIndex);
         }
     }
 

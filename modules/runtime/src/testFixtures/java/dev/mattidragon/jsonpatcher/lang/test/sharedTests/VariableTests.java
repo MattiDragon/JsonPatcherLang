@@ -59,4 +59,17 @@ public interface VariableTests extends SharedTest {
                 """;
         TestUtils.testCode(runner(), code);
     }
+
+    @Test
+    default void testFunctionArgCapture() {
+        var code = """
+                val f = (a, b) -> {
+                    if (b) a = 10;
+                    return () -> a;
+                };
+                debug.assertEquals(f(0, true)(), 10);
+                debug.assertEquals(f(0, false)(), 0);
+                """;
+        TestUtils.testCode(runner(), code);
+    }
 }

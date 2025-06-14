@@ -3,13 +3,13 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.FunctionScope;
-import dev.mattidragon.jsonpatcher.lang.analysis.variable.Scope;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.VariableUtil;
 import org.objectweb.asm.*;
 
 import java.lang.invoke.CallSite;
@@ -251,7 +251,7 @@ public class ExpressionCompiler implements Opcodes {
                 compileUnaryOp(op);
                 if (!expression.postfix()) visitor.visitInsn(DUP);
                 
-                if (variable.isCaptured()) {
+                if (VariableUtil.needsBoxing(variable, metadata)) {
                     visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
                     visitor.visitInsn(SWAP);
                     visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
@@ -296,7 +296,7 @@ public class ExpressionCompiler implements Opcodes {
     private void compileVariableAccess(VariableAccessExpression expression) {
         var variable = metadata.get(expression, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
-        if (variable.isCaptured()) {
+        if (VariableUtil.needsBoxing(variable, metadata)) {
             visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "getValue", Type.getMethodDescriptor(Types.VALUE), false);
         }
     }
@@ -328,13 +328,7 @@ public class ExpressionCompiler implements Opcodes {
                     compileBinaryOp(op);
                 }
                 visitor.visitInsn(DUP);
-                if (variable.isCaptured()) {
-                    visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
-                    visitor.visitInsn(SWAP);
-                    visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
-                } else {
-                    visitor.visitVarInsn(ASTORE, functionCompiler.getOrAllocateVariable(variable));
-                }
+                functionCompiler.compileVariableAssignment(variable);
             }
             case PropertyAccessExpression e -> {
                 compile(e.parent());
@@ -459,7 +453,13 @@ public class ExpressionCompiler implements Opcodes {
         var interfaceMethodType = Type.getMethodType("(%s)%s".formatted(Types.VALUE.getDescriptor().repeat(argCount), Types.VALUE.getDescriptor()));
 
         var targetType = new StringBuilder("(");
-        targetType.append(Types.BOX.getDescriptor().repeat(scope.captures().size()));
+        for (var capture : scope.captures()) {
+            if (VariableUtil.needsBoxing(capture, metadata)) {
+                targetType.append(Types.BOX.getDescriptor());
+            } else {
+                targetType.append(Types.VALUE.getDescriptor());
+            }
+        }
         if (capturesRoot) {
             targetType.append(Types.OBJECT_VALUE.getDescriptor());
         }
@@ -473,8 +473,12 @@ public class ExpressionCompiler implements Opcodes {
 
         var invokerType = new StringBuilder("(");
         invokerType.append("L").append(className).append(";");
-        for (int i = 0; i < scope.captures().size(); i++) {
-            invokerType.append(Types.BOX.getDescriptor());
+        for (var capture : scope.captures()) {
+            if (VariableUtil.needsBoxing(capture, metadata)) {
+                invokerType.append(Types.BOX.getDescriptor());
+            } else {
+                invokerType.append(Types.VALUE.getDescriptor());
+            }
         }
         if (capturesRoot) {
             invokerType.append(Types.OBJECT_VALUE.getDescriptor());
@@ -486,7 +490,7 @@ public class ExpressionCompiler implements Opcodes {
             visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(capture));
         }
         if (capturesRoot) {
-            visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateRoot(((Scope) scope.parent()).root()));
+            visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateRoot(scope.parent().root()));
         }
 
         visitor.visitInvokeDynamicInsn("call",

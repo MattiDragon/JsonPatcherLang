@@ -10,6 +10,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
+import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.VariableUtil;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -81,7 +82,7 @@ public class StatementCompiler implements Opcodes {
         var startLabel = new Label();
         visitor.visitLabel(startLabel);
         for (var variable : scope.variables()) {
-            if (variable.isCaptured()) {
+            if (VariableUtil.needsBoxing(variable, metadata)) {
                 if (variable.definition() instanceof Program) continue; // Globals are handled elsewhere
                 visitor.visitTypeInsn(NEW, Types.BOX.getInternalName());
                 visitor.visitInsn(DUP);
@@ -97,7 +98,7 @@ public class StatementCompiler implements Opcodes {
         visitor.visitLabel(endLabel);
 
         for (var variable : scope.variables()) {
-            var type = variable.isCaptured() ? Types.BOX.getDescriptor() : Types.VALUE.getDescriptor();
+            var type = VariableUtil.needsBoxing(variable, metadata) ? Types.BOX.getDescriptor() : Types.VALUE.getDescriptor();
             visitor.visitLocalVariable(variable.name(), type, null, startLabel, endLabel, functionCompiler.getOrAllocateVariable(variable));
         }
     }
@@ -226,32 +227,16 @@ public class StatementCompiler implements Opcodes {
 
     private void compileFuncDecl(FunctionDeclarationStatement statement) {
         var variable = metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
-        var varIndex = functionCompiler.getOrAllocateVariable(metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow());
         functionCompiler.compileExpression(statement.value());
-
-        if (variable.isCaptured()) {
-            visitor.visitVarInsn(ALOAD, varIndex);
-            visitor.visitInsn(SWAP);
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
-        } else {
-            visitor.visitVarInsn(ASTORE, varIndex);
-        }
+        functionCompiler.compileVariableAssignment(variable);
     }
 
     private void compileImport(ImportStatement statement) {
         var variable = metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE).orElseThrow();
-        var varIndex = functionCompiler.getOrAllocateVariable(variable);
         functionCompiler.loadContext();
         visitor.visitLdcInsn(statement.libraryName());
         visitor.visitMethodInsn(INVOKEVIRTUAL, Types.EVALUATION_CONTEXT.getInternalName(), "findLibrary", Type.getMethodDescriptor(Types.VALUE, Type.getType(String.class)), false);
-
-        if (variable.isCaptured()) {
-            visitor.visitVarInsn(ALOAD, varIndex);
-            visitor.visitInsn(SWAP);
-            visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, Types.VALUE), false);
-        } else {
-            visitor.visitVarInsn(ASTORE, varIndex);
-        }
+        functionCompiler.compileVariableAssignment(variable);
     }
 
     private void compileDelete(DeleteStatement statement) {
