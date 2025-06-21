@@ -11,9 +11,20 @@ public interface PrimitiveProperties {
 
     @Nullable
     default Type getPrimitivePropertyType(ValueType type, String property) {
-        return getPrimitivePropertyTypes()
+        var propertyType = getPrimitivePropertyTypes()
                 .getOrDefault(type, Map.of())
                 .get(property);
+        // Remove self argument from functions
+        if (propertyType instanceof FunctionType(var typeArguments, var args, var requiredArgs, var varargs, var returnType)) {
+            return new FunctionType(
+                    typeArguments,
+                    args.stream().skip(1).toList(),
+                    requiredArgs,
+                    varargs,
+                    returnType
+            );
+        }
+        return propertyType;
     }
 
     static @Nullable ValueType convertType(Type type) {
