@@ -136,12 +136,26 @@ public class TypeChecker {
 
             case ArrayInitializerExpression(var contents) ->
                     new ArrayType(UnionType.union(contents.stream().map(this::checkExpression).toList()));
-            case ObjectInitializerExpression(var contents) ->
-                    new ObjectType(UnionType.union(
-                            contents.stream()
-                                    .map(ObjectInitializerExpression.Entry::value)
-                                    .map(this::checkExpression)
-                                    .toList()));
+            case ObjectInitializerExpression(var contents) -> {
+                if (contents.isEmpty()) {
+                    yield PrimitiveType.OBJECT;
+                }
+                boolean isDict = true;
+                Type componentType = null;
+                for (var entry : contents) {
+                    var valueType = checkExpression(entry.value());
+                    if (componentType == null) {
+                        componentType = valueType;
+                    } else if (!TypeComparison.isSubtype(valueType, componentType)) {
+                        isDict = false;
+                    }
+                }
+                if (isDict) {
+                    yield new ObjectType(componentType);
+                } else {
+                    yield PrimitiveType.OBJECT; // TODO: anonymous object types??
+                }
+            }
 
             default -> {
                 expression.getChildren().forEach(this::typeCheck);

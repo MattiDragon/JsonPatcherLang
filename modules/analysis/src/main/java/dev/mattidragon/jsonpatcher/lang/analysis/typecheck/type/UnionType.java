@@ -39,7 +39,9 @@ public record UnionType(List<Type> children) implements Type {
 
     public static Stream<Type> flatten(Type type) {
         if (type instanceof UnionType(var children)) {
-            return children.stream().flatMap(UnionType::flatten);
+            return children.stream()
+                    .filter(t -> t != SpecialType.NEVER)
+                    .flatMap(UnionType::flatten);
         } else {
             return Stream.of(type);
         }
