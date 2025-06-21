@@ -15,6 +15,9 @@ public final class Variable implements MetadataHolder {
     private final List<ProgramNode> usages = new ArrayList<>();
     private boolean captured = false;
     private boolean mutated = false;
+    // This flag is set when a variable is captured by functions its own initializer
+    // This allows recursion without mutable variables
+    private boolean capturedEarly = false;
 
     Variable(String name, boolean mutable, ProgramNode definition) {
         this.name = name;
@@ -38,6 +41,10 @@ public final class Variable implements MetadataHolder {
         return mutated;
     }
 
+    public boolean isCapturedEarly() {
+        return capturedEarly;
+    }
+
     public ProgramNode definition() {
         return definition;
     }
@@ -56,6 +63,10 @@ public final class Variable implements MetadataHolder {
 
     void markMutated() {
         mutated = true;
+    }
+
+    void markCapturedEarly() {
+        capturedEarly = true;
     }
 
     public boolean stdlib() {

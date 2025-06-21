@@ -16,8 +16,7 @@ public final class Box {
         this.value = value;
     }
 
-    public Value getValue() {
-        if (value == null) throw new IllegalStateException("Variable not assigned");
+    public @Nullable Value getValue() {
         return value;
     }
 

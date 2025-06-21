@@ -17,6 +17,7 @@ import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Locale;
+import java.util.Objects;
 
 public class ExpressionCompiler implements Opcodes {
     private final TreeMetadata metadata;
@@ -298,6 +299,10 @@ public class ExpressionCompiler implements Opcodes {
         visitor.visitVarInsn(ALOAD, functionCompiler.getOrAllocateVariable(variable));
         if (VariableUtil.needsBoxing(variable, metadata)) {
             visitor.visitMethodInsn(INVOKEVIRTUAL, Types.BOX.getInternalName(), "getValue", Type.getMethodDescriptor(Types.VALUE), false);
+            visitor.visitLdcInsn("Variable %s accessed before initialization".formatted(variable.name()));
+            visitor.visitMethodInsn(INVOKESTATIC, Type.getInternalName(Objects.class), "requireNonNull",
+                    Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class), Type.getType(String.class)), false);
+            visitor.visitTypeInsn(CHECKCAST, Types.VALUE.getInternalName());
         }
     }
 

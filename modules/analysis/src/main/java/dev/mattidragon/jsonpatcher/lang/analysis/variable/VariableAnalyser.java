@@ -10,6 +10,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * Generic variable analyser for jsonpatcher meant to serve both the language server and the bytecode compiler.
@@ -21,6 +22,7 @@ public class VariableAnalyser {
     
     private final TreeMetadata metadata;
     private final Map<VariableAccessExpression, MutableScope> missingVariables = new IdentityHashMap<>();
+    private final Map<String, List<Variable>> earlyAccessVariables = new HashMap<>();
     private final List<Scope> scopes = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
 
@@ -89,7 +91,7 @@ public class VariableAnalyser {
                 analyse(statement.action(), scope);
             }
             case FunctionExpression function -> {
-                var scope = new FunctionScope(function, current);
+                var scope = new FunctionScope(function, current, buildEarlyAccessVariables());
                 scopes.add(scope);
                 metadata.put(function, SCOPE, scope);
                 analyse(function.args(), scope);
@@ -109,8 +111,10 @@ public class VariableAnalyser {
                 argument.defaultValue().ifPresent(defaultValue -> analyse(defaultValue, functionScope));
             }
             case VariableCreationStatement statement -> {
-                analyse(statement.initializer(), current);
                 var variable = new Variable(statement.name(), statement.mutable(), statement);
+                addEarlyAccess(variable);
+                analyse(statement.initializer(), current);
+                removeEarlyAccess(variable);
                 define(variable, current, statement);
                 metadata.put(statement, VARIABLE_REFERENCE, variable);
             }
@@ -121,9 +125,11 @@ public class VariableAnalyser {
             }
             case FunctionDeclarationStatement statement -> {
                 var variable = new Variable(statement.name(), false, statement);
+                addEarlyAccess(variable);
+                analyse(statement.value(), current);
+                removeEarlyAccess(variable);
                 define(variable, current, statement);
                 metadata.put(statement, VARIABLE_REFERENCE, variable);
-                analyse(statement.value(), current);
             }
             case ForEachLoopStatement statement -> {
                 analyse(statement.iterable(), current);
@@ -173,6 +179,27 @@ public class VariableAnalyser {
             case RootExpression expression -> metadata.put(expression, ROOT_REFERENCE, current.root());
             default -> analyseAll(node.getChildren(), current);
         }
+    }
+
+    private void addEarlyAccess(Variable variable) {
+        earlyAccessVariables.computeIfAbsent(variable.name(), k -> new ArrayList<>()).add(variable);
+    }
+
+    private void removeEarlyAccess(Variable variable) {
+        var list = earlyAccessVariables.get(variable.name());
+        if (list != null) {
+            list.remove(variable);
+            if (list.isEmpty()) {
+                earlyAccessVariables.remove(variable.name());
+            }
+        }
+    }
+
+    private List<Variable> buildEarlyAccessVariables() {
+        return earlyAccessVariables.values().stream()
+                .filter(Predicate.not(List::isEmpty))
+                .map(List::getLast)
+                .toList();
     }
 
     // Side effect: marks mutated variables

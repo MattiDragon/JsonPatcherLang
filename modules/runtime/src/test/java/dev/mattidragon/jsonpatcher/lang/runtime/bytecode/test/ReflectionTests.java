@@ -9,10 +9,13 @@ import dev.mattidragon.jsonpatcher.lang.runtime.environment.LibraryGroup;
 import dev.mattidragon.jsonpatcher.lang.runtime.environment.ProgramData;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class ReflectionTests {
-    private final BytecodeTestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT);
+    private String testName = "<unknown>";
+    private final BytecodeTestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT, () -> testName);
 
     public ReflectionTests() {
         var driverCode = """
@@ -38,6 +41,11 @@ public class ReflectionTests {
         var libObject = new Value.ObjectValue();
         program.run(libObject);
         runner.environment().addLibrary(new Library(LibraryGroup.DEFAULT, "assertions", () -> libObject));
+    }
+
+    @BeforeEach
+    public void setTestName(TestInfo testInfo) {
+        this.testName = testInfo.getDisplayName();
     }
 
     @Test

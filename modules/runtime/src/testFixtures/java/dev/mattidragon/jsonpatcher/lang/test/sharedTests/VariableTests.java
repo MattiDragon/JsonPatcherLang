@@ -72,4 +72,21 @@ public interface VariableTests extends SharedTest {
                 """;
         TestUtils.testCode(runner(), code);
     }
+
+    @Test
+    default void testValidSelfCapture() {
+        var code = """
+                val f = () -> f;
+                debug.assertEquals(f(), f);
+                """;
+        TestUtils.testCode(runner(), code);
+    }
+
+    @Test
+    default void testInvalidSelfCapture() {
+        var code = """
+                val f = (() -> f)();
+                """;
+        Assertions.assertThrows(NullPointerException.class, () -> TestUtils.runCode(runner(), code));
+    }
 }

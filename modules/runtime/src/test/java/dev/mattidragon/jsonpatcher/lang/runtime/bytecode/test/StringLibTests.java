@@ -3,12 +3,20 @@ package dev.mattidragon.jsonpatcher.lang.runtime.bytecode.test;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.compiler.CompilerOptions;
 import dev.mattidragon.jsonpatcher.lang.test.TestRunner;
 import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StringLibTests {
-    private final TestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT);
+    private String testName = "<unknown>";
+    private final TestRunner runner = new BytecodeTestRunner(CompilerOptions.DEFAULT, () -> testName);
+
+    @BeforeEach
+    public void setTestName(TestInfo testInfo) {
+        this.testName = testInfo.getDisplayName();
+    }
 
     @Test
     public void testMatches() {
