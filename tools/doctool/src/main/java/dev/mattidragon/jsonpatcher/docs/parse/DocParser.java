@@ -83,6 +83,8 @@ public class DocParser {
             case "namespace" -> parseNamespace(keywordPos);
             // Legacy syntax for compatibility
             case "module" -> {
+                diagnostics.addDiagnostic(new DocParseDiagnostic(keywordPos, "'module' is deprecated, use 'namespace' instead", DocParseDiagnostic.Type.DEPRECATED_KEYWORD));
+
                 var name = expectName();
                 String location = null;
                 if (tokens.hasNext()
@@ -96,6 +98,8 @@ public class DocParser {
                 yield new DocEntry.LibraryEntry(sharedData, Optional.ofNullable(location));
             }
             case "value" -> {
+                diagnostics.addDiagnostic(new DocParseDiagnostic(keywordPos, "'value' is deprecated, use 'property' instead", DocParseDiagnostic.Type.DEPRECATED_KEYWORD));
+
                 var owner = expectName();
                 expectSymbol(DocToken.Symbol.DOT);
                 var name = expectName();

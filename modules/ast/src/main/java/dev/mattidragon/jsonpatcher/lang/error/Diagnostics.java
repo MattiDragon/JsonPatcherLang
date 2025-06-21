@@ -27,11 +27,11 @@ public final class Diagnostics {
     }
 
     public Collection<Diagnostic> warnings() {
-        return get(Diagnostic.Kind.WARNING, Diagnostic.Kind.UNUSED);
+        return get(Diagnostic.Kind.WARNING, Diagnostic.Kind.DEPRECATION, Diagnostic.Kind.UNUSED);
     }
 
     public Collection<Diagnostic> errorsAndWarnings() {
-        return get(Diagnostic.Kind.ERROR, Diagnostic.Kind.INTERNAL_ERROR, Diagnostic.Kind.WARNING);
+        return get(Diagnostic.Kind.ERROR, Diagnostic.Kind.INTERNAL_ERROR, Diagnostic.Kind.WARNING, Diagnostic.Kind.DEPRECATION, Diagnostic.Kind.UNUSED);
     }
 
     public Diagnostics join(Diagnostics other) {

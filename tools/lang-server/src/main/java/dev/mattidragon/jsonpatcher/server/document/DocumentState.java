@@ -126,6 +126,10 @@ public class DocumentState {
                     lspDiagnostic.setSeverity(DiagnosticSeverity.Warning);
                     lspDiagnostic.setTags(List.of(DiagnosticTag.Unnecessary));
                 }
+                case DEPRECATION -> {
+                    lspDiagnostic.setSeverity(DiagnosticSeverity.Warning);
+                    lspDiagnostic.setTags(List.of(DiagnosticTag.Deprecated));
+                }
             }
             lspDiagnostic.setSource("JsonPatcher");
 

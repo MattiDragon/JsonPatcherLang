@@ -117,6 +117,12 @@ public interface Diagnostic {
          */
         WARNING,
         /**
+         * A deprecation warning is a special case of {@link #WARNING} that indicates
+         * that some feature is deprecated and might be removed in the future.
+         * It should be used to warn users about features that are no longer recommended.
+         */
+        DEPRECATION,
+        /**
          * Unused is a special case of {@link #WARNING} for unused members,
          * as they often require different display.
          */
