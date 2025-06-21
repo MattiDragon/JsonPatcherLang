@@ -188,8 +188,8 @@ public class DefinitionFinder {
                 writeTypeSafe(component, builder);
                 builder.append("[]");
             }
-            case ObjectType objectType -> {
-                writeTypeSafe(objectType, builder);
+            case ObjectType(var component) -> {
+                writeTypeSafe(component, builder);
                 builder.append("{}");
             }
             case PrimitiveType primitiveType ->
