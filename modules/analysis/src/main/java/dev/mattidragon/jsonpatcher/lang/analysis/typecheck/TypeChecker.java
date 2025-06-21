@@ -53,8 +53,14 @@ public class TypeChecker {
             }
             case VariableCreationStatement statement -> {
                 var type = checkExpression(statement.initializer());
+                if (statement.mutable()) {
+                    // We can't trust the initial type, so we do this to get rid of errors
+                    type = UnionType.union(type, SpecialType.UNKNOWN);
+                    metadata.put(statement, TYPE, type);
+                }
+                var finalType = type;
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
-                        .ifPresent(variable -> metadata.put(variable, TYPE, type));
+                        .ifPresent(variable -> metadata.put(variable, TYPE, finalType));
             }
 
             case ReturnStatement(var value) -> {
