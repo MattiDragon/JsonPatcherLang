@@ -182,7 +182,7 @@ public class DefinitionFinder {
         return document;
     }
 
-    private void writeType(Type type, StringBuilder builder) {
+    public static void writeType(Type type, StringBuilder builder) {
         switch (type) {
             case ArrayType(var component) -> {
                 writeTypeSafe(component, builder);
@@ -254,7 +254,7 @@ public class DefinitionFinder {
         }
     }
 
-    private void writeTypeSafe(Type type, StringBuilder builder) {
+    private static void writeTypeSafe(Type type, StringBuilder builder) {
         switch (type) {
             case FunctionType functionType -> {
                 builder.append('{');

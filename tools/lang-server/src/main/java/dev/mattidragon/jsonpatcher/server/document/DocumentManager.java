@@ -63,39 +63,39 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
     }
 
     @Override
-    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
+    public CompletableFuture<@Nullable Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.autoComplete(params.getPosition());
         }
-        return null;
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
-    public CompletableFuture<SemanticTokens> semanticTokensFull(SemanticTokensParams params) {
+    public CompletableFuture<@Nullable SemanticTokens> semanticTokensFull(SemanticTokensParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.getSemanticTokens();
         }
-        return null;
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
-    public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
+    public CompletableFuture<@Nullable List<? extends Location>> references(ReferenceParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.getReferences(params.getPosition());
         }
-        return null;
+        return CompletableFuture.completedFuture(null);
     }
     
     @Override
-    public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> definition(DefinitionParams params) {
+    public CompletableFuture<@Nullable Either<List<? extends Location>, List<? extends LocationLink>>> definition(DefinitionParams params) {
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.getDefinitions(params.getPosition());
         }
-        return null; 
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
@@ -104,6 +104,15 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         if (state != null) {
             return state.getHover(params.getPosition());
         }
-        return null;
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<@Nullable List<InlayHint>> inlayHint(InlayHintParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.getInlayHints(params.getRange());
+        }
+        return CompletableFuture.completedFuture(null);
     }
 }

@@ -5,6 +5,7 @@ import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
+import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
@@ -40,6 +41,7 @@ public class DocumentState {
     private final LanguageClient client;
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
+    private final InlayHintProvider inlayHintProvider;
     private final Supplier<Map<String, DocHolder.ObjectData<DocEntry.GlobalEntry>>> globalsGetter;
     private final DocHolder docHolder;
 
@@ -51,9 +53,10 @@ public class DocumentState {
         this.externalName = name;
         this.internalName = getInternalName(name);
         this.client = client;
-        docHolder = workspace.getDocManager().getHolder();
+        this.docHolder = workspace.getDocManager().getHolder();
         this.definitionFinder = new DefinitionFinder(() -> data, workspace);
-        autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
+        this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
+        this.inlayHintProvider = new InlayHintProvider(() -> data);
         this.globalsGetter = docHolder::getGlobals;
     }
 
@@ -159,9 +162,18 @@ public class DocumentState {
         return autoCompleteHelper.autoComplete(position).thenApply(Either::forRight);
     }
 
+    public CompletableFuture<List<InlayHint>> getInlayHints(Range range) {
+        return inlayHintProvider.getHints(range);
+    }
+
+    public static Position posToPosition(SourcePos pos) {
+        return new Position(pos.row() - 1, pos.column());
+    }
+
     public static Range spanToRange(SourceSpan span) {
+        // TODO: Check if this is correct (different from other cases)
         var pos1 = new Position(span.from().row() - 1, span.from().column() - 1);
-        var pos2 = new Position(span.to().row() - 1, span.to().column());
+        var pos2 = posToPosition(span.to());
         return new Range(pos1, pos2);
     }
 

@@ -49,6 +49,7 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         
         capabilities.setDefinitionProvider(true);
         capabilities.setReferencesProvider(true);
+        capabilities.setInlayHintProvider(true);
 
         var completionOptions = new CompletionOptions();
         completionOptions.setTriggerCharacters(List.of(".", "[", "$", ":", "@"));
