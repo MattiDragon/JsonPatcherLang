@@ -8,10 +8,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import org.jspecify.annotations.Nullable;
 
@@ -61,6 +58,26 @@ public class TypeChecker {
                 var finalType = type;
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
                         .ifPresent(variable -> metadata.put(variable, TYPE, finalType));
+            }
+            case ForEachLoopStatement statement -> {
+                var iterableType = checkExpression(statement.iterable());
+                var variableType = getArrayComponent(iterableType);
+                if (variableType == null) {
+                    var message = "Expected any array, got " + TypeFormatter.format(iterableType);
+                    var pos = metadata.get(statement.iterable(), MetadataKey.FULL_POS).orElse(null);
+                    diagnostics.addDiagnostic(new TypeCheckError(statement, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
+                } else {
+                    metadata.put(statement, TYPE, variableType);
+                    metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
+                            .ifPresent(variable -> metadata.put(variable, TYPE, variableType));
+                }
+                typeCheck(statement.body());
+            }
+            case FunctionDeclarationStatement statement -> {
+                var type = checkExpression(statement.value());
+                metadata.put(statement, TYPE, type);
+                metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
+                        .ifPresent(variable -> metadata.put(variable, TYPE, type));
             }
 
             case ReturnStatement(var value) -> {
@@ -232,7 +249,7 @@ public class TypeChecker {
         returnTypeConsumers.push(returnTypes::add);
         typeCheck(body);
         returnTypeConsumers.pop();
-        var returnType = UnionType.union(returnTypes);
+        var returnType = returnTypes.isEmpty() ? PrimitiveType.NULL : UnionType.union(returnTypes);
 
         return new FunctionType(
                 List.of(),
@@ -277,6 +294,9 @@ public class TypeChecker {
             if (!TypeComparison.isSubtype(actualType, expectedType)) {
                 addError(arguments.get(i), "Expected " + TypeFormatter.format(expectedType) + ", got " + TypeFormatter.format(actualType));
             }
+        }
+        if (actualArgTypes.size() < requiredArgs) {
+            addError(function, "Expected at least " + requiredArgs + " arguments, got " + actualArgTypes.size());
         }
 
         if (returnType instanceof TypeArgument arg && typeArguments.contains(arg)) {
@@ -348,6 +368,26 @@ public class TypeChecker {
             }
         }
         return type;
+    }
+
+    private @Nullable Type getArrayComponent(Type arrayType) {
+        return switch (arrayType) {
+            case ArrayType(var component) -> component;
+            case PrimitiveType.ARRAY, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            case SpecialType.NEVER -> SpecialType.NEVER;
+            case FunctionType functionType -> null;
+            case NamedType namedType -> null;
+            case ObjectType objectType -> null;
+            case PrimitiveType primitiveType -> null;
+            case TypeArgument typeArgument -> getArrayComponent(typeArgument.bound());
+            case LazyType lazyType -> getArrayComponent(lazyType.get());
+            case UnionType unionType -> UnionType.union(
+                    unionType.children()
+                            .stream()
+                            .map(this::getArrayComponent)
+                            .filter(Objects::nonNull)
+                            .toList());
+        };
     }
 
     private void addError(ProgramNode node, String message) {

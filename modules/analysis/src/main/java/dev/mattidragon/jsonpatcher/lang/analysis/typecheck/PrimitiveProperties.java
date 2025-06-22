@@ -19,7 +19,7 @@ public interface PrimitiveProperties {
             return new FunctionType(
                     typeArguments,
                     args.stream().skip(1).toList(),
-                    requiredArgs,
+                    Math.max(requiredArgs - 1, 0),
                     varargs,
                     returnType
             );

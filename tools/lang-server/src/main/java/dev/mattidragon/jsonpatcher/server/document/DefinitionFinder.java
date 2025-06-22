@@ -5,7 +5,9 @@ import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
 import dev.mattidragon.jsonpatcher.docs.write.DocEntryWriter;
 import dev.mattidragon.jsonpatcher.docs.write.DocWriter;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
-import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeFormatter;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.SpecialType;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.Type;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
@@ -27,7 +29,6 @@ import org.eclipse.lsp4j.*;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
@@ -183,90 +184,6 @@ public class DefinitionFinder {
     }
 
     public static void writeType(Type type, StringBuilder builder) {
-        switch (type) {
-            case ArrayType(var component) -> {
-                writeTypeSafe(component, builder);
-                builder.append("[]");
-            }
-            case ObjectType(var component) -> {
-                writeTypeSafe(component, builder);
-                builder.append("{}");
-            }
-            case PrimitiveType primitiveType ->
-                    builder.append(primitiveType.name().toLowerCase(Locale.ROOT));
-            case SpecialType specialType ->
-                    builder.append(specialType.name().toLowerCase(Locale.ROOT));
-            case TypeArgument typeArgument ->
-                    builder.append('$').append(typeArgument.name());
-            case NamedType namedType -> builder.append(namedType.name());
-
-            case FunctionType functionType -> {
-                if (!functionType.typeArguments().isEmpty()) {
-                    builder.append('<');
-                    var first = true;
-                    for (var typeArgument : functionType.typeArguments()) {
-                        if (!first) {
-                            builder.append(", ");
-                        } else {
-                            first = false;
-                        }
-                        writeType(typeArgument, builder);
-                        if (typeArgument.bound() != SpecialType.ANY) {
-                            builder.append(": ");
-                            writeType(typeArgument.bound(), builder);
-                        }
-                    }
-                    builder.append('>');
-                }
-                var argIndex = 0;
-                var first = true;
-                builder.append('(');
-                for (var argument : functionType.args()) {
-                    if (!first) {
-                        builder.append(", ");
-                    } else {
-                        first = false;
-                    }
-                    writeType(argument, builder);
-                    if (argIndex == functionType.args().size() - 1) {
-                        builder.append("*");
-                    } else if (argIndex++ < functionType.requiredArgs()) {
-                        builder.append("?");
-                    }
-                }
-                builder.append(") -> ");
-                writeTypeSafe(functionType.returnType(), builder);
-            }
-
-            case UnionType unionType -> {
-                var first = true;
-                for (var child : UnionType.flatten(unionType).toList()) {
-                    if (!first) {
-                        builder.append(" | ");
-                    } else {
-                        first = false;
-                    }
-                    writeTypeSafe(child, builder);
-                }
-            }
-
-            case LazyType lazyType -> writeType(lazyType.get(), builder);
-        }
-    }
-
-    private static void writeTypeSafe(Type type, StringBuilder builder) {
-        switch (type) {
-            case FunctionType functionType -> {
-                builder.append('{');
-                writeType(functionType, builder);
-                builder.append("}");
-            }
-            case UnionType unionType -> {
-                builder.append('{');
-                writeType(unionType, builder);
-                builder.append("}");
-            }
-            default -> writeType(type, builder);
-        }
+        builder.append(TypeFormatter.format(type));
     }
 }
