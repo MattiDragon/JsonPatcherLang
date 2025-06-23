@@ -13,10 +13,17 @@ public record TypeCheckError(ProgramNode node, @Nullable SourceSpan pos, String 
 
     @Override
     public Kind kind() {
-        return Kind.ERROR;
+        return code.kind;
     }
 
     public enum Code {
-        UNEXPECTED_TYPE
+        UNEXPECTED_TYPE(Kind.ERROR),
+        TYPE_WARNING(Kind.WARNING);
+
+        private final Kind kind;
+
+        Code(Kind kind) {
+            this.kind = kind;
+        }
     }
 }

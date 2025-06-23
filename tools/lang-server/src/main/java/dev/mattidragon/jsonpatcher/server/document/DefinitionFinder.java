@@ -137,7 +137,7 @@ public class DefinitionFinder {
     }
 
     private Document getVariableDocs(Variable variable, TreeMetadata metadata) {
-        var type = metadata.get(variable.definition(), TypeChecker.TYPE).orElse(SpecialType.UNKNOWN);
+        var type = metadata.get(variable, TypeChecker.TYPE).orElse(SpecialType.UNKNOWN);
 
         var document = new Document();
         var code = new FencedCodeBlock();

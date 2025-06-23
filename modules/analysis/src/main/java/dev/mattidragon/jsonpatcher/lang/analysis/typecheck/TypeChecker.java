@@ -16,9 +16,15 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeComparison.isSubtype;
+import static dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeFormatter.format;
+
 public class TypeChecker {
     public static final MetadataKey<Type> TYPE = new MetadataKey<>("TypeChecker/TYPE");
     private static final Type CALLABLE_TYPE = new UnionType(Arrays.asList(PrimitiveType.FUNCTION, PrimitiveType.SPECIAL));
+    private static final Type MULTIPLIABLE_TYPE = new UnionType(Arrays.asList(
+            PrimitiveType.ARRAY, PrimitiveType.OBJECT, PrimitiveType.STRING, PrimitiveType.NUMBER
+    ));
 
     private final TreeMetadata metadata;
     private final DiagnosticsBuilder diagnostics;
@@ -53,9 +59,9 @@ public class TypeChecker {
                 if (statement.mutable()) {
                     // We can't trust the initial type, so we do this to get rid of errors
                     type = UnionType.union(type, SpecialType.UNKNOWN);
-                    metadata.put(statement, TYPE, type);
                 }
                 var finalType = type;
+                metadata.put(statement, TYPE, type);
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
                         .ifPresent(variable -> metadata.put(variable, TYPE, finalType));
             }
@@ -63,7 +69,7 @@ public class TypeChecker {
                 var iterableType = checkExpression(statement.iterable());
                 var variableType = getArrayComponent(iterableType);
                 if (variableType == null) {
-                    var message = "Expected any array, got " + TypeFormatter.format(iterableType);
+                    var message = "Expected any array, got " + format(iterableType);
                     var pos = metadata.get(statement.iterable(), MetadataKey.FULL_POS).orElse(null);
                     diagnostics.addDiagnostic(new TypeCheckError(statement, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
                 } else {
@@ -115,9 +121,9 @@ public class TypeChecker {
 
             case AssignmentExpression(var target, var value, var operator) -> {
                 var oldType = checkExpression(target);
-                var newType = checkBinaryOp(operator, checkExpression(target), checkExpression(value));
-                if (oldType != PrimitiveType.NULL && !TypeComparison.isSubtype(newType, oldType)) {
-                    addError(expression, "Expected " + TypeFormatter.format(oldType) + ", got " + TypeFormatter.format(newType));
+                var newType = checkBinaryOp(expression, operator, checkExpression(target), checkExpression(value));
+                if (!isSubtype(newType, oldType)) {
+                    addError(expression, "Expected " + format(oldType) + ", got " + format(newType));
                 }
                 yield newType;
             }
@@ -138,7 +144,7 @@ public class TypeChecker {
                 checkPropertyAccess(parent, expression, name);
 
             case BinaryExpression(var first, var second, var op) ->
-                    checkBinaryOp(op, checkExpression(first), checkExpression(second));
+                    checkBinaryOp(expression, op, checkExpression(first), checkExpression(second));
             case ShortedBinaryExpression(var first, var second, var op) ->
                     // Shorted and/or always returns either the first or the second value
                     UnionType.union(checkExpression(first), checkExpression(second));
@@ -151,8 +157,12 @@ public class TypeChecker {
                 yield UnionType.union(checkExpression(ifTrue), checkExpression(ifFalse));
             }
 
-            case ArrayInitializerExpression(var contents) ->
-                    new ArrayType(UnionType.union(contents.stream().map(this::checkExpression).toList()));
+            case ArrayInitializerExpression(var contents) -> {
+                if (contents.isEmpty()) {
+                    yield PrimitiveType.ARRAY;
+                }
+                yield new ArrayType(UnionType.union(contents.stream().map(this::checkExpression).toList()));
+            }
             case ObjectInitializerExpression(var contents) -> {
                 if (contents.isEmpty()) {
                     yield PrimitiveType.OBJECT;
@@ -163,7 +173,7 @@ public class TypeChecker {
                     var valueType = checkExpression(entry.value());
                     if (componentType == null) {
                         componentType = valueType;
-                    } else if (!TypeComparison.isSubtype(valueType, componentType)) {
+                    } else if (!isSubtype(valueType, componentType)) {
                         isDict = false;
                     }
                 }
@@ -193,7 +203,7 @@ public class TypeChecker {
         var parentType = checkExpression(parent);
         var type = getPropertyType(name, parentType);
         if (type == null) {
-            addError(expression, "Property '" + name + "' not found on type " + TypeFormatter.format(parentType));
+            addError(expression, "Property '" + name + "' not found on type " + format(parentType));
             return SpecialType.UNKNOWN;
         }
 
@@ -274,8 +284,8 @@ public class TypeChecker {
                 var varargs,
                 var returnType
         ))) {
-            if (!TypeComparison.isSubtype(functionType, CALLABLE_TYPE)) {
-                addError(function, "Expected function or other callable, got " + TypeFormatter.format(functionType));
+            if (!isSubtype(functionType, CALLABLE_TYPE)) {
+                addError(function, "Expected function or other callable, got " + format(functionType));
             }
             return SpecialType.UNKNOWN;
         }
@@ -291,8 +301,8 @@ public class TypeChecker {
                 addError(arguments.get(i), "Too many arguments");
                 expectedType = SpecialType.UNKNOWN;
             }
-            if (!TypeComparison.isSubtype(actualType, expectedType)) {
-                addError(arguments.get(i), "Expected " + TypeFormatter.format(expectedType) + ", got " + TypeFormatter.format(actualType));
+            if (!isSubtype(actualType, expectedType)) {
+                addError(arguments.get(i), "Expected " + format(expectedType) + ", got " + format(actualType));
             }
         }
         if (actualArgTypes.size() < requiredArgs) {
@@ -307,45 +317,81 @@ public class TypeChecker {
         return returnType;
     }
 
-    private static Type checkBinaryOp(BinaryExpression.Operator op, Type firstType, Type secondType) {
+    private Type checkBinaryOp(ProgramNode node, BinaryExpression.Operator op, Type firstType, Type secondType) {
         // TODO: Actual type checking
         // TODO: Prefer TypeComparison more
         return switch (op) {
-            case EQUALS, NOT_EQUALS, LESS_THAN, LESS_THAN_EQUAL, GREATER_THAN, GREATER_THAN_EQUAL, IN ->
-                    PrimitiveType.BOOLEAN;
-            case PLUS -> {
-                if (firstType == PrimitiveType.STRING && secondType == PrimitiveType.STRING) {
-                    yield PrimitiveType.STRING;
-                } else if (firstType == PrimitiveType.NUMBER && secondType == PrimitiveType.NUMBER) {
-                    yield PrimitiveType.NUMBER;
-                } else if (firstType instanceof ArrayType(var firstComponent) && secondType instanceof ArrayType(
-                        var secondComponent
-                )) {
-                    yield new ArrayType(UnionType.union(firstComponent, secondComponent));
-                } else if (firstType instanceof ObjectType(var firstComponent) && secondType instanceof ObjectType(
-                        var secondComponent
-                )) {
-                    yield new ObjectType(UnionType.union(firstComponent, secondComponent));
+            case EQUALS, NOT_EQUALS -> {
+                if (!isSubtype(firstType, secondType) && !isSubtype(secondType, firstType)) {
+                    addWarning(node, format(firstType) + " will never equal " + format(secondType));
+                }
+                yield PrimitiveType.BOOLEAN;
+            }
+            case LESS_THAN, LESS_THAN_EQUAL, GREATER_THAN, GREATER_THAN_EQUAL -> {
+                if (!isSubtype(firstType, PrimitiveType.NUMBER) || !isSubtype(secondType, PrimitiveType.NUMBER)) {
+                    addError(node, "Expected numbers, got " + format(firstType) + " and " + format(secondType));
+                }
+                yield PrimitiveType.BOOLEAN;
+            }
+            case IN -> {
+                if (isSubtype(secondType, PrimitiveType.OBJECT)) {
+                    if (!isSubtype(firstType, PrimitiveType.STRING)) {
+                        addError(node, "Expected index to be string, but was " + format(firstType));
+                    }
+                } else if (isSubtype(secondType, PrimitiveType.ARRAY)) {
+                    var componentType = getArrayComponent(secondType);
+                    if (componentType != null && !isSubtype(componentType, firstType)) {
+                        addError(node, "Expected index to be %s or supertype, but was %s".formatted(format(componentType), format(firstType)));
+                    }
                 } else {
+                    addError(node, "Expected object or array, got " + format(secondType));
+                }
+                yield PrimitiveType.BOOLEAN;
+            }
+
+            case PLUS -> {
+                if (isSubtype(firstType, PrimitiveType.STRING) && isSubtype(secondType, PrimitiveType.STRING)) {
+                    yield PrimitiveType.STRING;
+                } else if (isSubtype(firstType, PrimitiveType.NUMBER) && isSubtype(secondType, PrimitiveType.NUMBER)) {
+                    yield PrimitiveType.NUMBER;
+                } else if (isSubtype(firstType, PrimitiveType.ARRAY) && isSubtype(secondType, PrimitiveType.ARRAY)) {
+                    var componentTypes = Stream.of(getArrayComponent(firstType), getArrayComponent(secondType))
+                            .filter(Objects::nonNull)
+                            .toList();
+                    yield new ArrayType(UnionType.union(componentTypes));
+                } else if (isSubtype(firstType, PrimitiveType.OBJECT) && isSubtype(secondType, PrimitiveType.OBJECT)) {
+                    var componentTypes = Stream.of(getObjectComponent(firstType), getObjectComponent(secondType))
+                            .filter(Objects::nonNull)
+                            .toList();
+                    yield new ObjectType(UnionType.union(componentTypes));
+                } else {
+                    addError(node, "Cannot apply PLUS to " + format(firstType) + " and " + format(secondType));
                     yield SpecialType.UNKNOWN;
                 }
             }
-            case MINUS, EXPONENT, MODULO, DIVIDE -> PrimitiveType.NUMBER;
-            case MULTIPLY -> switch (firstType) {
-                case PrimitiveType.ARRAY -> PrimitiveType.ARRAY;
-                case ArrayType arrayType -> arrayType;
-                case PrimitiveType.OBJECT -> PrimitiveType.OBJECT;
-                case ObjectType objectType -> objectType;
-                case PrimitiveType.STRING -> PrimitiveType.STRING;
-                case PrimitiveType.NUMBER -> PrimitiveType.NUMBER;
-                default -> SpecialType.UNKNOWN;
-            };
+            case MINUS, EXPONENT, MODULO, DIVIDE -> {
+                if (!isSubtype(firstType, PrimitiveType.NUMBER) || !isSubtype(secondType, PrimitiveType.NUMBER)) {
+                    addError(node, "Expected numbers, got " + format(firstType) + " and " + format(secondType));
+                }
+                yield PrimitiveType.NUMBER;
+            }
+            case MULTIPLY -> {
+                if (!isSubtype(secondType, PrimitiveType.NUMBER)) {
+                    addError(node, "Can only multiply by number, got " + format(secondType));
+                }
+                if (!isSubtype(firstType, MULTIPLIABLE_TYPE)) {
+                    addError(node, "Cannot multiply " + format(firstType));
+                }
+                // TODO: Filter unwanted entries from unions?
+                yield firstType;
+            }
             case AND, OR, XOR -> {
-                if (firstType == PrimitiveType.BOOLEAN && secondType == PrimitiveType.BOOLEAN) {
+                if (isSubtype(firstType, PrimitiveType.BOOLEAN) && isSubtype(secondType, PrimitiveType.BOOLEAN)) {
                     yield PrimitiveType.BOOLEAN;
-                } else if (firstType == PrimitiveType.NUMBER && secondType == PrimitiveType.NUMBER) {
+                } else if (isSubtype(firstType, PrimitiveType.NUMBER) && isSubtype(secondType, PrimitiveType.NUMBER)) {
                     yield PrimitiveType.NUMBER;
                 } else {
+                    addError(node, "Cannot apply %s to %s and %s".formatted(op.name(), format(firstType), format(secondType)));
                     yield SpecialType.UNKNOWN;
                 }
             }
@@ -357,13 +403,13 @@ public class TypeChecker {
         var type = checkExpression(input);
         switch (op) {
             case NOT -> {
-                if (!TypeComparison.isSubtype(type, PrimitiveType.BOOLEAN)) {
-                    addError(input, "Expected boolean, got " + TypeFormatter.format(type));
+                if (!isSubtype(type, PrimitiveType.BOOLEAN)) {
+                    addError(input, "Expected boolean, got " + format(type));
                 }
             }
             case MINUS, BITWISE_NOT, INCREMENT, DECREMENT -> {
-                if (!TypeComparison.isSubtype(type, PrimitiveType.NUMBER)) {
-                    addError(input, "Expected number, got " + TypeFormatter.format(type));
+                if (!isSubtype(type, PrimitiveType.NUMBER)) {
+                    addError(input, "Expected number, got " + format(type));
                 }
             }
         }
@@ -390,8 +436,33 @@ public class TypeChecker {
         };
     }
 
+    private @Nullable Type getObjectComponent(Type objectType) {
+        return switch (objectType) {
+            case ObjectType(var component) -> component;
+            case PrimitiveType.OBJECT, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            case SpecialType.NEVER -> SpecialType.NEVER;
+            case FunctionType functionType -> null;
+            case NamedType namedType -> null;
+            case ArrayType arrayType -> null;
+            case PrimitiveType primitiveType -> null;
+            case TypeArgument typeArgument -> getObjectComponent(typeArgument.bound());
+            case LazyType lazyType -> getObjectComponent(lazyType.get());
+            case UnionType unionType -> UnionType.union(
+                    unionType.children()
+                            .stream()
+                            .map(this::getObjectComponent)
+                            .filter(Objects::nonNull)
+                            .toList());
+        };
+    }
+
     private void addError(ProgramNode node, String message) {
         var pos = metadata.get(node, MetadataKey.MAIN_POS).orElse(null);
         diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
+    }
+
+    private void addWarning(ProgramNode node, String message) {
+        var pos = metadata.get(node, MetadataKey.MAIN_POS).orElse(null);
+        diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.TYPE_WARNING));
     }
 }

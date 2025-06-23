@@ -22,19 +22,16 @@ public class TypeComparison {
                 return subType == SpecialType.UNKNOWN;
             }
             case UnionType(var superChildren) -> {
-                outer:
+                // This is technically incorrect, but we don't know enough to have correct unions everywhere,
+                // so we have to assume that a single matching pair is enough.
                 for (var subChild : UnionType.flatten(subType).toList()) {
-                    // If any child of the supertype is a supertype of the current subChild, we move one
                     for (var superChild : superChildren) {
                         if (isSubtype(subChild, superChild, equalTypeArgs)) {
-                            continue outer;
+                            return true;
                         }
                     }
-                    // If none of the supertype children match the current subChild, we fail
-                    return false;
                 }
-                // If all subtype children have supertype children, we succeed
-                return true;
+                return false;
             }
             default -> {
             }
@@ -73,8 +70,7 @@ public class TypeComparison {
             case TypeArgument typeArgument when superType instanceof TypeArgument superTypeArgument -> equalTypeArgs.isEqual(typeArgument, superTypeArgument);
             case TypeArgument typeArgument -> isSubtype(typeArgument.bound(), superType, equalTypeArgs);
 
-            // TODO: Consider shortcut for union supertype
-            case UnionType(var children) -> children.stream().allMatch(child -> isSubtype(child, superType, equalTypeArgs));
+            case UnionType(var children) -> children.stream().anyMatch(child -> isSubtype(child, superType, equalTypeArgs));
 
             case NamedType(var namedSuperType, var properties, var wildcardProperty, var callSignature, var name) -> {
                 if (isSubtype(namedSuperType, superType, equalTypeArgs)) {
