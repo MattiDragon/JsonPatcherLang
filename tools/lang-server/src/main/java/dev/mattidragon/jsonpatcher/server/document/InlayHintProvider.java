@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
 import dev.mattidragon.jsonpatcher.server.Util;
 import org.eclipse.lsp4j.InlayHint;
 import org.eclipse.lsp4j.InlayHintKind;
@@ -43,6 +44,8 @@ public class InlayHintProvider {
     }
 
     private @Nullable InlayHint makeVariableTypeHint(Variable variable, SourceSpan span, TreeMetadata metadata) {
+        // Other cases look bad
+        if (!(variable.definition() instanceof VariableCreationStatement)) return null;
         var type = metadata.get(variable, TypeChecker.TYPE);
         return type.flatMap(value ->
                         metadata.get(variable.definition(), MetadataKey.NAME_POS)
