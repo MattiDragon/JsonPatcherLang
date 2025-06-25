@@ -1,6 +1,9 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Objects;
 
 public class TypeComparison {
     public static boolean isSubtype(Type subType, Type superType) {
@@ -98,7 +101,7 @@ public class TypeComparison {
                 var superReturnType
         ))) return false;
 
-
+        // TODO: Handle cases with different type arg counts, especially with none
         // Check if the type arguments are compatible
         if (typeArguments.size() != superTypeArguments.size()) {
             return false;
@@ -158,5 +161,45 @@ public class TypeComparison {
 
         equalTypeArgs.pop();
         return true;
+    }
+
+    public static @Nullable Type getArrayComponent(Type arrayType) {
+        return switch (arrayType) {
+            case ArrayType(var component) -> component;
+            case PrimitiveType.ARRAY, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            case SpecialType.NEVER -> SpecialType.NEVER;
+            case FunctionType functionType -> null;
+            case NamedType namedType -> null;
+            case ObjectType objectType -> null;
+            case PrimitiveType primitiveType -> null;
+            case TypeArgument typeArgument -> getArrayComponent(typeArgument.bound());
+            case LazyType lazyType -> getArrayComponent(lazyType.get());
+            case UnionType unionType -> UnionType.union(
+                    unionType.children()
+                            .stream()
+                            .map(TypeComparison::getArrayComponent)
+                            .filter(Objects::nonNull)
+                            .toList());
+        };
+    }
+
+    public static @Nullable Type getObjectComponent(Type objectType) {
+        return switch (objectType) {
+            case ObjectType(var component) -> component;
+            case PrimitiveType.OBJECT, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
+            case SpecialType.NEVER -> SpecialType.NEVER;
+            case FunctionType functionType -> null;
+            case NamedType namedType -> null;
+            case ArrayType arrayType -> null;
+            case PrimitiveType primitiveType -> null;
+            case TypeArgument typeArgument -> getObjectComponent(typeArgument.bound());
+            case LazyType lazyType -> getObjectComponent(lazyType.get());
+            case UnionType unionType -> UnionType.union(
+                    unionType.children()
+                            .stream()
+                            .map(TypeComparison::getObjectComponent)
+                            .filter(Objects::nonNull)
+                            .toList());
+        };
     }
 }

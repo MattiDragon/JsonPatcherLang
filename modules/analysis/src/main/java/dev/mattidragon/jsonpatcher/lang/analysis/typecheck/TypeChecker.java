@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
@@ -67,11 +68,11 @@ public class TypeChecker {
             }
             case ForEachLoopStatement statement -> {
                 var iterableType = checkExpression(statement.iterable());
-                var variableType = getArrayComponent(iterableType);
+                var variableType = TypeComparison.getArrayComponent(iterableType);
                 if (variableType == null) {
                     var message = "Expected any array, got " + format(iterableType);
                     var pos = metadata.get(statement.iterable(), MetadataKey.FULL_POS).orElse(null);
-                    diagnostics.addDiagnostic(new TypeCheckError(statement, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
+                    addError(statement, pos, message);
                 } else {
                     metadata.put(statement, TYPE, variableType);
                     metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
@@ -273,6 +274,30 @@ public class TypeChecker {
     private Type checkFunctionCall(Expression function, List<Expression> arguments) {
         var actualArgTypes = arguments.stream().map(this::checkExpression).toList();
         var functionType = checkExpression(function);
+
+        // Special case primitive functions
+        specialPrimitiveHandling:
+        if (function instanceof PropertyAccessExpression(Expression parent, String name)) {
+            var ownerType = metadata.get(parent, TypeChecker.TYPE).orElse(null);
+            if (ownerType == null) break specialPrimitiveHandling;
+
+            var primitiveOwnerType = PrimitiveProperties.convertType(ownerType);
+            if (primitiveOwnerType == null) break specialPrimitiveHandling;
+            if (primitiveOwnerType == ValueType.OBJECT || primitiveOwnerType == ValueType.SPECIAL) break specialPrimitiveHandling;
+
+            var propertyType = primitiveProperties.getPrimitivePropertyTypes().get(primitiveOwnerType).get(name);
+            if (propertyType == null) break specialPrimitiveHandling;
+
+            // Insert owner type as first argument
+            var oldActualArgTypes = actualArgTypes;
+            actualArgTypes = new ArrayList<>(oldActualArgTypes.size() + 1);
+            actualArgTypes.add(ownerType);
+            actualArgTypes.addAll(oldActualArgTypes);
+
+            // Reinstate removed first argument in function type
+            functionType = propertyType;
+        }
+
         if (functionType instanceof NamedType namedType && namedType.callSignature().isPresent()) {
             functionType = namedType.callSignature().get();
         }
@@ -290,6 +315,8 @@ public class TypeChecker {
             return SpecialType.UNKNOWN;
         }
 
+        var genericMatcher = new GenericTypeMatcher(typeArguments);
+
         for (var i = 0; i < actualArgTypes.size(); i++) {
             var actualType = actualArgTypes.get(i);
             Type expectedType;
@@ -298,28 +325,23 @@ public class TypeChecker {
             } else if (varargs) {
                 expectedType = args.getLast();
             } else {
-                addError(arguments.get(i), "Too many arguments");
+                addError(function, metadata.get(arguments.get(i), MetadataKey.FULL_POS).orElse(null),
+                        "Too many arguments");
                 expectedType = SpecialType.UNKNOWN;
             }
-            if (!isSubtype(actualType, expectedType)) {
-                addError(arguments.get(i), "Expected " + format(expectedType) + ", got " + format(actualType));
+            if (!genericMatcher.match(expectedType, actualType)) {
+                addError(function, metadata.get(arguments.get(i), MetadataKey.FULL_POS).orElse(null),
+                        "Expected " + format(expectedType) + ", got " + format(actualType));
             }
         }
         if (actualArgTypes.size() < requiredArgs) {
             addError(function, "Expected at least " + requiredArgs + " arguments, got " + actualArgTypes.size());
         }
 
-        if (returnType instanceof TypeArgument arg && typeArguments.contains(arg)) {
-            // TODO: handle generic nicely
-            return SpecialType.UNKNOWN;
-        }
-
-        return returnType;
+        return genericMatcher.fillTemplate(returnType);
     }
 
     private Type checkBinaryOp(ProgramNode node, BinaryExpression.Operator op, Type firstType, Type secondType) {
-        // TODO: Actual type checking
-        // TODO: Prefer TypeComparison more
         return switch (op) {
             case EQUALS, NOT_EQUALS -> {
                 if (!isSubtype(firstType, secondType) && !isSubtype(secondType, firstType)) {
@@ -339,7 +361,7 @@ public class TypeChecker {
                         addError(node, "Expected index to be string, but was " + format(firstType));
                     }
                 } else if (isSubtype(secondType, PrimitiveType.ARRAY)) {
-                    var componentType = getArrayComponent(secondType);
+                    var componentType = TypeComparison.getArrayComponent(secondType);
                     if (componentType != null && !isSubtype(componentType, firstType)) {
                         addError(node, "Expected index to be %s or supertype, but was %s".formatted(format(componentType), format(firstType)));
                     }
@@ -350,17 +372,18 @@ public class TypeChecker {
             }
 
             case PLUS -> {
+                // TODO: handle unknowns more nicely
                 if (isSubtype(firstType, PrimitiveType.STRING) && isSubtype(secondType, PrimitiveType.STRING)) {
                     yield PrimitiveType.STRING;
                 } else if (isSubtype(firstType, PrimitiveType.NUMBER) && isSubtype(secondType, PrimitiveType.NUMBER)) {
                     yield PrimitiveType.NUMBER;
                 } else if (isSubtype(firstType, PrimitiveType.ARRAY) && isSubtype(secondType, PrimitiveType.ARRAY)) {
-                    var componentTypes = Stream.of(getArrayComponent(firstType), getArrayComponent(secondType))
+                    var componentTypes = Stream.of(TypeComparison.getArrayComponent(firstType), TypeComparison.getArrayComponent(secondType))
                             .filter(Objects::nonNull)
                             .toList();
                     yield new ArrayType(UnionType.union(componentTypes));
                 } else if (isSubtype(firstType, PrimitiveType.OBJECT) && isSubtype(secondType, PrimitiveType.OBJECT)) {
-                    var componentTypes = Stream.of(getObjectComponent(firstType), getObjectComponent(secondType))
+                    var componentTypes = Stream.of(TypeComparison.getObjectComponent(firstType), TypeComparison.getObjectComponent(secondType))
                             .filter(Objects::nonNull)
                             .toList();
                     yield new ObjectType(UnionType.union(componentTypes));
@@ -416,53 +439,21 @@ public class TypeChecker {
         return type;
     }
 
-    private @Nullable Type getArrayComponent(Type arrayType) {
-        return switch (arrayType) {
-            case ArrayType(var component) -> component;
-            case PrimitiveType.ARRAY, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
-            case SpecialType.NEVER -> SpecialType.NEVER;
-            case FunctionType functionType -> null;
-            case NamedType namedType -> null;
-            case ObjectType objectType -> null;
-            case PrimitiveType primitiveType -> null;
-            case TypeArgument typeArgument -> getArrayComponent(typeArgument.bound());
-            case LazyType lazyType -> getArrayComponent(lazyType.get());
-            case UnionType unionType -> UnionType.union(
-                    unionType.children()
-                            .stream()
-                            .map(this::getArrayComponent)
-                            .filter(Objects::nonNull)
-                            .toList());
-        };
-    }
-
-    private @Nullable Type getObjectComponent(Type objectType) {
-        return switch (objectType) {
-            case ObjectType(var component) -> component;
-            case PrimitiveType.OBJECT, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
-            case SpecialType.NEVER -> SpecialType.NEVER;
-            case FunctionType functionType -> null;
-            case NamedType namedType -> null;
-            case ArrayType arrayType -> null;
-            case PrimitiveType primitiveType -> null;
-            case TypeArgument typeArgument -> getObjectComponent(typeArgument.bound());
-            case LazyType lazyType -> getObjectComponent(lazyType.get());
-            case UnionType unionType -> UnionType.union(
-                    unionType.children()
-                            .stream()
-                            .map(this::getObjectComponent)
-                            .filter(Objects::nonNull)
-                            .toList());
-        };
+    private void addError(ProgramNode node, @Nullable SourceSpan pos, String message) {
+        diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
     }
 
     private void addError(ProgramNode node, String message) {
         var pos = metadata.get(node, MetadataKey.MAIN_POS).orElse(null);
-        diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.UNEXPECTED_TYPE));
+        addError(node, pos, message);
+    }
+
+    private void addWarning(ProgramNode node, @Nullable SourceSpan pos, String message) {
+        diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.TYPE_WARNING));
     }
 
     private void addWarning(ProgramNode node, String message) {
         var pos = metadata.get(node, MetadataKey.MAIN_POS).orElse(null);
-        diagnostics.addDiagnostic(new TypeCheckError(node, pos, message, TypeCheckError.Code.TYPE_WARNING));
+        addWarning(node, pos, message);
     }
 }
