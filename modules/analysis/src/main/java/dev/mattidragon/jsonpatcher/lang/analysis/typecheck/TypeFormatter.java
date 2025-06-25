@@ -10,8 +10,22 @@ public class TypeFormatter {
 
     public static String format(Type type) {
         return switch (type) {
-            case ArrayType(var component) -> format(component) + "[]";
-            case ObjectType(var component) -> format(component) + "{}";
+            case ArrayType(var component) -> {
+                var out = new StringBuilder();
+                var needsParens = component instanceof UnionType || component instanceof FunctionType;
+                if (needsParens) out.append('{');
+                out.append(format(component));
+                if (needsParens) out.append('}');
+                yield out.append("[]").toString();
+            }
+            case ObjectType(var component) -> {
+                var out = new StringBuilder();
+                var needsParens = component instanceof UnionType || component instanceof FunctionType;
+                if (needsParens) out.append('{');
+                out.append(format(component));
+                if (needsParens) out.append('}');
+                yield out.append("{}").toString();
+            }
             case LazyType lazyType -> format(lazyType.get());
             case NamedType namedType -> namedType.name();
             case PrimitiveType primitiveType -> primitiveType.name().toLowerCase(Locale.ROOT);
