@@ -148,7 +148,16 @@ public class AutoCompleteHelper {
         }
 
         if (isFunction) {
-            var argCount = info.propertyType instanceof FunctionType functionType ? functionType.requiredArgs() : 1;
+            int argCount;
+            if (info.propertyType instanceof FunctionType functionType) {
+                argCount = functionType.requiredArgs();
+                if (argCount == 0 && functionType.varargs()) {
+                    argCount = 1;
+                }
+            } else {
+                argCount = 1;
+            }
+
             completion.setInsertTextFormat(InsertTextFormat.Snippet);
             var snippet = new StringBuilder(info.name);
             snippet.append("(");
@@ -182,7 +191,7 @@ public class AutoCompleteHelper {
                     .map(this::getTypeProperties)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet());
-            default -> docs.getPrimitivePropertyTypes().get(PrimitiveProperties.convertType(type))
+            default -> docs.getPrimitivePropertyTypes().getOrDefault(PrimitiveProperties.convertType(type), Map.of())
                     .entrySet()
                     .stream()
                     .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue()))

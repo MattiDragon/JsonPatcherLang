@@ -24,6 +24,12 @@ public class TypeComparison {
                 // Unknown is always valid
                 return subType == SpecialType.UNKNOWN;
             }
+            case NamedType namedType -> {
+                // Not accurate, but good enough
+                if (isSubtype(subType, namedType.supertype())) {
+                    return true;
+                }
+            }
             case UnionType(var superChildren) -> {
                 // This is technically incorrect, but we don't know enough to have correct unions everywhere,
                 // so we have to assume that a single matching pair is enough.
@@ -57,6 +63,9 @@ public class TypeComparison {
                     isSubtype(component, superComponent, equalTypeArgs);
             case ObjectType(var component) when superType instanceof ObjectType(var superComponent) ->
                     isSubtype(component, superComponent, equalTypeArgs);
+
+            case PrimitiveType.ARRAY -> superType instanceof ArrayType;
+            case PrimitiveType.OBJECT -> superType instanceof ObjectType;
 
             case FunctionType functionType when superType instanceof FunctionType superFunctionType ->
                     isFunctionSubtype(equalTypeArgs, functionType, superFunctionType);
