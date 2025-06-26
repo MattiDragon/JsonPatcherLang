@@ -6,4 +6,7 @@ module jsonpatcher.tools.formatter {
 
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.runtime;
+
+    // TODO: check which exports we really need
+    exports dev.mattidragon.jsonpatcher.formatter.printer;
 }
