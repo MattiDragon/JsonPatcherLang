@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.SuppressingCommentDiagnosticFilter;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
@@ -91,9 +92,12 @@ public class DocumentState {
         data = CompletableFuture.supplyAsync(() -> {
             var diagnostics = new DiagnosticsBuilder();
             var treeMetadata = new TreeMetadata();
+
             var docParser = new DocCommentHandler(diagnostics, treeMetadata);
             var commentAttacher = new CommentAttacher();
-            var tokens = Lexer.lex(content, internalName, diagnostics, CommentHandler.allOf(docParser, commentAttacher)).tokens();
+            var diagnosticFilter = new SuppressingCommentDiagnosticFilter();
+
+            var tokens = Lexer.lex(content, internalName, diagnostics, CommentHandler.allOf(docParser, commentAttacher, diagnosticFilter)).tokens();
 
             var tokenLookup = new TokenLookup(tokens);
 
@@ -118,7 +122,7 @@ public class DocumentState {
             var index = new DocumentIndex(internalName);
             index.index(program, metadata, treeMetadata, variableAnalysis, docHolder);
 
-            Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build()));
+            Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build(diagnosticFilter)));
             return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
     }
