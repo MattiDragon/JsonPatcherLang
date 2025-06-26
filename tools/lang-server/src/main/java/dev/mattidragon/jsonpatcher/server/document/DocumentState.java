@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
@@ -10,6 +11,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostics;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
+import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
@@ -90,13 +92,16 @@ public class DocumentState {
             var diagnostics = new DiagnosticsBuilder();
             var treeMetadata = new TreeMetadata();
             var docParser = new DocCommentHandler(diagnostics, treeMetadata);
-            var tokens = Lexer.lex(content, internalName, diagnostics, docParser).tokens();
+            var commentAttacher = new CommentAttacher();
+            var tokens = Lexer.lex(content, internalName, diagnostics, CommentHandler.allOf(docParser, commentAttacher)).tokens();
 
             var tokenLookup = new TokenLookup(tokens);
 
             var parseResult = Parser.parse(tokens, diagnostics, treeMetadata);
             var program = parseResult.program();
             var metadata = parseResult.metadata();
+
+            commentAttacher.process(program, treeMetadata);
 
             var globals = globalsGetter.get()
                     .entrySet()

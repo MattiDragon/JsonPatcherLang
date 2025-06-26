@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArguments;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -56,27 +57,44 @@ public class TypeChecker {
                         .ifPresent(variable -> metadata.put(variable, TYPE, type));
             }
             case VariableCreationStatement statement -> {
+                var existingType = metadata.get(statement, TYPE);
                 var type = checkExpression(statement.initializer());
-                if (statement.mutable()) {
-                    // We can't trust the initial type, so we do this to get rid of errors
-                    type = UnionType.union(type, SpecialType.UNKNOWN);
+
+                if (existingType.isPresent()) {
+                    if (!isSubtype(type, existingType.get())) {
+                        addError(statement, "Expected " + format(existingType.get()) + ", got " + format(type));
+                    }
+                    type = existingType.get();
+                } else {
+                    if (statement.mutable()) {
+                        // We can't trust the initial type, so we do this to get rid of errors
+                        type = UnionType.union(type, SpecialType.UNKNOWN);
+                    }
+                    metadata.put(statement, TYPE, type);
                 }
+
                 var finalType = type;
-                metadata.put(statement, TYPE, type);
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
                         .ifPresent(variable -> metadata.put(variable, TYPE, finalType));
             }
             case ForEachLoopStatement statement -> {
+                var existingType = metadata.get(statement, TYPE).orElse(null);
                 var iterableType = checkExpression(statement.iterable());
                 var variableType = TypeComparison.getArrayComponent(iterableType);
+
                 if (variableType == null) {
                     var message = "Expected any array, got " + format(iterableType);
                     var pos = metadata.get(statement.iterable(), MetadataKey.FULL_POS).orElse(null);
                     addError(statement, pos, message);
                 } else {
-                    metadata.put(statement, TYPE, variableType);
+                    if (existingType != null && !isSubtype(variableType, existingType)) {
+                        var pos = metadata.get(statement.iterable(), MetadataKey.SECONDARY_KEYWORD_POS).orElse(null);
+                        addError(statement, pos, "Expected %s, got %s".formatted(existingType, variableType));
+                    }
+                    var trueVariableType = existingType == null ? variableType : existingType;
+                    metadata.put(statement, TYPE, trueVariableType);
                     metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
-                            .ifPresent(variable -> metadata.put(variable, TYPE, variableType));
+                            .ifPresent(variable -> metadata.put(variable, TYPE, trueVariableType));
                 }
                 typeCheck(statement.body());
             }
@@ -93,6 +111,23 @@ public class TypeChecker {
                 if (consumer != null) {
                     consumer.accept(type);
                 }
+            }
+
+            case FunctionArgument argument -> {
+                var existingType = metadata.get(argument, TYPE).orElse(null);
+                var inferredType = argument.defaultValue().flatMap(e -> metadata.get(e, TYPE))
+                        .orElse(SpecialType.UNKNOWN);
+                if (existingType != null) {
+                    if (!isSubtype(inferredType, existingType)) {
+                        addError(argument, "Expected " + format(existingType) + ", got " + format(inferredType));
+                    }
+                } else {
+                    metadata.put(argument, TYPE, UnionType.union(inferredType, SpecialType.UNKNOWN));
+                }
+
+                var finalType = metadata.get(argument, TYPE).orElseThrow();
+                metadata.get(argument, VariableAnalyser.VARIABLE_REFERENCE)
+                        .ifPresent(variable -> metadata.put(variable, TYPE, finalType));
             }
 
             default -> node.getChildren().forEach(this::typeCheck);
@@ -264,7 +299,7 @@ public class TypeChecker {
 
         return new FunctionType(
                 List.of(),
-                Stream.<Type>generate(() -> SpecialType.UNKNOWN).limit(args.arguments().size()).toList(),
+                args.arguments().stream().map(arg -> metadata.get(arg, TYPE).orElseThrow()).toList(),
                 args.requiredArguments(),
                 args.varargs(),
                 returnType

@@ -17,7 +17,7 @@ public final class LazyType implements Type {
 
     public Type get() {
         if (value == null) {
-            throw new IllegalStateException("LazyType not set");
+            return SpecialType.UNKNOWN;
         }
         return value;
     }
