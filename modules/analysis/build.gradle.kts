@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     api(project(":ast"))
+    api(project(":parser"))
     testImplementation(testFixtures(project(":runtime")))
 }

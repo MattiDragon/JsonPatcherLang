@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.cli.commands;
 
 import dev.mattidragon.jsonpatcher.cli.impl.PrimitivePropertiesLoader;
 import dev.mattidragon.jsonpatcher.cli.impl.VersionProvider;
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
 import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
@@ -73,11 +74,13 @@ public class AstCommand implements Callable<Integer> {
             } catch (IOException e) {
                 throw new IOException("Failed to read input file " + file, e);
             }
-            var lex = Lexer.lex(code, file.toString(), diagnostics);
+
+            var commentAttacher = new CommentAttacher();
+            var lex = Lexer.lex(code, file.toString(), diagnostics, commentAttacher);
             var parse = Parser.parse(lex.tokens(), diagnostics);
             analysers.stream()
                     .sorted(Comparator.comparing(AnalysisType::ordinal))
-                    .forEach(analysisType -> analysisType.run(parse.program(), parse.treeMetadata(), diagnostics));
+                    .forEach(analysisType -> analysisType.run(parse.program(), parse.treeMetadata(), diagnostics, commentAttacher));
 
             var diagnosticList = switch (diagnosticLevel) {
                 case NONE -> List.<Diagnostic>of();
@@ -361,19 +364,19 @@ public class AstCommand implements Callable<Integer> {
     public enum AnalysisType {
         CONSTANT {
             @Override
-            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
                 ConstantAnalyser.analyse(ast, metadata);
             }
         },
         POS_CHECK {
             @Override
-            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
                 PosChecker.analyse(ast, metadata, diagnostics);
             }
         },
         VARIABLE {
             @Override
-            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
                 var variableDiagnostics = new DiagnosticsBuilder();
                 VariableAnalyser.analyse(ast, metadata, variableDiagnostics, List.of());
                 // Remove unknown variable errors, as we don't have globals available
@@ -385,11 +388,17 @@ public class AstCommand implements Callable<Integer> {
         },
         TYPE_CHECK {
             @Override
-            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
                 TypeChecker.typeCheck(ast, metadata, PrimitivePropertiesLoader.PROPERTIES, diagnostics);
+            }
+        },
+        COMMENT_ATTACHER {
+            @Override
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
+                commentAttacher.process(ast, metadata);
             }
         };
 
-        abstract void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics);
+        abstract void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher);
     }
 }
