@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.server.document;
+package dev.mattidragon.jsonpatcher.server.document.feature;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
@@ -16,6 +16,8 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.document.DocumentData;
+import dev.mattidragon.jsonpatcher.server.document.DocumentState;
 import dev.mattidragon.jsonpatcher.server.index.IndexEntry;
 import dev.mattidragon.jsonpatcher.server.index.StaticCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.symbol.*;
@@ -33,6 +35,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public class DefinitionFinder {
     static final SourceFile LOOKUP_FAKE_FILE = new SourceFile("lookup fake file", "");
@@ -90,7 +93,23 @@ public class DefinitionFinder {
                     .map(markdown -> new MarkupContent(MarkupKind.MARKDOWN, markdown))
                     .map(Hover::new)
                     .orElse(null);
-        });
+        }, Util.EXECUTOR);
+    }
+
+    public CompletableFuture<List<? extends DocumentHighlight>> getHighlight(Position position) {
+        return documentData.get().thenApplyAsync(data -> {
+            var pos = new SourcePos(data.sourceFile(), position.getLine() + 1, position.getCharacter() + 1);
+            var combinedIndex = new StaticCombinedIndex(data.index(), workspace.getWorkspaceIndex());
+
+            return combinedIndex.lookupEntries(pos)
+                    .flatMap(entry -> Stream.concat(
+                            combinedIndex.find(new IndexEntry(entry.symbol(), false))
+                                    .map(span -> new DocumentHighlight(DocumentState.spanToRange(span), DocumentHighlightKind.Read)),
+                            combinedIndex.find(new IndexEntry(entry.symbol(), true))
+                                    .map(span -> new DocumentHighlight(DocumentState.spanToRange(span), DocumentHighlightKind.Write))
+                    ))
+                    .toList();
+        }, Util.EXECUTOR);
     }
 
     private Optional<Document> getSymbolDocs(Symbol symbol, TreeMetadata metadata) {

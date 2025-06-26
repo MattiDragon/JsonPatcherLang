@@ -13,6 +13,10 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.document.feature.AutoCompleteHelper;
+import dev.mattidragon.jsonpatcher.server.document.feature.DefinitionFinder;
+import dev.mattidragon.jsonpatcher.server.document.feature.InlayHintProvider;
+import dev.mattidragon.jsonpatcher.server.document.feature.SemanticTokenizer;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
@@ -156,6 +160,10 @@ public class DocumentState {
 
     public CompletableFuture<@Nullable Hover> getHover(Position position) {
         return definitionFinder.getHover(position);
+    }
+
+    public CompletableFuture<@Nullable List<? extends DocumentHighlight>> getHighlight(Position position) {
+        return definitionFinder.getHighlight(position);
     }
 
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> autoComplete(Position position) {

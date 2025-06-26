@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server;
 
 import dev.mattidragon.jsonpatcher.server.document.DocumentManager;
-import dev.mattidragon.jsonpatcher.server.document.SemanticTokenizer;
+import dev.mattidragon.jsonpatcher.server.document.feature.SemanticTokenizer;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -50,6 +50,7 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         capabilities.setDefinitionProvider(true);
         capabilities.setReferencesProvider(true);
         capabilities.setInlayHintProvider(true);
+        capabilities.setDocumentHighlightProvider(true);
 
         var completionOptions = new CompletionOptions();
         completionOptions.setTriggerCharacters(List.of(".", "[", "$", ":", "@"));

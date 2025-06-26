@@ -115,4 +115,13 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         }
         return CompletableFuture.completedFuture(null);
     }
+
+    @Override
+    public CompletableFuture<@Nullable List<? extends DocumentHighlight>> documentHighlight(DocumentHighlightParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.getHighlight(params.getPosition());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
 }

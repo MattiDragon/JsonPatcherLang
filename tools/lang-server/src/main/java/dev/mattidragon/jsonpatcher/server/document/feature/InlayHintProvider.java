@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.server.document;
+package dev.mattidragon.jsonpatcher.server.document.feature;
 
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.Variable;
@@ -8,6 +8,8 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.document.DocumentData;
+import dev.mattidragon.jsonpatcher.server.document.DocumentState;
 import org.eclipse.lsp4j.InlayHint;
 import org.eclipse.lsp4j.InlayHintKind;
 import org.eclipse.lsp4j.Range;

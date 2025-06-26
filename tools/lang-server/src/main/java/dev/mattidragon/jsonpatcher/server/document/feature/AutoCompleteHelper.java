@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.server.document;
+package dev.mattidragon.jsonpatcher.server.document.feature;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.PrimitiveProperties;
@@ -13,6 +13,8 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.document.DocumentData;
+import dev.mattidragon.jsonpatcher.server.document.TokenLookup;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import org.eclipse.lsp4j.*;
 
@@ -21,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static dev.mattidragon.jsonpatcher.server.document.DefinitionFinder.LOOKUP_FAKE_FILE;
+import static dev.mattidragon.jsonpatcher.server.document.feature.DefinitionFinder.LOOKUP_FAKE_FILE;
 
 public class AutoCompleteHelper {
     private final DocHolder docs;

@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.server.document;
+package dev.mattidragon.jsonpatcher.server.document.feature;
 
 import dev.mattidragon.jsonpatcher.docs.DocMetadataKeys;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
@@ -16,6 +16,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.statement.ForEachLoopStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
+import dev.mattidragon.jsonpatcher.server.document.DocumentData;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import org.eclipse.lsp4j.SemanticTokenModifiers;
 import org.eclipse.lsp4j.SemanticTokenTypes;
