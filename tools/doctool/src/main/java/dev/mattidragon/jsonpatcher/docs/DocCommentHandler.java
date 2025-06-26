@@ -1,7 +1,9 @@
 package dev.mattidragon.jsonpatcher.docs;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.parse.DocParseDiagnostic;
 import dev.mattidragon.jsonpatcher.docs.parse.DocParser;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
@@ -13,7 +15,6 @@ import java.util.stream.Collectors;
 
 public class DocCommentHandler implements CommentHandler {
     private final List<DocEntry> entries = new ArrayList<>();
-    private final List<Comment> freeTags = new ArrayList<>();
     private final DiagnosticsBuilder diagnostics;
     private final TreeMetadata metadata;
 
@@ -29,23 +30,30 @@ public class DocCommentHandler implements CommentHandler {
         var docLines = new ArrayList<Comment>();
 
         for (var line : block) {
-            if (line.text().startsWith("@")) {
-                tagLines.add(trimStart(line));
-            } else if (line.text().startsWith("|")) {
-                docLines.add(trimStart(line));
+            if (line.text().startsWith("|")) {
+                var trimmedLine = trimStart(line);
+                if (trimmedLine.text().startsWith("@")) {
+                    tagLines.add(trimStart(trimmedLine));
+                } else {
+                    docLines.add(trimmedLine);
+                }
             } else if (!docLines.isEmpty()) {
                 docBlocks.add(new DocBlock(docLines, tagLines));
                 tagLines = new ArrayList<>();
                 docLines = new ArrayList<>();
             } else if (!tagLines.isEmpty()) {
-                freeTags.addAll(tagLines);
+                var pos = new SourceSpan(tagLines.getFirst().start(),
+                        tagLines.getLast().start().offset(tagLines.getLast().text().length()));
+                diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Illegal doc comment with only tags", DocParseDiagnostic.Type.TAG_ONLY_COMMENT));
                 tagLines = new ArrayList<>();
             }
         }
         if (!docLines.isEmpty()) {
             docBlocks.add(new DocBlock(docLines, tagLines));
         } else if (!tagLines.isEmpty()) {
-            freeTags.addAll(tagLines);
+            var pos = new SourceSpan(tagLines.getFirst().start(),
+                    tagLines.getLast().start().offset(tagLines.getLast().text().length()));
+            diagnostics.addDiagnostic(new DocParseDiagnostic(pos, "Illegal doc comment with only tags", DocParseDiagnostic.Type.TAG_ONLY_COMMENT));
         }
 
         for (var docBlock : docBlocks) {
@@ -72,10 +80,6 @@ public class DocCommentHandler implements CommentHandler {
 
     public List<DocEntry> entries() {
         return Collections.unmodifiableList(entries);
-    }
-
-    public List<Comment> freeTags() {
-        return Collections.unmodifiableList(freeTags);
     }
 
     private static Comment trimStart(Comment line) {

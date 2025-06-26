@@ -29,7 +29,8 @@ public record DocParseDiagnostic(SourceSpan pos, String message, Type type) impl
         UNKNOWN_CONDITION(Kind.WARNING),
         INVALID_TAG(Kind.ERROR),
         UNKNOWN_TAG(Kind.WARNING),
-        DEPRECATED_KEYWORD(Kind.DEPRECATION),;
+        DEPRECATED_KEYWORD(Kind.DEPRECATION),
+        TAG_ONLY_COMMENT(Kind.ERROR);
 
         private final Kind kind;
 

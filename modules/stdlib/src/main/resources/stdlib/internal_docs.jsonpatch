@@ -1,7 +1,7 @@
 #| library _internals.internals at "@internals"
 #| Contains functions needed for the implementation of the standard library.
 #| These are not available to user code.
-#@ requires libgroup("jsonpatcher:internals")
+#| @requires libgroup("jsonpatcher:internals")
 
 #| property _internals.internals._throw: (any) -> never
 
@@ -33,7 +33,7 @@
 #| library _internals.reflection at "@internals/reflection"
 #| Contains functions needed for the implementation of the standard reflection library.
 #| These are not available to user code.
-#@ requires libgroup("jsonpatcher:internals")
+#| @requires libgroup("jsonpatcher:internals")
 
 #| property _internals.reflection.findClass: (string) -> JavaClass
 #| Finds a Java class and loads it into a JsonPatcher value.
@@ -51,4 +51,4 @@
 #| metadata _internals.libgroup: string
 #| Used to mark the library group that a standard library belongs to.
 #| Can be "reflection" or "default". Defaults to "default".
-#@ requires libgroup("jsonpatcher:internals")
+#| @requires libgroup("jsonpatcher:internals")
