@@ -1,13 +1,19 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
 import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.*;
 
+import java.util.List;
+
 public class ExpressionPrinter {
     public static PrintTarget prettyPrint(Expression expression, PrintTarget target) {
         if (target.isClosed()) return target;
+        PrintUtils.printAttachedComment(expression, target);
 
         switch (expression) {
             case StringExpression(var value) -> target.write(new StringToken(value));
@@ -96,15 +102,16 @@ public class ExpressionPrinter {
                     target,
                     contents,
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
-                    ExpressionPrinter::prettyPrint,
+                    (expression1, target1, i) -> prettyPrint(expression1, target1),
                     target1 -> target1.write(SimpleToken.END_SQUARE)
             );
             case ObjectInitializerExpression(var contents) -> PrintUtils.printCommaList(
                     target,
                     contents,
                     target1 -> target1.write(SimpleToken.BEGIN_CURLY),
-                    (entry, target1) -> {
-                        target1.write(new StringToken(entry.name()));
+                    (entry, target1, i) -> {
+                        PrintUtils.printAttachedComment(entry, target1);
+                        target1.write(new WordToken(entry.name()));
                         target1.write(SimpleToken.COLON).space();
                         prettyPrint(entry.value(), target1);
                     },
@@ -114,9 +121,65 @@ public class ExpressionPrinter {
                     target,
                     arguments,
                     target1 -> prettyPrint(function, target1).write(SimpleToken.BEGIN_PAREN),
-                    ExpressionPrinter::prettyPrint,
+                    (expression1, target1, i) -> prettyPrint(expression1, target1),
                     target1 -> target1.write(SimpleToken.END_PAREN)
             );
+            case IsInstanceExpression(var input, var type) -> {
+                var needsParens = precedence(input) < precedence(expression);
+                if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
+                prettyPrint(input, target);
+                if (needsParens) target.write(SimpleToken.END_PAREN);
+                target.space().write(KeywordToken.IS).space();
+                target.write(switch (type) {
+                    case NUMBER -> new WordToken("number");
+                    case STRING -> new WordToken("string");
+                    case BOOLEAN -> new WordToken("boolean");
+                    case ARRAY -> new WordToken("array");
+                    case OBJECT -> new WordToken("object");
+                    case NULL -> KeywordToken.NULL;
+                    case FUNCTION -> KeywordToken.FUNCTION;
+                    case SPECIAL -> new WordToken("special");
+                });
+            }
+            case TernaryExpression(var condition, var ifTrue, var ifFalse) -> {
+                // TODO: needs lots of tests
+                var needsParens = precedence(condition) < precedence(expression);
+                if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
+                prettyPrint(condition, target);
+                if (needsParens) target.write(SimpleToken.END_PAREN);
+                target.space().write(SimpleToken.QUESTION_MARK).space();
+                prettyPrint(ifTrue, target);
+                target.space().write(SimpleToken.COLON).space();
+                prettyPrint(ifFalse, target);
+            }
+            case FunctionExpression(var body, var args) -> {
+                StatementPrinter.writeArgList(args, target);
+                target.space().write(SimpleToken.ARROW).space();
+
+                var bodyStatements = switch (body) {
+                    case BlockStatement(var statements) -> statements;
+                    case Statement other -> List.of(other);
+                };
+                // TODO: If there are comments, don't do inline
+                if (bodyStatements.size() == 1 && bodyStatements.getFirst() instanceof ReturnStatement(var value)) {
+                    var bodyExpression = value.orElseGet(NullExpression::new);
+                    var needsParens = bodyExpression instanceof ObjectInitializerExpression;
+                    if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
+                    prettyPrint(bodyExpression, target);
+                    if (needsParens) target.write(SimpleToken.END_PAREN);
+                } else {
+                    switch (body) {
+                        case BlockStatement blockStatement -> StatementPrinter.prettyPrint(blockStatement, target);
+                        case Statement other -> {
+                            target.write(SimpleToken.BEGIN_CURLY);
+                            target.pushIndent().newLine();
+                            StatementPrinter.prettyPrint(other, target);
+                            target.popIndent().newLine();
+                            target.write(SimpleToken.END_CURLY);
+                        }
+                    }
+                }
+            }
             default -> target.write(new ErrorToken("Unsupported expression: " + expression.getClass().getSimpleName()));
         }
         return target;
@@ -168,7 +231,8 @@ public class ExpressionPrinter {
             case ArrayInitializerExpression e -> Precedence.ATOM;
             case RootExpression e -> Precedence.ATOM;
             case ErrorExpression e -> Precedence.ATOM;
-            default -> throw new UnsupportedOperationException("Don't know precedence of " + expression);
+            case FunctionExpression e -> Precedence.PREFIX;
+            default -> throw new UnsupportedOperationException("Don't know precedence of " + expression.getClass().getSimpleName());
         }).ordinal();
     }
 }

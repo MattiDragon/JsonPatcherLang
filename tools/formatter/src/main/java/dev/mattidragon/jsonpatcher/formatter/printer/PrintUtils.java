@@ -1,8 +1,9 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
+import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class PrintUtils {
@@ -21,28 +22,41 @@ public class PrintUtils {
     public static <T> void printCommaList(PrintTarget target,
                                           Iterable<T> entries,
                                           Consumer<PrintTarget> startPrinter,
-                                          BiConsumer<T, PrintTarget> partPrinter,
+                                          CommaListPartPrinter<T> partPrinter,
                                           Consumer<PrintTarget> endPrinter) {
         printWithMultilineOption(target, inlineTarget -> {
             startPrinter.accept(inlineTarget);
-            var first = true;
+            var i = 0;
             for (T entry : entries) {
-                if (first) first = false;
-                else inlineTarget.write(Token.SimpleToken.COMMA).space();
-                partPrinter.accept(entry, inlineTarget);
+                if (i != 0) inlineTarget.write(Token.SimpleToken.COMMA).space();
+                partPrinter.print(entry, inlineTarget, i);
+                i++;
             }
             endPrinter.accept(inlineTarget);
         }, multilineTarget -> {
             startPrinter.accept(multilineTarget);
             multilineTarget.pushIndent().newLine();
-            var first = true;
+            var i = 0;
             for (T entry : entries) {
-                if (first) first = false;
-                else target.write(Token.SimpleToken.COMMA).newLine();
-                partPrinter.accept(entry, multilineTarget);
+                if (i != 0) target.write(Token.SimpleToken.COMMA).newLine();
+                partPrinter.print(entry, multilineTarget, i);
+                i++;
             }
             multilineTarget.popIndent().newLine();
             endPrinter.accept(multilineTarget);
         });
+    }
+
+    public static void printAttachedComment(ProgramNode node, PrintTarget target) {
+        target.getMetadata(node, CommentAttacher.ATTACHED_COMMENT).ifPresent(block -> {
+            for (var comment : block.comments()) {
+                target.writeCommentLine(comment.text());
+            }
+        });
+    }
+
+    @FunctionalInterface
+    public interface CommaListPartPrinter<T> {
+        void print(T part, PrintTarget target, int index);
     }
 }

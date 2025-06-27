@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.BooleanExpression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.Expression;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
@@ -16,6 +17,8 @@ import java.util.List;
 public class StatementPrinter {
     public static void prettyPrint(Statement s, PrintTarget target) {
         if (target.isClosed()) return;
+        PrintUtils.printAttachedComment(s, target);
+
         switch (s) {
             case ExpressionStatement(var expression) -> ExpressionPrinter.prettyPrint(expression, target).write(SimpleToken.SEMICOLON);
             case ReturnStatement(var value) -> {
@@ -122,6 +125,11 @@ public class StatementPrinter {
             if (prevEndLine != -1 && fullPos.isPresent()) {
                 offset = Math.max(fullPos.get().from().row() - prevEndLine, 1);
             }
+
+            offset -= target.getMetadata(child, CommentAttacher.ATTACHED_COMMENT)
+                    .map(block -> block.comments().size())
+                    .orElse(0);
+
             if (first) {
                 offset = 0;
                 first = false;
@@ -138,23 +146,29 @@ public class StatementPrinter {
         var args = functionArguments.arguments();
         var varargs = functionArguments.varargs();
 
-        target.write(SimpleToken.BEGIN_PAREN);
-        for (var i = 0; i < args.size(); i++) {
-            var arg = args.get(i);
-            target.write(switch (arg.target()) {
-                case FunctionArgument.Target.Root root -> SimpleToken.DOLLAR;
-                case FunctionArgument.Target.Variable(var varName) -> new Token.WordToken(varName);
-            });
-            arg.defaultValue().ifPresent(defaultValue -> {
-                target.space().write(SimpleToken.ASSIGN).space();
-                ExpressionPrinter.prettyPrint(defaultValue, target);
-            });
-            if (i < args.size() - 1) {
-                target.write(SimpleToken.COMMA).space();
-            } else if (varargs) {
-                target.write(SimpleToken.STAR);
-            }
-        }
-        target.write(SimpleToken.END_PAREN);
+        // This is kinda awkward, but we don't expect many comments here anyway
+        PrintUtils.printAttachedComment(functionArguments, target);
+
+        PrintUtils.printCommaList(
+                target,
+                args,
+                target1 -> target1.write(SimpleToken.BEGIN_PAREN),
+                (arg, target1, i) -> {
+                    PrintUtils.printAttachedComment(arg, target);
+                    switch (arg.target()) {
+                        case FunctionArgument.Target.Variable variable ->
+                                target1.write(new Token.WordToken(variable.name()));
+                        case FunctionArgument.Target.Root.INSTANCE ->
+                                target1.write(SimpleToken.DOLLAR);
+                    }
+                    if (i == args.size() - 1 && varargs) {
+                        target1.write(SimpleToken.STAR);
+                    } else arg.defaultValue().ifPresent(defaultValue -> {
+                        target1.space().write(SimpleToken.ASSIGN).space();
+                        ExpressionPrinter.prettyPrint(defaultValue, target1);
+                    });
+                },
+                target1 -> target1.write(SimpleToken.END_PAREN)
+        );
     }
 }

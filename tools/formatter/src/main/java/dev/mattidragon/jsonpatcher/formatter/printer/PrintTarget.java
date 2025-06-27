@@ -30,7 +30,7 @@ public abstract class PrintTarget {
 
     protected abstract boolean failOnError();
 
-    public final  <T> Optional<T> getMetadata(ProgramNode node, MetadataKey<T> key) {
+    public final <T> Optional<T> getMetadata(ProgramNode node, MetadataKey<T> key) {
         return treeMetadata.get(node, key);
     }
 
@@ -73,6 +73,12 @@ public abstract class PrintTarget {
             case Token.EofToken.EOF -> {}
         }
         return this;
+    }
+
+    public final PrintTarget writeCommentLine(String comment) {
+        writeText("#");
+        writeText(comment);
+        return newLine();
     }
 
     private void printString(String contents, char quote) {

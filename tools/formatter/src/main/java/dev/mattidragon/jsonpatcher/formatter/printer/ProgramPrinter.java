@@ -19,6 +19,8 @@ public class ProgramPrinter {
             target.newLine();
         }
 
+        PrintUtils.printAttachedComment(program, target);
+
         StatementPrinter.writeStatementsWithSpacing(target, program.statements());
     }
 
@@ -29,14 +31,14 @@ public class ProgramPrinter {
                     target,
                     children,
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
-                    ProgramPrinter::writeValueJson,
+                    (value1, target1, i) -> writeValueJson(value1, target1),
                     target1 -> target1.write(SimpleToken.END_SQUARE)
             );
             case MetadataObject(var entries) -> PrintUtils.printCommaList(
                     target,
                     entries.entrySet(),
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
-                    (entry, target1) -> {
+                    (entry, target1, i) -> {
                         target1.write(new Token.StringToken(entry.getKey()));
                         target1.write(SimpleToken.COLON).space();
                         writeValueJson(entry.getValue(), target1);

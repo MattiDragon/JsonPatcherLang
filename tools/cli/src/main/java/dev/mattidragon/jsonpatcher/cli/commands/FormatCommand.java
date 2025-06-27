@@ -69,6 +69,8 @@ public class FormatCommand implements Callable<Integer> {
         var lex = Lexer.lex(code, inFile.toString(), diagnostics, CommentHandler.allOf(commentAttacher, diagnosticFilter));
         var parse = Parser.parse(lex.tokens(), diagnostics);
 
+        commentAttacher.process(parse.program(), parse.treeMetadata());
+
         for (var diagnostic : diagnostics.build(diagnosticFilter).all()) {
             System.err.println(diagnostic.toDisplay());
         }

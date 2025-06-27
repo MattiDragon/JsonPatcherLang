@@ -10,5 +10,4 @@ public record IsInstanceExpression(Expression input, ValueType type) implements 
     public Iterable<? extends ProgramNode> getChildren() {
         return List.of(input);
     }
-
 }
