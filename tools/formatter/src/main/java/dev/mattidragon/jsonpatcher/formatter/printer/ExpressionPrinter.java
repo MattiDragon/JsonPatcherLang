@@ -58,6 +58,7 @@ public class ExpressionPrinter {
                     default -> new ErrorToken("Unary modification with unsupported op: " + op);
                 };
                 target.write(token);
+                PrintUtils.printAllContainedComments(expression, target, true, true);
                 var needsParens = precedence(input) < precedence(expression);
                 if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
                 prettyPrint(input, target);
@@ -70,8 +71,15 @@ public class ExpressionPrinter {
                     case DECREMENT -> SimpleToken.DOUBLE_PLUS;
                     default -> new ErrorToken("Unary modification with unsupported op: " + op);
                 };
-                if (!postfix) target.write(token);
-                if (!postfix) target.write(token);
+                if (!postfix) {
+                    PrintUtils.printAllContainedComments(expression, target, true, true);
+                    target.write(token);
+                }
+                prettyPrint(ref, target);
+                if (postfix) {
+                    PrintUtils.printAllContainedComments(expression, target, true, false);
+                    target.write(token);
+                }
             }
             case AssignmentExpression(var ref, var value, var op) -> {
                 var token = switch (op) {
@@ -88,18 +96,28 @@ public class ExpressionPrinter {
                 };
                 printBinaryOp(expression, ref, value, token, target);
             }
-            case PropertyAccessExpression(RootExpression root, var name) ->
-                    target.write(SimpleToken.DOLLAR).write(new WordToken(name));
-            case PropertyAccessExpression(var parent, var name) ->
-                    prettyPrint(parent, target).write(SimpleToken.DOT).write(new WordToken(name));
+            case PropertyAccessExpression(RootExpression root, var name) -> {
+                target.write(SimpleToken.DOLLAR);
+                PrintUtils.printAllContainedComments(expression, target, true, true);
+                target.write(new WordToken(name));
+            }
+            case PropertyAccessExpression(var parent, var name) -> {
+                prettyPrint(parent, target);
+                PrintUtils.printAllContainedComments(expression, target, true, false);
+                target.write(SimpleToken.DOT).write(new WordToken(name));
+            }
             case IndexExpression(var parent, var index) -> {
-                prettyPrint(parent, target).write(SimpleToken.BEGIN_SQUARE);
-                prettyPrint(index, target).write(SimpleToken.END_SQUARE);
+                prettyPrint(parent, target);
+                PrintUtils.printAllContainedComments(expression, target, true, false);
+                target.write(SimpleToken.BEGIN_SQUARE);
+                prettyPrint(index, target);
+                target.write(SimpleToken.END_SQUARE);
             }
             case VariableAccessExpression(var name) -> target.write(new WordToken(name));
             case RootExpression() -> target.write(SimpleToken.DOLLAR);
             case ArrayInitializerExpression(var contents) -> PrintUtils.printCommaList(
                     target,
+                    expression,
                     contents,
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
                     (expression1, target1, i) -> prettyPrint(expression1, target1),
@@ -107,6 +125,7 @@ public class ExpressionPrinter {
             );
             case ObjectInitializerExpression(var contents) -> PrintUtils.printCommaList(
                     target,
+                    expression,
                     contents,
                     target1 -> target1.write(SimpleToken.BEGIN_CURLY),
                     (entry, target1, i) -> {
@@ -119,6 +138,7 @@ public class ExpressionPrinter {
             );
             case FunctionCallExpression(var function, var arguments) -> PrintUtils.printCommaList(
                     target,
+                    expression,
                     arguments,
                     target1 -> prettyPrint(function, target1).write(SimpleToken.BEGIN_PAREN),
                     (expression1, target1, i) -> prettyPrint(expression1, target1),
@@ -129,6 +149,7 @@ public class ExpressionPrinter {
                 if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
                 prettyPrint(input, target);
                 if (needsParens) target.write(SimpleToken.END_PAREN);
+                PrintUtils.printAllContainedComments(expression, target, true, false);
                 target.space().write(KeywordToken.IS).space();
                 target.write(switch (type) {
                     case NUMBER -> new WordToken("number");
@@ -143,10 +164,12 @@ public class ExpressionPrinter {
             }
             case TernaryExpression(var condition, var ifTrue, var ifFalse) -> {
                 // TODO: needs lots of tests
+                // TODO: needs multiline variant
                 var needsParens = precedence(condition) < precedence(expression);
                 if (needsParens) target.write(SimpleToken.BEGIN_PAREN);
                 prettyPrint(condition, target);
                 if (needsParens) target.write(SimpleToken.END_PAREN);
+                PrintUtils.printAllContainedComments(expression, target, true, false);
                 target.space().write(SimpleToken.QUESTION_MARK).space();
                 prettyPrint(ifTrue, target);
                 target.space().write(SimpleToken.COLON).space();
@@ -190,6 +213,7 @@ public class ExpressionPrinter {
         if (firstParens) target.write(SimpleToken.BEGIN_PAREN);
         prettyPrint(first, target);
         if (firstParens) target.write(SimpleToken.END_PAREN);
+        PrintUtils.printAllContainedComments(expression, target, true, false);
         target.space().write(token).space();
         var secondParens = precedence(second) < precedence(expression);
         if (secondParens) target.write(SimpleToken.BEGIN_PAREN);

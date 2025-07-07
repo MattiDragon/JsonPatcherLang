@@ -142,6 +142,7 @@ public class StatementParser {
     }
 
     private static Statement expressionStatement(Parser parser) {
+        var startPos = parser.peek().pos().from();
         Expression expression;
         try {
             expression = parser.expression();
@@ -154,7 +155,7 @@ public class StatementParser {
         parser.expectSoftly(SimpleToken.SEMICOLON);
 
         var statement = new ExpressionStatement(expression);
-        parser.copyMetadata(expression, statement, MetadataKey.FULL_POS);
+        parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(startPos, parser.previous().to()));
         parser.copyMetadata(expression, statement, MetadataKey.MAIN_POS);
         return statement;
     }

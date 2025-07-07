@@ -9,7 +9,7 @@ import dev.mattidragon.jsonpatcher.lang.test.TestUtils;
 import org.junit.jupiter.api.Assertions;
 
 public class FormatValidator {
-    private static final PrettyPrintOptions OPTIONS = PrettyPrintOptions.builder().build();
+    public static final PrettyPrintOptions OPTIONS = PrettyPrintOptions.builder().build();
 
     private FormatValidator() {}
 

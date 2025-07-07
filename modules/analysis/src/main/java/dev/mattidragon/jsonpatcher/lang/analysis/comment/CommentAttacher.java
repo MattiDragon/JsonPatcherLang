@@ -91,6 +91,7 @@ public class CommentAttacher implements CommentHandler {
             nodeStack.push(iterator);
         }
 
+        var processedKeys = new HashSet<Integer>();
         var blockLists = new HashMap<ProgramNode, ArrayList<Block>>();
 
         main:
@@ -117,6 +118,8 @@ public class CommentAttacher implements CommentHandler {
                         } else {
                             blockLists.computeIfAbsent(containing.node, n -> new ArrayList<>())
                                     .add(block);
+                            processedKeys.add(entry.getKey());
+                            continue main;
                         }
                     }
                     // Comment is before the current node, but inside the parent since we managed to get here
@@ -133,6 +136,7 @@ public class CommentAttacher implements CommentHandler {
                         }
                         blockLists.computeIfAbsent(correctNode.node, n -> new ArrayList<>())
                                         .add(block);
+                        processedKeys.add(entry.getKey());
                         nodeStack.push(incorrectNode);
                         continue main;
                     }
@@ -141,12 +145,17 @@ public class CommentAttacher implements CommentHandler {
             // If we end up here, we're outside the root node so we attach to it anyway
             blockLists.computeIfAbsent(program, n -> new ArrayList<>())
                     .add(block);
+            processedKeys.add(entry.getKey());
         }
 
         for (var entry : blockLists.entrySet()) {
             var node = entry.getKey();
             var blocks = entry.getValue();
             metadata.put(node, CONTAINED_COMMENTS, Collections.unmodifiableList(blocks));
+        }
+
+        for (var processedKey : processedKeys) {
+            blocks.remove(processedKey);
         }
     }
 

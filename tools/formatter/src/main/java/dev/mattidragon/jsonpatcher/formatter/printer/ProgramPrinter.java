@@ -21,7 +21,8 @@ public class ProgramPrinter {
 
         PrintUtils.printAttachedComment(program, target);
 
-        StatementPrinter.writeStatementsWithSpacing(target, program.statements());
+        StatementPrinter.writeStatementsWithSpacing(target, program.statements(), program);
+        target.newLine();
     }
 
     private static void writeValueJson(MetadataElement value, PrintTarget target) {
@@ -29,6 +30,7 @@ public class ProgramPrinter {
         switch (value) {
             case MetadataArray(var children) -> PrintUtils.printCommaList(
                     target,
+                    value,
                     children,
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
                     (value1, target1, i) -> writeValueJson(value1, target1),
@@ -36,6 +38,7 @@ public class ProgramPrinter {
             );
             case MetadataObject(var entries) -> PrintUtils.printCommaList(
                     target,
+                    value,
                     entries.entrySet(),
                     target1 -> target1.write(SimpleToken.BEGIN_SQUARE),
                     (entry, target1, i) -> {

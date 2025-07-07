@@ -1,5 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.test;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -126,9 +127,12 @@ public class TestUtils {
 
     public static Parser.Result parseFull(String code) {
         var diagnosticBuilder = new DiagnosticsBuilder();
+        var commentAttacher = new CommentAttacher();
 
-        var lex = Lexer.lex(code, "test program", diagnosticBuilder);
+        var lex = Lexer.lex(code, "test program", diagnosticBuilder, commentAttacher);
         var parse = Parser.parse(lex.tokens(), diagnosticBuilder);
+
+        commentAttacher.process(parse.program(), parse.treeMetadata());
 
         checkDiagnostics(diagnosticBuilder.build(), "Parsing errors", false);
 
