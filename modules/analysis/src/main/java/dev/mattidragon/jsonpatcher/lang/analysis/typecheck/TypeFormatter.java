@@ -102,6 +102,7 @@ public class TypeFormatter {
 
                 yield out.toString();
             }
+            case HardcodedType hardcodedType -> "{" + format(hardcodedType.base()) + "}+" + hardcodedType.kind().name().toLowerCase(Locale.ROOT);
         };
     }
 }

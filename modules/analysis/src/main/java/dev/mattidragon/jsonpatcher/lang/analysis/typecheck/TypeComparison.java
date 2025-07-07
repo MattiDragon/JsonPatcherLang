@@ -90,6 +90,7 @@ public class TypeComparison {
                 }
                 yield callSignature.isPresent() && isSubtype(callSignature.get(), superType);
             }
+            case HardcodedType(var base, var kind) -> isSubtype(base, superType, equalTypeArgs);
         };
     }
 
@@ -111,6 +112,7 @@ public class TypeComparison {
         ))) return false;
 
         // TODO: Handle cases with different type arg counts, especially with none
+        // TODO: Handle losing generics
         // Check if the type arguments are compatible
         if (typeArguments.size() != superTypeArguments.size()) {
             return false;
@@ -189,6 +191,7 @@ public class TypeComparison {
                             .map(TypeComparison::getArrayComponent)
                             .filter(Objects::nonNull)
                             .toList());
+            case HardcodedType hardcodedType -> getArrayComponent(hardcodedType.base());
         };
     }
 
@@ -209,6 +212,7 @@ public class TypeComparison {
                             .map(TypeComparison::getObjectComponent)
                             .filter(Objects::nonNull)
                             .toList());
+            case HardcodedType hardcodedType -> getObjectComponent(hardcodedType.base());
         };
     }
 }

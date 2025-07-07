@@ -108,6 +108,7 @@ public class AutoCompleteHelper {
             // Should never be used for metadata
             case TypeArgument typeArgument -> "";
             case FunctionType functionType -> "";
+            case HardcodedType hardcodedType -> getValueTemplate(hardcodedType.base());
         };
     }
 

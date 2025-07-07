@@ -14,6 +14,11 @@ public interface PrimitiveProperties {
         var propertyType = getPrimitivePropertyTypes()
                 .getOrDefault(type, Map.of())
                 .get(property);
+        // When in order to bind properly, we have to lose the hardcoded type
+        // Doesn't really matter as it won't type check correctly anyway
+        if (propertyType instanceof HardcodedType(var base, var kind)) {
+            propertyType = base;
+        }
         // Remove self argument from functions
         if (propertyType instanceof FunctionType(var typeArguments, var args, var requiredArgs, var varargs, var returnType)) {
             return new FunctionType(
@@ -48,6 +53,7 @@ public interface PrimitiveProperties {
             case ObjectType objectType -> ValueType.OBJECT;
             case TypeArgument typeArgument -> convertType(typeArgument.bound());
             case UnionType unionType -> null;
+            case HardcodedType hardcodedType -> convertType(hardcodedType.base());
         };
     }
 }

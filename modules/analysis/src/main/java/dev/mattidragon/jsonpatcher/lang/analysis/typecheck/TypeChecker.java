@@ -1,5 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
 
+import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
+import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
@@ -203,7 +205,7 @@ public class TypeChecker {
                 if (contents.isEmpty()) {
                     yield PrimitiveType.OBJECT;
                 }
-                boolean isDict = true;
+                var isDict = true;
                 Type componentType = null;
                 for (var entry : contents) {
                     var valueType = checkExpression(entry.value());
@@ -282,6 +284,7 @@ public class TypeChecker {
                             .map(type -> getPropertyType(name, type))
                             .filter(Objects::nonNull)
                             .toList());
+            case HardcodedType hardcodedType -> getPropertyType(name, hardcodedType.base());
 
             // Don't think this will actually ever happen, but it's easy to do
             case LazyType lazyType -> getPropertyType(name, lazyType.get());
@@ -312,7 +315,7 @@ public class TypeChecker {
 
         // Special case primitive functions
         specialPrimitiveHandling:
-        if (function instanceof PropertyAccessExpression(Expression parent, String name)) {
+        if (function instanceof PropertyAccessExpression(var parent, var name)) {
             var ownerType = metadata.get(parent, TypeChecker.TYPE).orElse(null);
             if (ownerType == null) break specialPrimitiveHandling;
 
@@ -329,12 +332,21 @@ public class TypeChecker {
             actualArgTypes.add(ownerType);
             actualArgTypes.addAll(oldActualArgTypes);
 
+            var oldArguments = arguments;
+            arguments = new ArrayList<>(oldArguments.size() + 1);
+            arguments.add(parent);
+            arguments.addAll(oldArguments);
+
             // Reinstate removed first argument in function type
             functionType = propertyType;
         }
 
         if (functionType instanceof NamedType namedType && namedType.callSignature().isPresent()) {
             functionType = namedType.callSignature().get();
+        }
+
+        if (functionType instanceof HardcodedType hardcodedType) {
+            return checkHardcodedFunction(hardcodedType, function, actualArgTypes, arguments);
         }
 
         if (!(functionType instanceof FunctionType(
@@ -374,6 +386,124 @@ public class TypeChecker {
         }
 
         return genericMatcher.fillTemplate(returnType);
+    }
+
+    private Type checkHardcodedFunction(HardcodedType hardcodedType, Expression function, List<Type> actualArgTypes, List<Expression> arguments) {
+        return switch (hardcodedType.kind()) {
+            case FUNCTION_BIND -> {
+                if (arguments.size() > 3) {
+                    var pos = metadata.get(arguments.get(3), MetadataKey.FULL_POS).orElse(null);
+                    addError(function, pos, "Too many arguments");
+                    yield PrimitiveType.FUNCTION;
+                }
+                if (arguments.size() < 2) {
+                    var pos = metadata.get(function, MetadataKey.FULL_POS).orElse(null);
+                    addError(function, pos, "Expected at least 2 arguments, got " + arguments.size());
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                var argType = actualArgTypes.getFirst();
+                if (!isSubtype(argType, PrimitiveType.FUNCTION)) {
+                    addError(function, metadata.get(arguments.getFirst(), MetadataKey.FULL_POS).orElse(null),
+                            "Expected function, got " + format(argType));
+                }
+
+                int boundIndex;
+                if (arguments.size() == 3) {
+                    if (!isSubtype(actualArgTypes.get(2), PrimitiveType.NUMBER)) {
+                        addError(function, metadata.get(arguments.get(2), MetadataKey.FULL_POS).orElse(null),
+                                "Expected number, got " + format(actualArgTypes.get(2)));
+                    }
+
+                    var constantValue = metadata.get(arguments.get(2), ConstantAnalyser.CONSTANT_VALUE);
+                    if (constantValue.isEmpty() || !(constantValue.get() instanceof ConstantValue.Number(var value))) {
+                        yield PrimitiveType.FUNCTION;
+                    }
+                    boundIndex = (int) value;
+                } else {
+                    boundIndex = 0;
+                }
+
+                if (!(actualArgTypes.getFirst() instanceof FunctionType(var typeArguments, var args, var requiredArgs, var varargs, var returnType))) {
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                if (boundIndex >= args.size() && !varargs) {
+                    addWarning(function, metadata.get(arguments.get(1), MetadataKey.FULL_POS).orElse(null),
+                            "Bound index %d is out of bounds for function with %d arguments".formatted(boundIndex, args.size()));
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                var processedArgs = new ArrayList<Type>();
+                for (var i = 0; i < args.size(); i++) {
+                    if (i == boundIndex && !varargs) {
+                        if (!isSubtype(actualArgTypes.get(1), args.get(i))) {
+                            addError(function, metadata.get(arguments.get(1), MetadataKey.FULL_POS).orElse(null),
+                                    "Expected " + format(args.get(i)) + " for target function, got " + format(actualArgTypes.get(1)));
+                        }
+                    } else {
+                        processedArgs.add(args.get(i));
+                    }
+                }
+
+                yield new FunctionType(
+                        typeArguments,
+                        processedArgs,
+                        boundIndex < requiredArgs ? requiredArgs - 1 : requiredArgs,
+                        varargs,
+                        returnType
+                );
+            }
+            case FUNCTION_CHAIN -> {
+                if (arguments.size() < 2) {
+                    addError(function, "Expected at least 2 arguments, got " + arguments.size());
+                    yield PrimitiveType.FUNCTION;
+                }
+                if (arguments.size() > 2) {
+                    addError(function, metadata.get(arguments.get(2), MetadataKey.FULL_POS).orElse(null),
+                            "Too many arguments");
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                for (int i = 0; i < 2; i++) {
+                    var argType = actualArgTypes.get(i);
+                    if (!isSubtype(argType, PrimitiveType.FUNCTION)) {
+                        addError(function, metadata.get(arguments.get(i), MetadataKey.FULL_POS).orElse(null),
+                                "Expected function, got " + format(argType));
+                    }
+                }
+
+                if (!(actualArgTypes.getFirst() instanceof FunctionType(var typeArguments, var args, var requiredArgs, var varargs, var returnType))) {
+                    yield PrimitiveType.FUNCTION;
+                }
+                if (!(actualArgTypes.get(1) instanceof FunctionType(var typeArguments2, var args2, var requiredArgs2, var varargs2, var returnType2))) {
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                if (requiredArgs2 > 1) {
+                    addError(function, "Cannot chain to function with more than one required argument");
+                    yield PrimitiveType.FUNCTION;
+                }
+                if (args2.isEmpty()) {
+                    addError(function, "Cannot chain to function with no arguments");
+                    yield PrimitiveType.FUNCTION;
+                }
+
+                var matcher = new GenericTypeMatcher(typeArguments2);
+                if (!matcher.match(args2.getFirst(), returnType)) {
+                    var pos = metadata.get(arguments.get(1), MetadataKey.FULL_POS).orElse(null);
+                    addError(function, pos, "Expected first argument of chained function to be %s, got %s".formatted(format(returnType), format(args2.getFirst())));
+                }
+
+                yield new FunctionType(
+                        typeArguments,
+                        args,
+                        requiredArgs,
+                        varargs,
+                        matcher.fillTemplate(returnType2)
+                );
+            }
+        };
     }
 
     private Type checkBinaryOp(ProgramNode node, BinaryExpression.Operator op, Type firstType, Type secondType) {

@@ -116,10 +116,10 @@ public class WorkspaceDocManager {
                     var index = new DocsIndex(uri);
                     index.index(commentHandler.entries(), metadata);
 
-                    var tree = new DocTree(commentHandler.entries());
+                    var tree = new DocTree(commentHandler.entries(), metadata);
                     return new OutputTuple(tree, index, metadata);
                 } catch (IOException e) {
-                    return new OutputTuple(new DocTree(List.of()), new EmptyIndex(), new TreeMetadata());
+                    return new OutputTuple(new DocTree(), new EmptyIndex(), new TreeMetadata());
                 }
             }, Util.EXECUTOR);
             docs.thenAccept(tuple -> {

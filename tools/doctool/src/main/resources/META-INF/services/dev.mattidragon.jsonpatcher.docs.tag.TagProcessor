@@ -1,2 +1,3 @@
 dev.mattidragon.jsonpatcher.docs.tag.builtin.MethodTagProcessor
 dev.mattidragon.jsonpatcher.docs.tag.builtin.ConditionTagProcessor
+dev.mattidragon.jsonpatcher.docs.tag.builtin.HardcodedTypeTagProcessor

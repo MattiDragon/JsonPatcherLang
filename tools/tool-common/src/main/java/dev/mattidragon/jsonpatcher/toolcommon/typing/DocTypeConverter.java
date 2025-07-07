@@ -1,12 +1,15 @@
 package dev.mattidragon.jsonpatcher.toolcommon.typing;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
+import dev.mattidragon.jsonpatcher.docs.tag.builtin.HardcodedTypeTagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
 import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -76,8 +79,10 @@ public class DocTypeConverter {
         Type wildcardType = null;
         var properties = new HashMap<String, Type>();
         for (var property : docProperties) {
+            var metadata = property.metadata();
             var propertyName = property.entry().name();
-            var propertyType = convert(property.entry().type());
+            var propertyType = getPropertyType(property.entry(), metadata);
+
             if (propertyName.equals("*")) {
                 wildcardType = propertyType;
                 continue;
@@ -87,6 +92,22 @@ public class DocTypeConverter {
 
         // TODO: add option to declare call signature and use that
         return new NamedType(superType, properties, Optional.ofNullable(wildcardType), Optional.empty(), name);
+    }
+
+    public Type getPropertyType(DocEntry.PropertyEntry entry, @Nullable TreeMetadata metadata) {
+        var specialTypeKind = metadata == null
+                ? Optional.<HardcodedTypeTagProcessor.Kind>empty()
+                : metadata.get(entry, HardcodedTypeTagProcessor.KIND);
+
+        var propertyType = convert(entry.type());
+
+        if (specialTypeKind.isPresent()) {
+            switch (specialTypeKind.get()) {
+                case FUNCTION_BIND -> propertyType = new HardcodedType(propertyType, HardcodedType.Kind.FUNCTION_BIND);
+                case FUNCTION_CHAIN -> propertyType = new HardcodedType(propertyType, HardcodedType.Kind.FUNCTION_CHAIN);
+            }
+        }
+        return propertyType;
     }
 
     public Type convert(DocType docType) {

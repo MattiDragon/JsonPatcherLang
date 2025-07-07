@@ -35,7 +35,7 @@ import java.util.concurrent.CompletionException;
 public class DocHolder implements PrimitivePropertyAccess {
     private final Map<String, FileData> files = new HashMap<>();
     private final Map<String, FileData> stdlibFiles = new HashMap<>();
-    private final DocTree completeTree = new DocTree(List.of());
+    private final DocTree completeTree = new DocTree();
     private final Map<String, ObjectData<DocEntry.GlobalEntry>> globals = new HashMap<>();
     private final Map<String, DocEntry.MetadataEntry> metadataTags = new HashMap<>();
     private final Map<String, DocEntry.LibraryEntry> libraries = new HashMap<>();
@@ -103,7 +103,7 @@ public class DocHolder implements PrimitivePropertyAccess {
                 var index = new DocsIndex(uri);
                 index.index(commentHandler.entries(), metadata);
 
-                return new FileData(uri, new DocTree(commentHandler.entries()), metadata, index);
+                return new FileData(uri, new DocTree(commentHandler.entries(), metadata), metadata, index);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to extract stdlib docs", e);
             }
@@ -207,7 +207,7 @@ public class DocHolder implements PrimitivePropertyAccess {
                 .map(DocTreeProperty::entry)
                 .forEach(entry -> metadata.get(entry, MethodTagProcessor.METHOD_TYPE)
                         .ifPresent(valueType -> {
-                            var type = typeConverter.convert(entry.type());
+                            var type = typeConverter.getPropertyType(entry, metadata);
                             var key = new PrimitivePropertyKey(valueType, entry.name());
                             primitivePropertyTypes.computeIfAbsent(valueType, k -> new HashMap<>())
                                     .put(entry.name(), type);

@@ -78,7 +78,7 @@ public class DocsCommand {
             System.err.println(diagnostic.toDisplay());
         }
 
-        writeDocs(header, outFile, docCommentHandler);
+        writeDocs(header, outFile, docCommentHandler, treeMetadata);
 
         return builtDiagnostics.errors().isEmpty() ? 0 : 2;
     }
@@ -116,7 +116,7 @@ public class DocsCommand {
                 hasErrors = true;
             }
 
-            writeDocs(header, outFile, docCommentHandler);
+            writeDocs(header, outFile, docCommentHandler, treeMetadata);
         }
 
         return hasErrors ? 2 : 0;
@@ -146,13 +146,13 @@ public class DocsCommand {
             System.err.println(diagnostic.toDisplay());
         }
 
-        writeDocs(header, outFile, docCommentHandler);
+        writeDocs(header, outFile, docCommentHandler, treeMetadata);
 
         return builtDiagnostics.errors().isEmpty() ? 0 : 2;
     }
 
-    private void writeDocs(String header, Path outFile, DocCommentHandler docCommentHandler) throws IOException {
-        var tree = new DocTree(docCommentHandler.entries());
+    private void writeDocs(String header, Path outFile, DocCommentHandler docCommentHandler, TreeMetadata metadata) throws IOException {
+        var tree = new DocTree(docCommentHandler.entries(), metadata);
 
         try (var output = Files.newBufferedWriter(outFile)) {
             output.write(header);

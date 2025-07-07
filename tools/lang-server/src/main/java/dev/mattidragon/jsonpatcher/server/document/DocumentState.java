@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.SuppressingCommentDiagnosticFilter;
+import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
@@ -114,6 +115,7 @@ public class DocumentState {
                     .toList();
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
 
+            ConstantAnalyser.analyse(program, treeMetadata); // parts of type checking relies on this
             PreTypingPass.apply(program, treeMetadata, docHolder.getTypeConverter(), diagnostics);
             TypeChecker.typeCheck(program, treeMetadata, docHolder, diagnostics);
 

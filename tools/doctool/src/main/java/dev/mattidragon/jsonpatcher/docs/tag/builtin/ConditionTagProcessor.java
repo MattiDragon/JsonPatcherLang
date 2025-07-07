@@ -18,7 +18,7 @@ import org.commonmark.node.Text;
 
 import java.util.List;
 
-public class ConditionTagProcessor implements TagProcessor {
+public final class ConditionTagProcessor implements TagProcessor {
     public static final MetadataKey<DocCondition> CONDITION = new MetadataKey<>("ConditionTag/CONDITION");
 
     @Override
