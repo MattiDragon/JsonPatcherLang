@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 public class DocumentManager implements TextDocumentService, LanguageClientAware {
     private final Map<String, DocumentState> documents = new HashMap<>();
     private final WorkspaceManager workspace;
-    private LanguageClient client;
+    private @Nullable LanguageClient client;
 
     public DocumentManager(WorkspaceManager workspace) {
         this.workspace = workspace;
@@ -34,6 +34,9 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
+        if (client == null) {
+            throw new IllegalStateException("Client not connected to document service");
+        }
         var document = params.getTextDocument();
         var name = document.getUri();
 

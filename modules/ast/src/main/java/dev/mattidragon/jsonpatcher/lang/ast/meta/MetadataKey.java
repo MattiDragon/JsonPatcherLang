@@ -1,6 +1,8 @@
 package dev.mattidragon.jsonpatcher.lang.ast.meta;
 
+import dev.mattidragon.jsonpatcher.lang.ast.NumberStyle;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.expression.ObjectInitializerExpression;
 
 import java.util.List;
 
@@ -27,6 +29,9 @@ public class MetadataKey<T> {
      * Should be present on almost all nodes and should be preferred over {@link #FULL_POS} for errors.
      */
     public static final MetadataKey<SourceSpan> MAIN_POS = new MetadataKey<>("MAIN_POS", KEYWORD_POS, NAME_POS, FULL_POS);
+
+    public static final MetadataKey<NumberStyle> NUMBER_STYLE = new MetadataKey<>("NUMBER_STYLE");
+    public static final MetadataKey<ObjectInitializerExpression.KeyStyle> OBJECT_KEY_STYLE = new MetadataKey<>("OBJECT_KEY_STYLE");
 
     private final String name;
     private final List<MetadataKey<T>> parents;

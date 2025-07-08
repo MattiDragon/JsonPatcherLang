@@ -1,16 +1,23 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.ast.NumberStyle;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 
+import java.text.DecimalFormat;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
 public abstract class PrintTarget {
     private static final Pattern SIMPLE_WORD = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_$]*");
     private static final Pattern WEIRD_CHARACTER = Pattern.compile("\\p{C}");
+    private static final Map<NumberStyle, DecimalFormat> NUMBER_FORMATS = Map.of(
+            NumberStyle.DECIMAL, new DecimalFormat("0.##########"),
+            NumberStyle.INTEGER, new DecimalFormat("0")
+    );
 
     protected final PrettyPrintOptions options;
     protected final TreeMetadata treeMetadata;
@@ -51,7 +58,7 @@ public abstract class PrintTarget {
 
     public final PrintTarget write(Token token) {
         switch (token) {
-            case Token.NumberToken(var value) -> writeText(String.valueOf(value)); // TODO: ensure correct formatting
+            case Token.NumberToken(var value, var style) -> writeText(NUMBER_FORMATS.get(style).format(value));
             case Token.KeywordToken keywordToken -> writeText(keywordToken.getValue());
             case Token.SimpleToken simpleToken -> writeText(simpleToken.getValue());
             case Token.WordToken(var value) -> {

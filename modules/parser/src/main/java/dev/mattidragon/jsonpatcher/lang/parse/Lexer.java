@@ -1,9 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.parse;
 
-import dev.mattidragon.jsonpatcher.lang.ast.ProgramNode;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
-import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
-import dev.mattidragon.jsonpatcher.lang.ast.SourceSpan;
+import dev.mattidragon.jsonpatcher.lang.ast.*;
 import dev.mattidragon.jsonpatcher.lang.error.Diagnostic;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import org.jspecify.annotations.Nullable;
@@ -112,6 +109,7 @@ public class Lexer {
 
     // TODO: Find a better way to deal with EOF in number parsing
     private void readNumber(char c) {
+        var style = NumberStyle.INTEGER;
         var string = new StringBuilder();
         var beginPos = currentColumn - 1;
         string.append(c);
@@ -123,7 +121,10 @@ public class Lexer {
             }
 
             if (!hasNext()) break parse;
-            if (peek() == '.') string.append(next());
+            if (peek() == '.') {
+                string.append(next());
+                style = NumberStyle.DECIMAL;
+            }
 
             if (!hasNext()) break parse;
             for (c = peek(); c >= '0' && c <= '9'; c = peek()) {
@@ -132,7 +133,7 @@ public class Lexer {
             }
         }
 
-        var token = new Token.NumberToken(Double.parseDouble(string.toString()));
+        var token = new Token.NumberToken(Double.parseDouble(string.toString()), style);
         addParsedToken(token, currentColumn - beginPos);
     }
 

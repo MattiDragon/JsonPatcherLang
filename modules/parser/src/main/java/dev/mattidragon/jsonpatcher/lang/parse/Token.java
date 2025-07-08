@@ -1,5 +1,7 @@
 package dev.mattidragon.jsonpatcher.lang.parse;
 
+import dev.mattidragon.jsonpatcher.lang.ast.NumberStyle;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
@@ -7,8 +9,8 @@ import java.util.stream.Collectors;
 
 public sealed interface Token {
     String explain();
-    
-    record NumberToken(double value) implements Token {
+
+    record NumberToken(double value, NumberStyle style) implements Token {
         @Override
         public String explain() {
             return "number";

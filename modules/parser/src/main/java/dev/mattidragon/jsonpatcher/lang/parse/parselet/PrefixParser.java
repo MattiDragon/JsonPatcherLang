@@ -31,6 +31,7 @@ public class PrefixParser {
     private static Expression number(Parser parser, SourceSpan pos, Token.NumberToken token) {
         var expression = new NumberExpression(token.value());
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
+        parser.setMetadata(expression, MetadataKey.NUMBER_STYLE, token.style());
         return expression;
     }
 
@@ -103,13 +104,17 @@ public class PrefixParser {
     private static Expression objectInit(Parser parser, PositionedToken token) {
         var children = new ArrayList<ObjectInitializerExpression.Entry>();
         while (parser.peek().token() != Token.SimpleToken.END_CURLY) {
-            var key = parser.expectWordOrString(); // TODO: This is stupid, deprecate string keys, we already have quoted words
+            var key = parser.expectWordOrString();
+            var keyStyle = parser.previous().token() instanceof Token.StringToken
+                    ? ObjectInitializerExpression.KeyStyle.STRING
+                    : ObjectInitializerExpression.KeyStyle.IDENTIFIER;
             var keyPos = parser.previous().pos();
             parser.expect(Token.SimpleToken.COLON);
 
             var entry = new ObjectInitializerExpression.Entry(key, parser.expression());
             parser.setMetadata(entry, MetadataKey.MAIN_POS, keyPos);
             parser.setMetadata(entry, MetadataKey.FULL_POS, new SourceSpan(keyPos.from(), parser.previous().to()));
+            parser.setMetadata(entry, MetadataKey.OBJECT_KEY_STYLE, keyStyle);
             children.add(entry);
 
             if (parser.peek().token() == Token.SimpleToken.END_CURLY) {

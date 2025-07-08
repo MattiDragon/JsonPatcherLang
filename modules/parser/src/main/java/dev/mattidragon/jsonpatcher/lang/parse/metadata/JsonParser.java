@@ -24,12 +24,19 @@ class JsonParser {
             case Token.SimpleToken.BEGIN_SQUARE -> parseArray();
             case Token.StringToken(var value) ->
                     parser.setMetadata(new MetadataString(value), MetadataKey.FULL_POS, pos);
-            case Token.SimpleToken.MINUS -> parser.setMetadata(
-                    new MetadataNumber(-parser.expectNumber().value()),
-                    MetadataKey.FULL_POS,
-                    new SourceSpan(pos.from(), parser.previous().to()));
-            case Token.NumberToken(var value) ->
-                    parser.setMetadata(new MetadataNumber(value), MetadataKey.FULL_POS, pos);
+            case Token.SimpleToken.MINUS -> {
+                var numberToken = parser.expectNumber();
+                var node = new MetadataNumber(-numberToken.value());
+                parser.setMetadata(node, MetadataKey.FULL_POS, new SourceSpan(pos.from(), parser.previous().to()));
+                parser.setMetadata(node, MetadataKey.NUMBER_STYLE, numberToken.style());
+                yield node;
+            }
+            case Token.NumberToken(var value, var style) -> {
+                var node = new MetadataNumber(value);
+                parser.setMetadata(node, MetadataKey.FULL_POS, pos);
+                parser.setMetadata(node, MetadataKey.NUMBER_STYLE, style);
+                yield node;
+            }
             case Token.KeywordToken.TRUE -> parser.setMetadata(new MetadataBoolean(true), MetadataKey.FULL_POS, pos);
             case Token.KeywordToken.FALSE -> parser.setMetadata(new MetadataBoolean(false), MetadataKey.FULL_POS, pos);
             case Token.KeywordToken.NULL -> parser.setMetadata(new MetadataNull(), MetadataKey.FULL_POS, pos);

@@ -20,4 +20,8 @@ public record ObjectInitializerExpression(List<Entry> contents) implements Expre
             return List.of(value);
         }
     }
+
+    public enum KeyStyle {
+        STRING, IDENTIFIER
+    }
 }

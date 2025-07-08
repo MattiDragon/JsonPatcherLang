@@ -1,6 +1,8 @@
 package dev.mattidragon.jsonpatcher.formatter.printer;
 
+import dev.mattidragon.jsonpatcher.lang.ast.NumberStyle;
 import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.BlockStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.ReturnStatement;
 import dev.mattidragon.jsonpatcher.lang.ast.statement.Statement;
@@ -17,7 +19,11 @@ public class ExpressionPrinter {
 
         switch (expression) {
             case StringExpression(var value) -> target.write(new StringToken(value));
-            case NumberExpression(var value) -> target.write(new NumberToken(value));
+            case NumberExpression(var value) -> {
+                var style = target.getMetadata(expression, MetadataKey.NUMBER_STYLE)
+                        .orElse(value == (int) value ? NumberStyle.INTEGER : NumberStyle.DECIMAL);
+                target.write(new NumberToken(value, style));
+            }
             case BooleanExpression(var value) ->
                     target.write(value ? KeywordToken.TRUE : KeywordToken.FALSE);
             case NullExpression() -> target.write(KeywordToken.NULL);
@@ -129,8 +135,13 @@ public class ExpressionPrinter {
                     contents,
                     target1 -> target1.write(SimpleToken.BEGIN_CURLY),
                     (entry, target1, i) -> {
+                        var keyStyle = target.getMetadata(entry, MetadataKey.OBJECT_KEY_STYLE)
+                                .orElse(ObjectInitializerExpression.KeyStyle.IDENTIFIER);
                         PrintUtils.printAttachedComment(entry, target1);
-                        target1.write(new WordToken(entry.name()));
+                        switch (keyStyle) {
+                            case STRING -> target1.write(new StringToken(entry.name()));
+                            case IDENTIFIER -> target1.write(new WordToken(entry.name()));
+                        }
                         target1.write(SimpleToken.COLON).space();
                         prettyPrint(entry.value(), target1);
                     },
