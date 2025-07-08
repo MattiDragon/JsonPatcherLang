@@ -17,14 +17,12 @@ import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
-import dev.mattidragon.jsonpatcher.server.document.feature.AutoCompleteHelper;
-import dev.mattidragon.jsonpatcher.server.document.feature.DefinitionFinder;
-import dev.mattidragon.jsonpatcher.server.document.feature.InlayHintProvider;
-import dev.mattidragon.jsonpatcher.server.document.feature.SemanticTokenizer;
+import dev.mattidragon.jsonpatcher.server.document.feature.*;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
+import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -50,8 +48,10 @@ public class DocumentState {
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
     private final InlayHintProvider inlayHintProvider;
+    private final FormattingProvider formattingProvider;
     private final Supplier<Map<String, DocHolder.ObjectData<DocEntry.GlobalEntry>>> globalsGetter;
     private final DocHolder docHolder;
+    private final SettingsManager settingsManager;
 
     private String lastContent = "";
 
@@ -62,9 +62,11 @@ public class DocumentState {
         this.internalName = getInternalName(name);
         this.client = client;
         this.docHolder = workspace.getDocManager().getHolder();
+        this.settingsManager = workspace.getSettingsManager();
         this.definitionFinder = new DefinitionFinder(() -> data, workspace);
         this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
-        this.inlayHintProvider = new InlayHintProvider(() -> data);
+        this.inlayHintProvider = new InlayHintProvider(() -> data, () -> settingsManager.settings().inlayTypesEnabled());
+        this.formattingProvider = new FormattingProvider(() -> data, settingsManager);
         this.globalsGetter = docHolder::getGlobals;
     }
 
@@ -104,6 +106,7 @@ public class DocumentState {
 
             var parseResult = Parser.parse(tokens, diagnostics, treeMetadata);
             var program = parseResult.program();
+            var patchMetadata = parseResult.metadata();
             var metadata = parseResult.metadata();
 
             commentAttacher.process(program, treeMetadata);
@@ -125,7 +128,7 @@ public class DocumentState {
             index.index(program, metadata, treeMetadata, variableAnalysis, docHolder);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build(diagnosticFilter)));
-            return new DocumentData(new SourceFile(internalName, content), program, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
+            return new DocumentData(new SourceFile(internalName, content), program, patchMetadata, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
     }
 
@@ -183,6 +186,10 @@ public class DocumentState {
 
     public CompletableFuture<List<InlayHint>> getInlayHints(Range range) {
         return inlayHintProvider.getHints(range);
+    }
+
+    public CompletableFuture<@Nullable List<? extends TextEdit>> formatDocument(FormattingOptions options) {
+        return formattingProvider.format(options);
     }
 
     public static Position posToPosition(SourcePos pos) {

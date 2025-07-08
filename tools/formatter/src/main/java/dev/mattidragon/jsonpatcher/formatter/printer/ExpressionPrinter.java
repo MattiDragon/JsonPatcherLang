@@ -55,7 +55,7 @@ public class ExpressionPrinter {
                     case NOT -> SimpleToken.BANG;
                     case MINUS -> SimpleToken.MINUS;
                     case BITWISE_NOT -> SimpleToken.TILDE;
-                    default -> new ErrorToken("Unary modification with unsupported op: " + op);
+                    default -> new ErrorToken("Unary expression with unsupported op: " + op);
                 };
                 target.write(token);
                 PrintUtils.printAllContainedComments(expression, target, true, true);

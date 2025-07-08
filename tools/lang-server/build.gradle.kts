@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":stdlib"))
+    implementation(project(":formatter"))
     implementation(project(":tool-common"))
     implementation(libs.lsp4j)
 }

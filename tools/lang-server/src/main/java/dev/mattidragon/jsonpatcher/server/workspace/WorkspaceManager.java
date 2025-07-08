@@ -1,6 +1,8 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
+import com.google.gson.JsonObject;
 import dev.mattidragon.jsonpatcher.server.index.Index;
+import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.WorkspaceService;
@@ -12,14 +14,24 @@ import java.util.concurrent.CompletableFuture;
 public class WorkspaceManager implements WorkspaceService {
     private final List<String> workspaceFolders = new ArrayList<>();
     private final WorkspaceDocManager docManager;
+    private final SettingsManager settingsManager;
 
     public WorkspaceManager() {
         docManager = new WorkspaceDocManager();
+        settingsManager = new SettingsManager();
     }
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
-        
+        var settings = (JsonObject) params.getSettings();
+
+        var jsonpatcherSettings = settings.getAsJsonObject("jsonpatcher");
+        if (jsonpatcherSettings == null) jsonpatcherSettings = new JsonObject();
+
+        var serverSettings = jsonpatcherSettings.getAsJsonObject("serverOptions");
+        if (serverSettings == null) serverSettings = new JsonObject();
+
+        settingsManager.update(serverSettings);
     }
 
     @Override
@@ -34,6 +46,10 @@ public class WorkspaceManager implements WorkspaceService {
 
     public WorkspaceDocManager getDocManager() {
         return docManager;
+    }
+
+    public SettingsManager getSettingsManager() {
+        return settingsManager;
     }
 
     public void addWorkspaceFolders(List<WorkspaceFolder> folders) {

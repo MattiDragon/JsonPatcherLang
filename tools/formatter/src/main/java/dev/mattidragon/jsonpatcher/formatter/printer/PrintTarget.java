@@ -64,7 +64,7 @@ public abstract class PrintTarget {
             case Token.StringToken(var value) -> printString(value, '"');
             case Token.ErrorToken(var error) -> {
                 if (failOnError()) {
-                    throw new IllegalStateException("Tried to pretty print error token: " + error);
+                    throw new PrettyPrintException(error);
                 }
                 writeText("\\error: ");
                 printString(error, '\'');

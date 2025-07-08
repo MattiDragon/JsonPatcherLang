@@ -22,14 +22,18 @@ import java.util.function.Supplier;
 
 public class InlayHintProvider {
     private final Supplier<CompletableFuture<DocumentData>> dataGetter;
+    private final Supplier<Boolean> enabled;
 
-    public InlayHintProvider(Supplier<CompletableFuture<DocumentData>> dataGetter) {
+    public InlayHintProvider(Supplier<CompletableFuture<DocumentData>> dataGetter, Supplier<Boolean> enabled) {
         this.dataGetter = dataGetter;
+        this.enabled = enabled;
     }
 
     public CompletableFuture<List<InlayHint>> getHints(Range range) {
         return dataGetter.get().thenApplyAsync(
                 data -> {
+                    if (!enabled.get()) return List.of();
+
                     var file = data.sourceFile();
                     var span = new SourceSpan(
                             new SourcePos(file, range.getStart().getLine() + 1, range.getStart().getCharacter()),

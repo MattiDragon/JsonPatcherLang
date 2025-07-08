@@ -124,4 +124,13 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         }
         return CompletableFuture.completedFuture(null);
     }
+
+    @Override
+    public CompletableFuture<@Nullable List<? extends TextEdit>> formatting(DocumentFormattingParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.formatDocument(params.getOptions());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
 }

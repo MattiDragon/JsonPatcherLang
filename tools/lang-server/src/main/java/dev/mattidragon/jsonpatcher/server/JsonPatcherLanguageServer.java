@@ -41,16 +41,16 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(SemanticTokenizer.LEGEND, true));
         capabilities.setHoverProvider(true);
+        capabilities.setDefinitionProvider(true);
+        capabilities.setReferencesProvider(true);
+        capabilities.setInlayHintProvider(true);
+        capabilities.setDocumentHighlightProvider(true);
+        capabilities.setDocumentFormattingProvider(true);
         
         var syncOptions = new TextDocumentSyncOptions();
         syncOptions.setChange(TextDocumentSyncKind.Full);
         syncOptions.setOpenClose(true);
         capabilities.setTextDocumentSync(syncOptions);
-        
-        capabilities.setDefinitionProvider(true);
-        capabilities.setReferencesProvider(true);
-        capabilities.setInlayHintProvider(true);
-        capabilities.setDocumentHighlightProvider(true);
 
         var completionOptions = new CompletionOptions();
         completionOptions.setTriggerCharacters(List.of(".", "[", "$", ":", "@"));
