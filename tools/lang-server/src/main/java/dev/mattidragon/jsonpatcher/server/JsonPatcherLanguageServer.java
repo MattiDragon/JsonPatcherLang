@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server;
 
 import dev.mattidragon.jsonpatcher.server.document.DocumentManager;
 import dev.mattidragon.jsonpatcher.server.document.feature.SemanticTokenizer;
+import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -13,8 +14,9 @@ import java.util.concurrent.CompletableFuture;
 
 public class JsonPatcherLanguageServer implements LanguageServer, LanguageClientAware {
     private int statusCode = 1;
-    private final WorkspaceManager workspaceManager = new WorkspaceManager();
-    private final DocumentManager documentService = new DocumentManager(workspaceManager);
+    private final GlobalEventBus eventBus = new GlobalEventBus();
+    private final WorkspaceManager workspaceManager = new WorkspaceManager(eventBus);
+    private final DocumentManager documentService = new DocumentManager(workspaceManager, eventBus);
     private boolean watchedFilesDynReg;
     private LanguageClient client;
 

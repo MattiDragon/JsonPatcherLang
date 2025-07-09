@@ -1,6 +1,9 @@
 package dev.mattidragon.jsonpatcher.server.workspace;
 
 import com.google.gson.JsonObject;
+import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
+import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
+import dev.mattidragon.jsonpatcher.server.event.context.WorkspaceEventContext;
 import dev.mattidragon.jsonpatcher.server.index.Index;
 import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
@@ -15,10 +18,12 @@ public class WorkspaceManager implements WorkspaceService {
     private final List<String> workspaceFolders = new ArrayList<>();
     private final WorkspaceDocManager docManager;
     private final SettingsManager settingsManager;
+    private final WorkspaceEventBus eventBus;
 
-    public WorkspaceManager() {
-        docManager = new WorkspaceDocManager();
-        settingsManager = new SettingsManager();
+    public WorkspaceManager(GlobalEventBus globalEventBus) {
+        this.eventBus = new WorkspaceEventBus(globalEventBus, new WorkspaceEventContext(this));
+        docManager = new WorkspaceDocManager(eventBus);
+        settingsManager = new SettingsManager(eventBus);
     }
 
     @Override
@@ -50,6 +55,10 @@ public class WorkspaceManager implements WorkspaceService {
 
     public SettingsManager getSettingsManager() {
         return settingsManager;
+    }
+
+    public WorkspaceEventBus getEventBus() {
+        return eventBus;
     }
 
     public void addWorkspaceFolders(List<WorkspaceFolder> folders) {

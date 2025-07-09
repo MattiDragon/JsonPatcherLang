@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.EmptyIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
@@ -26,8 +27,8 @@ public class WorkspaceDocManager {
     private final Map<Path, Entry> entries = new HashMap<>();
     private final DocHolder docHolder;
 
-    public WorkspaceDocManager() {
-        docHolder = new DocHolder();
+    public WorkspaceDocManager(WorkspaceEventBus eventBus) {
+        docHolder = new DocHolder(eventBus);
     }
 
     private static Optional<Path> getPath(String path) {

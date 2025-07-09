@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.SuppressingCommentDiagnosticFilter;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
@@ -18,6 +17,10 @@ import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.document.feature.*;
+import dev.mattidragon.jsonpatcher.server.event.DocumentEventBus;
+import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
+import dev.mattidragon.jsonpatcher.server.event.context.DocumentEventContext;
+import dev.mattidragon.jsonpatcher.server.event.document.DocumentDataChangedEvent;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
@@ -37,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 
 public class DocumentState {
     // The URI that the client gave us
@@ -45,11 +47,13 @@ public class DocumentState {
     // A URI that has passed through java.net.URI#toASCIIString for compatibility with workspace
     private final String internalName;
     private final LanguageClient client;
+    private final DocumentEventBus eventBus;
+
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
     private final InlayHintProvider inlayHintProvider;
     private final FormattingProvider formattingProvider;
-    private final Supplier<Map<String, DocHolder.ObjectData<DocEntry.GlobalEntry>>> globalsGetter;
+
     private final DocHolder docHolder;
     private final SettingsManager settingsManager;
 
@@ -57,17 +61,17 @@ public class DocumentState {
 
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
-    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace) {
+    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace, GlobalEventBus globalEventBus) {
         this.externalName = name;
         this.internalName = getInternalName(name);
         this.client = client;
+        this.eventBus = new DocumentEventBus(globalEventBus, new DocumentEventContext(this));
         this.docHolder = workspace.getDocManager().getHolder();
         this.settingsManager = workspace.getSettingsManager();
         this.definitionFinder = new DefinitionFinder(() -> data, workspace);
         this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.inlayHintProvider = new InlayHintProvider(() -> data, () -> settingsManager.settings().inlayTypesEnabled());
         this.formattingProvider = new FormattingProvider(() -> data, settingsManager);
-        this.globalsGetter = docHolder::getGlobals;
     }
 
     /**
@@ -86,7 +90,7 @@ public class DocumentState {
         }
     }
 
-    public void handleExternalUpdate() {
+    void handleExternalUpdate() {
         updateContent(lastContent);
     }
 
@@ -111,7 +115,7 @@ public class DocumentState {
 
             commentAttacher.process(program, treeMetadata);
 
-            var globals = globalsGetter.get()
+            var globals = docHolder.getGlobals()
                     .entrySet()
                     .stream()
                     .map(Map.Entry::getKey)
@@ -122,14 +126,16 @@ public class DocumentState {
             PreTypingPass.apply(program, treeMetadata, docHolder.getTypeConverter(), diagnostics);
             TypeChecker.typeCheck(program, treeMetadata, docHolder, diagnostics);
 
-            var lookups = Lookups.get(program, treeMetadata);
+            Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build(diagnosticFilter)));
 
+            var lookups = Lookups.get(program, treeMetadata);
             var index = new DocumentIndex(internalName);
             index.index(program, metadata, treeMetadata, variableAnalysis, docHolder);
 
-            Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build(diagnosticFilter)));
             return new DocumentData(new SourceFile(internalName, content), program, patchMetadata, treeMetadata, docParser.entries(), lookups, tokenLookup, index);
         }, Util.EXECUTOR);
+
+        data.thenAcceptAsync(documentData -> eventBus.fire(new DocumentDataChangedEvent(documentData)), Util.EXECUTOR);
     }
 
     private void sendDiagnostics(Diagnostics diagnostics) {

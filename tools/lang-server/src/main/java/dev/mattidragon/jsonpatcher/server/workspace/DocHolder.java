@@ -15,6 +15,8 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
+import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
@@ -45,11 +47,12 @@ public class DocHolder implements PrimitivePropertyAccess {
 
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
 
+    private final WorkspaceEventBus eventBus;
+
     private DocTypeConverter typeConverter = new DocTypeConverter();
 
-    private Runnable onRebuild = () -> {};
-
-    public DocHolder() {
+    public DocHolder(WorkspaceEventBus eventBus) {
+        this.eventBus = eventBus;
         loadStdlib().thenRun(this::rebuildLookups);
     }
 
@@ -148,14 +151,6 @@ public class DocHolder implements PrimitivePropertyAccess {
         rebuildLookups();
     }
 
-    public synchronized void onRebuild(Runnable callback) {
-        var old = onRebuild;
-        onRebuild = () -> {
-            old.run();
-            callback.run();
-        };
-    }
-
     private synchronized void rebuildLookups() {
         completeTree.clear();
         for (var fileData : files.values()) {
@@ -192,7 +187,7 @@ public class DocHolder implements PrimitivePropertyAccess {
             updatePrimitiveProperties(fileData.tree, fileData.metadata);
         }
 
-        onRebuild.run();
+        eventBus.fire(new DocHolderRebuildEvent(this));
     }
 
     private void updatePrimitiveProperties(DocTree tree, TreeMetadata metadata) {

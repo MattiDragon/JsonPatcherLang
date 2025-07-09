@@ -1,5 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
+import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
+import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -16,11 +18,13 @@ import java.util.concurrent.CompletableFuture;
 public class DocumentManager implements TextDocumentService, LanguageClientAware {
     private final Map<String, DocumentState> documents = new HashMap<>();
     private final WorkspaceManager workspace;
+    private final GlobalEventBus eventBus;
     private @Nullable LanguageClient client;
 
-    public DocumentManager(WorkspaceManager workspace) {
+    public DocumentManager(WorkspaceManager workspace, GlobalEventBus eventBus) {
         this.workspace = workspace;
-        workspace.getDocManager().getHolder().onRebuild(() -> {
+        this.eventBus = eventBus;
+        eventBus.listenWorkspace(DocHolderRebuildEvent.class, (event, context) -> {
             for (var documentState : documents.values()) {
                 documentState.handleExternalUpdate();
             }
@@ -40,7 +44,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         var document = params.getTextDocument();
         var name = document.getUri();
 
-        var state = new DocumentState(name, client, workspace);
+        var state = new DocumentState(name, client, workspace, eventBus);
         state.updateContent(document.getText());
         documents.put(name, state);
     }
