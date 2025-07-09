@@ -34,7 +34,7 @@ public class CharCounter extends PrintTarget {
 
     @Override
     public boolean isClosed() {
-        return isMultiline();
+        return isLong();
     }
 
     @Override
@@ -54,6 +54,14 @@ public class CharCounter extends PrintTarget {
     }
 
     public boolean isMultiline() {
-        return multiline || count > options.maxColumns;
+        return multiline;
+    }
+
+    public boolean isLongLine() {
+        return count > options.maxColumns;
+    }
+
+    public boolean isLong() {
+        return isMultiline() || isLongLine();
     }
 }

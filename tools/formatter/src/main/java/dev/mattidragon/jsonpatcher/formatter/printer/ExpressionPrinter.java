@@ -11,6 +11,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import dev.mattidragon.jsonpatcher.lang.parse.Token.*;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ExpressionPrinter {
     public static PrintTarget prettyPrint(Expression expression, PrintTarget target) {
@@ -221,15 +222,34 @@ public class ExpressionPrinter {
 
     private static void printBinaryOp(Expression expression, Expression first, Expression second, Token token, PrintTarget target) {
         var firstParens = precedence(first) < precedence(expression);
+        var secondParens = precedence(second) < precedence(expression);
+
         if (firstParens) target.write(SimpleToken.BEGIN_PAREN);
         prettyPrint(first, target);
         if (firstParens) target.write(SimpleToken.END_PAREN);
-        PrintUtils.printAllContainedComments(expression, target, true, false);
-        target.space().write(token).space();
-        var secondParens = precedence(second) < precedence(expression);
-        if (secondParens) target.write(SimpleToken.BEGIN_PAREN);
-        prettyPrint(second, target);
-        if (secondParens) target.write(SimpleToken.END_PAREN);
+
+        Consumer<PrintTarget> inline = target1 -> {
+            PrintUtils.printAllContainedComments(expression, target1, true, false);
+            target1.space().write(token).space();
+
+            if (secondParens) target1.write(SimpleToken.BEGIN_PAREN);
+            prettyPrint(second, target1);
+            if (secondParens) target1.write(SimpleToken.END_PAREN);
+        };
+        var charCounter = target.newCharCounter();
+        inline.accept(charCounter);
+        // We only go onto a new line if we don't have a multiline expression
+        if (charCounter.isLongLine() && !charCounter.isMultiline()) {
+            PrintUtils.printAllContainedComments(expression, target, true, false);
+            target.pushIndent().newLine().write(token).space();
+
+            if (secondParens) target.write(SimpleToken.BEGIN_PAREN);
+            prettyPrint(second, target);
+            if (secondParens) target.write(SimpleToken.END_PAREN);
+            target.popIndent();
+        } else {
+            inline.accept(target);
+        }
     }
 
     private static int precedence(Expression expression) {

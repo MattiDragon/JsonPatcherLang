@@ -13,7 +13,7 @@ public class PrintUtils {
     public static void printWithMultilineOption(PrintTarget target, Consumer<PrintTarget> inline, Consumer<PrintTarget> multiline) {
         var charCounter = target.newCharCounter();
         inline.accept(charCounter);
-        if (charCounter.isMultiline()) {
+        if (charCounter.isLong()) {
             multiline.accept(target);
         } else {
             inline.accept(target);
