@@ -12,8 +12,8 @@ public class WorkspaceEventBus {
         this.context = context;
     }
 
-    public <T extends WorkspaceEvent> void listen(Class<T> eventClass, EventHandler<T, WorkspaceEventContext> handler) {
-        events.register(eventClass, handler);
+    public <T extends WorkspaceEvent> EventHandlerKey listen(Class<T> eventClass, EventHandler<T, WorkspaceEventContext> handler) {
+        return events.register(eventClass, handler);
     }
 
     public void fire(WorkspaceEvent event) {

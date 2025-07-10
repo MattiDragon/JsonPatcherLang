@@ -7,12 +7,12 @@ public class GlobalEventBus {
     private final EventMap<WorkspaceEvent, WorkspaceEventContext> workspaceEvents = new EventMap<>();
     private final EventMap<DocumentEvent, DocumentEventContext> documentEvents = new EventMap<>();
 
-    public <T extends WorkspaceEvent> void listenWorkspace(Class<T> eventClass, EventHandler<T, WorkspaceEventContext> handler) {
-        workspaceEvents.register(eventClass, handler);
+    public <T extends WorkspaceEvent> EventHandlerKey listenWorkspace(Class<T> eventClass, EventHandler<T, WorkspaceEventContext> handler) {
+        return workspaceEvents.register(eventClass, handler);
     }
 
-    public <T extends DocumentEvent> void listenDocument(Class<T> eventClass, EventHandler<T, DocumentEventContext> handler) {
-        documentEvents.register(eventClass, handler);
+    public <T extends DocumentEvent> EventHandlerKey listenDocument(Class<T> eventClass, EventHandler<T, DocumentEventContext> handler) {
+        return documentEvents.register(eventClass, handler);
     }
 
     void fireWorkspace(WorkspaceEvent event, WorkspaceEventContext context) {

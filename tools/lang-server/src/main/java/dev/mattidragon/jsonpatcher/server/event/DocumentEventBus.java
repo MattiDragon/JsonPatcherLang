@@ -12,8 +12,8 @@ public class DocumentEventBus {
         this.context = context;
     }
 
-    public <T extends DocumentEvent> void listen(Class<T> eventClass, EventHandler<T, DocumentEventContext> handler) {
-        events.register(eventClass, handler);
+    public <T extends DocumentEvent> EventHandlerKey listen(Class<T> eventClass, EventHandler<T, DocumentEventContext> handler) {
+        return events.register(eventClass, handler);
     }
 
     public void fire(DocumentEvent event) {
