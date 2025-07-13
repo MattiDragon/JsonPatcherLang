@@ -4,5 +4,5 @@ import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.NonExtendable
 public interface EventHandlerKey {
-    void remove();
+    void removeHandler();
 }

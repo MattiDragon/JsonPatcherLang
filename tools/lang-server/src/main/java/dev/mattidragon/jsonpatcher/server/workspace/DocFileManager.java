@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.server.workspace;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
+import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
@@ -10,6 +11,7 @@ import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.EmptyIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,11 +25,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public class WorkspaceDocManager {
+public class DocFileManager {
     private final Map<Path, Entry> entries = new HashMap<>();
     private final DocHolder docHolder;
 
-    public WorkspaceDocManager(WorkspaceEventBus eventBus) {
+    public DocFileManager(WorkspaceEventBus eventBus) {
         docHolder = new DocHolder(eventBus);
     }
 
@@ -71,7 +73,7 @@ public class WorkspaceDocManager {
         if (entries.containsKey(path)) {
             entries.get(path).update();
         } else if (isValidFile(path)) {
-            entries.put(path, new Entry(uri, path));
+            entries.put(path, new Entry(path.toUri().toASCIIString(), path));
         }
     }
     
@@ -91,10 +93,17 @@ public class WorkspaceDocManager {
         return docHolder;
     }
 
+    public List<CompletableFuture<@Nullable SourceFile>> getSourceFiles() {
+        return entries.values().stream()
+                .map(entry -> entry.sourceFileFuture)
+                .toList();
+    }
+
     private class Entry {
         private final String uri;
         private final Path file;
         private volatile boolean alive = true;
+        private volatile CompletableFuture<@Nullable SourceFile> sourceFileFuture = CompletableFuture.completedFuture(null);
         
         public Entry(String uri, Path file) {
             this.uri = uri;
@@ -103,33 +112,42 @@ public class WorkspaceDocManager {
         }
         
         private void update() {
-            record OutputTuple(DocTree tree, Index index, TreeMetadata metadata) {}
+            record DocsTuple(DocTree tree, Index index, TreeMetadata metadata) {}
 
-            var docs = CompletableFuture.supplyAsync(() -> {
+            sourceFileFuture = CompletableFuture.<@Nullable SourceFile>supplyAsync(() -> {
                 try {
                     var code = Files.readString(file);
-                    // We ignore diagnostics, but still have to collect them
-                    var diagnosticsBuilder = new DiagnosticsBuilder();
-                    var metadata = new TreeMetadata();
-                    var commentHandler = new DocCommentHandler(diagnosticsBuilder, metadata);
-                    Lexer.lex(code, uri, diagnosticsBuilder, commentHandler);
-
-                    var index = new DocsIndex(uri);
-                    index.index(commentHandler.entries(), metadata);
-
-                    var tree = new DocTree(commentHandler.entries(), metadata);
-                    return new OutputTuple(tree, index, metadata);
+                    return new SourceFile(uri, code);
                 } catch (IOException e) {
-                    return new OutputTuple(new DocTree(), new EmptyIndex(), new TreeMetadata());
+                    return null;
                 }
             }, Util.EXECUTOR);
-            docs.thenAccept(tuple -> {
+
+            var docs = sourceFileFuture.thenApplyAsync(file -> {
+                if (file == null || !alive) {
+                    return new DocsTuple(new DocTree(), new EmptyIndex(), new TreeMetadata());
+                }
+
+                // We ignore diagnostics, but still have to collect them
+                var diagnosticsBuilder = new DiagnosticsBuilder();
+                var metadata = new TreeMetadata();
+                var commentHandler = new DocCommentHandler(diagnosticsBuilder, metadata);
+                Lexer.lex(file.code(), file.name(), diagnosticsBuilder, commentHandler);
+
+                var index = new DocsIndex(uri);
+                index.index(commentHandler.entries(), metadata);
+
+                var tree = new DocTree(commentHandler.entries(), metadata);
+                return new DocsTuple(tree, index, metadata);
+            }, Util.EXECUTOR);
+            docs.thenAcceptAsync(tuple -> {
+                if (!alive) return;
                 synchronized (this) {
                     if (alive) {
                         docHolder.updateFile(uri, tuple.tree, tuple.metadata, tuple.index);
                     }
                 }
-            });
+            }, Util.EXECUTOR);
         }
     }
 }

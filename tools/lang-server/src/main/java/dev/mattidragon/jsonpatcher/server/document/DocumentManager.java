@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
-import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -24,11 +23,6 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
     public DocumentManager(WorkspaceManager workspace, GlobalEventBus eventBus) {
         this.workspace = workspace;
         this.eventBus = eventBus;
-        eventBus.listenWorkspace(DocHolderRebuildEvent.class, (event, context) -> {
-            for (var documentState : documents.values()) {
-                documentState.handleExternalUpdate();
-            }
-        });
     }
 
     @Override
@@ -61,7 +55,10 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        documents.remove(params.getTextDocument().getUri());
+        var state = documents.remove(params.getTextDocument().getUri());
+        if (state != null) {
+            state.close();
+        }
     }
 
     @Override

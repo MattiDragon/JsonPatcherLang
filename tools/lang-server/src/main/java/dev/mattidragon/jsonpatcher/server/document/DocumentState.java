@@ -18,9 +18,11 @@ import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.document.feature.*;
 import dev.mattidragon.jsonpatcher.server.event.DocumentEventBus;
+import dev.mattidragon.jsonpatcher.server.event.EventHandlerKey;
 import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
 import dev.mattidragon.jsonpatcher.server.event.context.DocumentEventContext;
 import dev.mattidragon.jsonpatcher.server.event.document.DocumentDataChangedEvent;
+import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
@@ -48,6 +50,7 @@ public class DocumentState {
     private final String internalName;
     private final LanguageClient client;
     private final DocumentEventBus eventBus;
+    private final List<EventHandlerKey> eventHandlerKeys = new ArrayList<>();
 
     private final DefinitionFinder definitionFinder;
     private final AutoCompleteHelper autoCompleteHelper;
@@ -66,12 +69,14 @@ public class DocumentState {
         this.internalName = getInternalName(name);
         this.client = client;
         this.eventBus = new DocumentEventBus(globalEventBus, new DocumentEventContext(this));
-        this.docHolder = workspace.getDocManager().getHolder();
+        this.docHolder = workspace.getDocFileManager().getHolder();
         this.settingsManager = workspace.getSettingsManager();
         this.definitionFinder = new DefinitionFinder(() -> data, workspace);
         this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.inlayHintProvider = new InlayHintProvider(() -> data, () -> settingsManager.settings().inlayTypesEnabled());
         this.formattingProvider = new FormattingProvider(() -> data, settingsManager);
+
+        eventHandlerKeys.add(globalEventBus.listenWorkspace(DocHolderRebuildEvent.class, (event, context) -> updateContent(lastContent)));
     }
 
     /**
@@ -88,10 +93,6 @@ public class DocumentState {
             // ignore, we'll just not use files from unknown uris
             return externalName;
         }
-    }
-
-    void handleExternalUpdate() {
-        updateContent(lastContent);
     }
 
     public void updateContent(String content) {
@@ -214,5 +215,9 @@ public class DocumentState {
             throw new IllegalArgumentException("Cross file span can't be converted to location");
         }
         return new Location(span.from().file().name(), spanToRange(span));
+    }
+
+    public void close() {
+        eventHandlerKeys.forEach(EventHandlerKey::removeHandler);
     }
 }

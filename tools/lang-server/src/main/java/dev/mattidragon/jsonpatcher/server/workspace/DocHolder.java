@@ -32,7 +32,7 @@ import java.util.concurrent.CompletionException;
 /**
  * Stores doc comments as linked to each other for all files in the workspace.
  * Many methods of this class are {@code synchronized} because it's possible for this class to be modified from multiple threads.
- * Only one instance of this class should exist and that instance should be managed by the {@link WorkspaceDocManager}.
+ * Only one instance of this class should exist and that instance should be managed by the {@link DocFileManager}.
  */
 public class DocHolder implements PrimitivePropertyAccess {
     private final Map<String, FileData> files = new HashMap<>();
@@ -231,7 +231,7 @@ public class DocHolder implements PrimitivePropertyAccess {
         );
     }
 
-    public Optional<DocEntry> getDocEntry(NamespaceDescription namespace, String name) {
+    public synchronized Optional<DocEntry> getDocEntry(NamespaceDescription namespace, String name) {
         return Optional.ofNullable(completeTree.namespaces().get(namespace))
                 .map(ns -> ns.objects().get(name))
                 .map(DocTreeObject::entry)
@@ -239,16 +239,16 @@ public class DocHolder implements PrimitivePropertyAccess {
                         .map(DocTreeNamespace::entry));
     }
 
-    public Optional<DocEntry> getLibrary(String location) {
+    public synchronized Optional<DocEntry> getLibrary(String location) {
             return Optional.ofNullable(libraries.get(location));
     }
 
-    public Optional<DocTreeObject> getObject(NamespaceDescription namespace, String name) {
+    public synchronized Optional<DocTreeObject> getObject(NamespaceDescription namespace, String name) {
         return Optional.ofNullable(completeTree.namespaces().get(namespace))
                 .map(ns -> ns.objects().get(name));
     }
 
-    public DocTree getTree() {
+    public synchronized DocTree getTree() {
         return completeTree;
     }
 

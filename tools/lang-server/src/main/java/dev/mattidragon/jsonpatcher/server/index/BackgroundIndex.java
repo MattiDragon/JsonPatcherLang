@@ -23,7 +23,7 @@ public class BackgroundIndex extends AstIndex {
         var docHandler = new DocCommentHandler(diagnostics, metadata);
 
         var lex = Lexer.lex(file.code(), file.name(), diagnostics, docHandler);
-        var parse = Parser.parse(lex.tokens(), diagnostics);
+        var parse = Parser.parse(lex.tokens(), diagnostics, metadata);
         var program = parse.program();
 
         VariableAnalyser.analyse(program, metadata, diagnostics, types.getGlobalNames());

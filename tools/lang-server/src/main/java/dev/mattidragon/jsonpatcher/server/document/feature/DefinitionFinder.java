@@ -115,30 +115,30 @@ public class DefinitionFinder {
     private Optional<Document> getSymbolDocs(Symbol symbol, TreeMetadata metadata) {
         return switch (symbol) {
             case DocEntrySymbol(var namespace, var name) ->
-                workspace.getDocManager()
+                workspace.getDocFileManager()
                         .getHolder()
                         .getDocEntry(namespace, name)
                         .map(this::renderDocEntry);
             case LibrarySymbol(var location) ->
-                workspace.getDocManager()
+                workspace.getDocFileManager()
                         .getHolder()
                         .getLibrary(location)
                         .map(this::renderDocEntry);
             case GlobalSymbol(var name) ->
-                workspace.getDocManager()
+                workspace.getDocFileManager()
                         .getHolder()
                         .getGlobal(name)
                         .map(DocHolder.ObjectData::entry)
                         .map(this::renderDocEntry);
             case PropertySymbol(var namespace, var owner, var name) ->
-                workspace.getDocManager()
+                workspace.getDocFileManager()
                         .getHolder()
                         .getObject(namespace, owner)
                         .map(object -> object.properties().get(name))
                         .map(DocTreeProperty::entry)
                         .map(this::renderDocEntry);
             case MetadataSymbol(var name) ->
-                    workspace.getDocManager()
+                    workspace.getDocFileManager()
                             .getHolder()
                             .getMetadataTag(name)
                             .map(this::renderDocEntry);
