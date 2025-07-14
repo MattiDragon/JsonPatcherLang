@@ -2,8 +2,6 @@ package dev.mattidragon.jsonpatcher.docs.tree;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.data.NamespaceDescription;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -16,13 +14,13 @@ public class DocTree {
     public DocTree() {
     }
 
-    public DocTree(Collection<DocEntry> entries, @Nullable TreeMetadata metadata) {
+    public DocTree(Collection<DocEntry> entries) {
         for (var entry : entries) {
-            addEntry(entry, metadata);
+            addEntry(entry);
         }
     }
 
-    public void addEntry(DocEntry entry, @Nullable TreeMetadata metadata) {
+    public void addEntry(DocEntry entry) {
         switch (entry) {
             case DocEntry.NamespaceEntry namespaceEntry -> {
                 var key = namespaceEntry.namespace().withLast(namespaceEntry.name());
@@ -30,7 +28,7 @@ public class DocTree {
             }
             case DocEntry.PropertyEntry propertyEntry ->
                     getOrCreateObject(propertyEntry.namespace(), propertyEntry.owner())
-                            .addProperty(new DocTreeProperty(propertyEntry, metadata));
+                            .addProperty(new DocTreeProperty(propertyEntry));
             default ->
                     getOrCreateObject(entry.namespace(), entry.name())
                             .setEntry(entry);

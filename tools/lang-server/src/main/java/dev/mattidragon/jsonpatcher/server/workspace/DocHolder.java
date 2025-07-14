@@ -106,7 +106,7 @@ public class DocHolder implements PrimitivePropertyAccess {
                 var index = new DocsIndex(uri);
                 index.index(commentHandler.entries(), metadata);
 
-                return new FileData(uri, new DocTree(commentHandler.entries(), metadata), metadata, index);
+                return new FileData(uri, new DocTree(commentHandler.entries()), metadata, index);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to extract stdlib docs", e);
             }
@@ -202,7 +202,7 @@ public class DocHolder implements PrimitivePropertyAccess {
                 .map(DocTreeProperty::entry)
                 .forEach(entry -> metadata.get(entry, MethodTagProcessor.METHOD_TYPE)
                         .ifPresent(valueType -> {
-                            var type = typeConverter.getPropertyType(entry, metadata);
+                            var type = typeConverter.getPropertyType(entry);
                             var key = new PrimitivePropertyKey(valueType, entry.name());
                             primitivePropertyTypes.computeIfAbsent(valueType, k -> new HashMap<>())
                                     .put(entry.name(), type);

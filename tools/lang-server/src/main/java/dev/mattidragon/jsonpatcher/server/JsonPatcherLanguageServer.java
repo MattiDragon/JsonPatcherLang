@@ -74,8 +74,9 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         if (watchedFilesDynReg) {
             client.registerCapability(new RegistrationParams(List.of(
                 new Registration("permanent:workspace/didChangeWatchedFiles", "workspace/didChangeWatchedFiles", new DidChangeWatchedFilesRegistrationOptions(List.of(
-                        new FileSystemWatcher(Either.forLeft("**/*.jsonpatch"))
-                )))    
+                        new FileSystemWatcher(Either.forLeft("**/*.jsonpatch")),
+                        new FileSystemWatcher(Either.forLeft("**/jsonpatcher-workspace.json"))
+                )))
             )));
         }
     }

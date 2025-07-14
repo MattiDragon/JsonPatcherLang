@@ -8,8 +8,6 @@ import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeProperty;
 import dev.mattidragon.jsonpatcher.docs.type.*;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
-import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -79,9 +77,8 @@ public class DocTypeConverter {
         Type wildcardType = null;
         var properties = new HashMap<String, Type>();
         for (var property : docProperties) {
-            var metadata = property.metadata();
             var propertyName = property.entry().name();
-            var propertyType = getPropertyType(property.entry(), metadata);
+            var propertyType = getPropertyType(property.entry());
 
             if (propertyName.equals("*")) {
                 wildcardType = propertyType;
@@ -94,7 +91,8 @@ public class DocTypeConverter {
         return new NamedType(superType, properties, Optional.ofNullable(wildcardType), Optional.empty(), name);
     }
 
-    public Type getPropertyType(DocEntry.PropertyEntry entry, @Nullable TreeMetadata metadata) {
+    public Type getPropertyType(DocEntry.PropertyEntry entry) {
+        var metadata = entry.sharedData().metadata();
         var specialTypeKind = metadata == null
                 ? Optional.<HardcodedTypeTagProcessor.Kind>empty()
                 : metadata.get(entry, HardcodedTypeTagProcessor.KIND);

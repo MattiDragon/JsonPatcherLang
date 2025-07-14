@@ -74,7 +74,8 @@ public class DocWriter {
                                 ? ""
                                 : namespace.description().parts().getLast(),
                         "",
-                        List.of()
+                        List.of(),
+                        null
                 )
         );
     }

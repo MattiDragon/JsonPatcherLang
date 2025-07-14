@@ -14,18 +14,14 @@ import dev.mattidragon.jsonpatcher.server.index.Index;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public class DocFileManager {
+public class DocFileManager extends WorkspaceFileManager {
     private final Map<Path, Entry> entries = new HashMap<>();
     private final DocHolder docHolder;
 
@@ -33,60 +29,41 @@ public class DocFileManager {
         docHolder = new DocHolder(eventBus);
     }
 
-    private static Optional<Path> getPath(String path) {
-        try {
-            var uri = new URI(path);
-            return Optional.of(Path.of(uri));
-        } catch (URISyntaxException e) {
-            System.err.println("Failed to parse uri: " + e);
-            return Optional.empty();
-        } catch (FileSystemNotFoundException | IllegalArgumentException e) {
-            // ignore, we'll just not use files from unknown uris
-            return Optional.empty();
-        }
-    }
-    
-    private boolean isValidFile(Path path) {
+    @Override
+    protected boolean isValidFile(Path path) {
         return path.getFileName().toString().endsWith(".jsonpatch");
     }
-    
-    public void resetAll(List<String> folders) {
-        docHolder.clear();
-        for (var folder : folders) {
-            var path = getPath(folder);
-            if (path.isEmpty()) continue;
-            try (var stream = Files.walk(path.get())) {
-                stream.forEach(file -> {
-                    if (isValidFile(file)) {
-                        entries.put(file, new Entry(file.toUri().toASCIIString(), file));
-                    }
-                });
-            } catch (IOException e) {
-                System.err.println("Error while scanning files: " + e);
-            }
-        }
+
+    @Override
+    protected void createEntry(Path path) {
+        entries.put(path, new Entry(path.toUri().toASCIIString(), path));
     }
-    
-    public void updateFile(String uri) {
-        var path = getPath(uri).orElse(null);
-        if (path == null) return;
-        if (entries.containsKey(path)) {
-            entries.get(path).update();
-        } else if (isValidFile(path)) {
-            entries.put(path, new Entry(path.toUri().toASCIIString(), path));
-        }
+
+    @Override
+    protected boolean hasEntry(Path path) {
+        return entries.containsKey(path);
     }
-    
-    public void deleteFile(String uri) {
-        var path = getPath(uri);
-        if (path.isEmpty()) return;
-        var removed = entries.remove(path.get());
+
+    @Override
+    protected void updateEntry(Path path) {
+        entries.get(path).update();
+    }
+
+    @Override
+    protected void removeEntry(Path path) {
+        var removed = entries.remove(path);
         if (removed != null) {
             synchronized (removed) {
                 removed.alive = false;
             }
         }
-        docHolder.deleteFile(uri);
+        docHolder.deleteFile(path.toUri().toASCIIString());
+    }
+
+    @Override
+    protected void clearData() {
+        docHolder.clear();
+        entries.clear();
     }
 
     public DocHolder getHolder() {
@@ -137,7 +114,7 @@ public class DocFileManager {
                 var index = new DocsIndex(uri);
                 index.index(commentHandler.entries(), metadata);
 
-                var tree = new DocTree(commentHandler.entries(), metadata);
+                var tree = new DocTree(commentHandler.entries());
                 return new DocsTuple(tree, index, metadata);
             }, Util.EXECUTOR);
             docs.thenAcceptAsync(tuple -> {

@@ -3,6 +3,8 @@ package dev.mattidragon.jsonpatcher.docs.data;
 import dev.mattidragon.jsonpatcher.docs.tag.DocTag;
 import dev.mattidragon.jsonpatcher.docs.type.DocType;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataHolder;
+import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,6 +63,7 @@ public sealed interface DocEntry extends MetadataHolder {
     record NamespaceEntry(SharedData sharedData) implements DocEntry {
     }
 
-    record SharedData(NamespaceDescription namespace, String name, String body, List<DocTag> tags) {
+    record SharedData(NamespaceDescription namespace, String name, String body,
+                      List<DocTag> tags, @Nullable TreeMetadata metadata) {
     }
 }

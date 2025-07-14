@@ -94,7 +94,7 @@ public class DocParser {
                     location = expectQuotedString();
                 }
                 expectEol();
-                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList);
+                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList, metadata);
                 yield new DocEntry.LibraryEntry(sharedData, Optional.ofNullable(location));
             }
             case "value" -> {
@@ -106,7 +106,7 @@ public class DocParser {
                 expectSymbol(DocToken.Symbol.COLON);
                 var type = OldTypeParser.parse(tokens, metadata, diagnostics);
                 expectEol();
-                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList);
+                var sharedData = new DocEntry.SharedData(NamespaceDescription.EMPTY, name, body, immutableTagList, metadata);
                 yield new DocEntry.PropertyEntry(sharedData, owner, type);
             }
             default -> {
@@ -153,7 +153,7 @@ public class DocParser {
         var name = dottedNames.removeLast();
         var namePos = dottedNamePositions.removeLast();
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList, metadata);
         var entry = new DocEntry.NamespaceEntry(sharedData);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
@@ -166,7 +166,7 @@ public class DocParser {
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList, metadata);
         var entry = new DocEntry.MetadataEntry(sharedData, type);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
@@ -179,7 +179,7 @@ public class DocParser {
         expectSymbol(DocToken.Symbol.COLON);
         var definition = TypeParser.parse(tokens, metadata, diagnostics);
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList, metadata);
         var entry = new DocEntry.TypeAliasEntry(sharedData, definition);
         attachStandardMetadata(entry, keywordPos, namePos);
         return entry;
@@ -201,7 +201,7 @@ public class DocParser {
         };
         var baseTypePos = tokens.lastPos();
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList, metadata);
         var entry = new DocEntry.TypeDeclarationEntry(sharedData, baseType);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.BASE_TYPE_POS, baseTypePos);
@@ -226,7 +226,7 @@ public class DocParser {
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), name, body, immutableTagList, metadata);
         var entry = new DocEntry.PropertyEntry(sharedData, owner, type);
         attachStandardMetadata(entry, keywordPos, namePos);
         metadata.put(entry, DocMetadataKeys.PROPERTY_OWNER_POS, ownerPos);
@@ -240,7 +240,7 @@ public class DocParser {
         expectSymbol(DocToken.Symbol.COLON);
         var type = TypeParser.parse(tokens, metadata, diagnostics);
         expectEol();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), globalName, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), globalName, body, immutableTagList, metadata);
         var entry = new DocEntry.GlobalValueEntry(sharedData, type);
         attachStandardMetadata(entry, keywordPos, globalNamePos);
         return entry;
@@ -250,7 +250,7 @@ public class DocParser {
         var dottedNames = readDottedNames();
         var libName = dottedNames.removeLast();
         var libNamePos = dottedNamePositions.removeLast();
-        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), libName, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(new NamespaceDescription(dottedNames), libName, body, immutableTagList, metadata);
         var entry = new DocEntry.GlobalLibraryEntry(sharedData);
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.SECONDARY_KEYWORD_POS, secondKeywordPos);
@@ -265,7 +265,7 @@ public class DocParser {
         var location = checkLibraryLocation();
         var locationsPos = location == null ? null : tokens.lastPos();
         expectEol();
-        var sharedData = new DocEntry.SharedData(namespace, libName, body, immutableTagList);
+        var sharedData = new DocEntry.SharedData(namespace, libName, body, immutableTagList, metadata);
         var entry = new DocEntry.LibraryEntry(sharedData, Optional.ofNullable(location));
         attachStandardMetadata(entry, keywordPos, libNamePos);
         metadata.put(entry, MetadataKey.IMPORT_LOCATION_POS, locationsPos != null ? locationsPos : libNamePos);

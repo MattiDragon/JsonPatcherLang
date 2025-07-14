@@ -6,6 +6,7 @@ import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
 import dev.mattidragon.jsonpatcher.server.event.context.WorkspaceEventContext;
 import dev.mattidragon.jsonpatcher.server.index.Index;
 import dev.mattidragon.jsonpatcher.server.index.StaticCombinedIndex;
+import dev.mattidragon.jsonpatcher.server.workspace.config.WorkspaceConfigManager;
 import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -19,6 +20,7 @@ public class WorkspaceManager implements WorkspaceService {
     private final List<String> workspaceFolders = new ArrayList<>();
     private final DocFileManager docFileManager;
     private final SettingsManager settingsManager;
+    private final WorkspaceConfigManager workspaceConfigManager;
     private final BackgroundIndexManager backgroundIndexManager;
     private final WorkspaceEventBus eventBus;
 
@@ -29,6 +31,7 @@ public class WorkspaceManager implements WorkspaceService {
         docFileManager = new DocFileManager(eventBus);
         settingsManager = new SettingsManager(eventBus);
         backgroundIndexManager = new BackgroundIndexManager(eventBus);
+        workspaceConfigManager = new WorkspaceConfigManager(eventBus);
 
         combinedIndex = new StaticCombinedIndex(docFileManager.getHolder().getIndex(), backgroundIndexManager.getIndex());
     }
@@ -49,9 +52,16 @@ public class WorkspaceManager implements WorkspaceService {
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
         for (var event : params.getChanges()) {
+            var uri = event.getUri();
             switch (event.getType()) {
-                case Created, Changed -> docFileManager.updateFile(event.getUri());
-                case Deleted -> docFileManager.deleteFile(event.getUri());
+                case Created, Changed -> {
+                    docFileManager.updateFile(uri);
+                    workspaceConfigManager.updateFile(uri);
+                }
+                case Deleted -> {
+                    docFileManager.deleteFile(uri);
+                    workspaceConfigManager.deleteFile(uri);
+                }
             }
         }
     }
@@ -68,6 +78,10 @@ public class WorkspaceManager implements WorkspaceService {
         return backgroundIndexManager;
     }
 
+    public WorkspaceConfigManager getWorkspaceConfigManager() {
+        return workspaceConfigManager;
+    }
+
     public WorkspaceEventBus getEventBus() {
         return eventBus;
     }
@@ -75,11 +89,13 @@ public class WorkspaceManager implements WorkspaceService {
     public void addWorkspaceFolders(List<WorkspaceFolder> folders) {
         folders.stream().map(WorkspaceFolder::getUri).forEach(workspaceFolders::add);
         docFileManager.resetAll(workspaceFolders);
+        workspaceConfigManager.resetAll(workspaceFolders);
     }
 
     public void removeWorkspaceFolders(List<WorkspaceFolder> folders) {
         folders.stream().map(WorkspaceFolder::getUri).forEach(workspaceFolders::remove);
         docFileManager.resetAll(workspaceFolders);
+        workspaceConfigManager.resetAll(workspaceFolders);
     }
 
     @Override

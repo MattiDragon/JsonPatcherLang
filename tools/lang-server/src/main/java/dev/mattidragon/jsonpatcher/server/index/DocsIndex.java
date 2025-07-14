@@ -24,15 +24,15 @@ public class DocsIndex extends LookupIndex {
         }
 
         switch (entry) {
-            case DocEntry.GlobalLibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags)) -> {
+            case DocEntry.GlobalLibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1)) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.GlobalValueEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var type) -> {
+            case DocEntry.GlobalValueEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var type) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.LibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var location) -> {
+            case DocEntry.LibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var location) -> {
                 var symbol = new LibrarySymbol(location.orElse(name));
                 addSymbol(entry, new IndexEntry(symbol, true), metadata, MetadataKey.IMPORT_LOCATION_POS);
             }
@@ -42,7 +42,7 @@ public class DocsIndex extends LookupIndex {
             }
             case DocEntry.NamespaceEntry namespaceEntry -> {
             }
-            case DocEntry.PropertyEntry(DocEntry.SharedData(var namespace, var name, var body, var tags), var owner, var type) -> {
+            case DocEntry.PropertyEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var owner, var type) -> {
                 addSymbol(entry, new IndexEntry(new DocEntrySymbol(namespace, owner), false), metadata, DocMetadataKeys.PROPERTY_OWNER_POS);
                 addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
             }

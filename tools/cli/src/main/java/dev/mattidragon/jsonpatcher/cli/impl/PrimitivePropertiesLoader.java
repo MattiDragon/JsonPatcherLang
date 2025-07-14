@@ -30,7 +30,7 @@ public class PrimitivePropertiesLoader {
             Lexer.lex(entry.getValue(), entry.getKey(), diagnostics, commentHandler);
         }
 
-        var docTree = new DocTree(commentHandler.entries(), treeMetadata);
+        var docTree = new DocTree(commentHandler.entries());
         var typeConverter = new DocTypeConverter();
         typeConverter.loadTree(docTree);
 

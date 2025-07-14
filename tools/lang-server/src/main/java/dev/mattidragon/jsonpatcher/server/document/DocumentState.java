@@ -1,6 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.document;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
+import dev.mattidragon.jsonpatcher.docs.tag.builtin.ConditionTagProcessor;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.SuppressingCommentDiagnosticFilter;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
@@ -16,6 +17,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.CommentHandler;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.server.Util;
+import dev.mattidragon.jsonpatcher.server.document.condition.DocConditionChecker;
 import dev.mattidragon.jsonpatcher.server.document.feature.*;
 import dev.mattidragon.jsonpatcher.server.event.DocumentEventBus;
 import dev.mattidragon.jsonpatcher.server.event.EventHandlerKey;
@@ -23,10 +25,12 @@ import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
 import dev.mattidragon.jsonpatcher.server.event.context.DocumentEventContext;
 import dev.mattidragon.jsonpatcher.server.event.document.DocumentDataChangedEvent;
 import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
+import dev.mattidragon.jsonpatcher.server.event.workspace.WorkspaceConfigChangedEvent;
 import dev.mattidragon.jsonpatcher.server.index.DocumentIndex;
 import dev.mattidragon.jsonpatcher.server.index.typing.PreTypingPass;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
+import dev.mattidragon.jsonpatcher.server.workspace.config.WorkspaceConfigManager;
 import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -59,6 +63,7 @@ public class DocumentState {
 
     private final DocHolder docHolder;
     private final SettingsManager settingsManager;
+    private final WorkspaceConfigManager workspaceConfigManager;
 
     private String lastContent = "";
 
@@ -69,14 +74,22 @@ public class DocumentState {
         this.internalName = getInternalName(name);
         this.client = client;
         this.eventBus = new DocumentEventBus(globalEventBus, new DocumentEventContext(this));
+
         this.docHolder = workspace.getDocFileManager().getHolder();
         this.settingsManager = workspace.getSettingsManager();
+        this.workspaceConfigManager = workspace.getWorkspaceConfigManager();
+
         this.definitionFinder = new DefinitionFinder(() -> data, workspace);
         this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.inlayHintProvider = new InlayHintProvider(() -> data, () -> settingsManager.settings().inlayTypesEnabled());
         this.formattingProvider = new FormattingProvider(() -> data, settingsManager);
 
         eventHandlerKeys.add(globalEventBus.listenWorkspace(DocHolderRebuildEvent.class, (event, context) -> updateContent(lastContent)));
+        eventHandlerKeys.add(globalEventBus.listenWorkspace(WorkspaceConfigChangedEvent.class, (event, context) -> {
+            if (event.affectedUriPredicate().test(internalName)) {
+                updateContent(lastContent);
+            }
+        }));
     }
 
     /**
@@ -116,9 +129,21 @@ public class DocumentState {
 
             commentAttacher.process(program, treeMetadata);
 
+            var conditionChecker = new DocConditionChecker(
+                    patchMetadata,
+                    workspaceConfigManager.allowedLibraryGroups(internalName),
+                    workspaceConfigManager.langVersion(internalName)
+            );
+
             var globals = docHolder.getGlobals()
                     .entrySet()
                     .stream()
+                    .filter(entry -> {
+                        var docMetadata = entry.getValue().entry().sharedData().metadata();
+                        if (docMetadata == null) return true;
+                        var condition = docMetadata.get(entry.getValue().entry(), ConditionTagProcessor.CONDITION);
+                        return condition.map(conditionChecker::matches).orElse(true);
+                    })
                     .map(Map.Entry::getKey)
                     .toList();
             var variableAnalysis = VariableAnalyser.analyse(program, treeMetadata, diagnostics, globals);
