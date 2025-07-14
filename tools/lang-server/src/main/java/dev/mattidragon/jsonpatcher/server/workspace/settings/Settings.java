@@ -11,7 +11,7 @@ public record Settings(
 
     public Settings(JsonObject json) {
         this(
-                booleanProp(json, "formatterEnabled", true),
+                booleanProp(json, "formatterEnabled", false),
                 intProp(json, "formatterColumns", 120),
                 booleanProp(json, "inlayTypesEnabled", true)
         );
