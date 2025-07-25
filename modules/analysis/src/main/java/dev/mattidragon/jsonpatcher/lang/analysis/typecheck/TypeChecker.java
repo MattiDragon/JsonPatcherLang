@@ -263,12 +263,12 @@ public class TypeChecker {
             case PrimitiveType.NULL, SpecialType.ANY -> null;
 
             case NamedType(var supertype, var properties, var wildcardPropertyType, var callSignature, var typeName) -> {
-                var propType = properties.get(name);
-                if (propType != null) {
-                    yield propType;
+                var property = properties.get(name);
+                if (property != null) {
+                    yield property.type();
                 }
                 if (wildcardPropertyType.isPresent()) {
-                    yield wildcardPropertyType.get();
+                    yield wildcardPropertyType.get().type();
                 } else {
                     yield null;
                 }

@@ -2,12 +2,13 @@ import dev.mattidragon.jsonpatcher.docs.tag.TagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tag.builtin.ConditionTagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tag.builtin.HardcodedTypeTagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tag.builtin.MethodTagProcessor;
+import dev.mattidragon.jsonpatcher.docs.tag.builtin.OptionalTagProcessor;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module jsonpatcher.tools.doctool {
     uses TagProcessor;
-    provides TagProcessor with MethodTagProcessor, ConditionTagProcessor, HardcodedTypeTagProcessor;
+    provides TagProcessor with MethodTagProcessor, ConditionTagProcessor, HardcodedTypeTagProcessor, OptionalTagProcessor;
 
     requires static org.jspecify;
     requires static org.jetbrains.annotations;

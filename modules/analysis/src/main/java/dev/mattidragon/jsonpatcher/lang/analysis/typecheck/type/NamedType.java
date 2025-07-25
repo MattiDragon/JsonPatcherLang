@@ -5,8 +5,8 @@ import java.util.Optional;
 
 public record NamedType(
         Type supertype,
-        Map<String, Type> properties,
-        Optional<Type> wildcardPropertyType,
+        Map<String, Property> properties,
+        Optional<Property> wildcardPropertyType,
         Optional<FunctionType> callSignature,
         String name
 ) implements Type {
@@ -22,5 +22,8 @@ public record NamedType(
     @Override
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    public record Property(Type type, boolean optional) {
     }
 }

@@ -181,7 +181,7 @@ public class AutoCompleteHelper {
             case NamedType namedType -> namedType.properties()
                     .entrySet()
                     .stream()
-                    .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue()))
+                    .map(entry -> new PropertyCompletionInfo(entry.getKey(), type, entry.getValue().type()))
                     .collect(Collectors.toSet());
             // This is unlikely to ever actually come up, but this should work
             case TypeArgument typeArgument -> getTypeProperties(typeArgument.bound());

@@ -13,7 +13,7 @@ import org.commonmark.node.Text;
 
 import java.util.List;
 
-public class HardcodedTypeTagProcessor implements TagProcessor {
+public final class HardcodedTypeTagProcessor implements TagProcessor {
     public static final MetadataKey<Kind> KIND = new MetadataKey<>("HardcodedTypeTag/KIND");
 
     @Override

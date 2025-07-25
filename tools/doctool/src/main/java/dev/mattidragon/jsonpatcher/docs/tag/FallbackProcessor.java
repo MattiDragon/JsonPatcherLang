@@ -25,6 +25,6 @@ public final class FallbackProcessor implements TagProcessor {
 
     @Override
     public List<Node> process(PositionedString name, PositionedString content, DocEntry entry, TreeMetadata metadata, DiagnosticsBuilder diagnostics) {
-        return List.of(new Code("@%s: %s".formatted(name, content)));
+        return List.of(new Code("@%s: %s".formatted(name, content.value())));
     }
 }

@@ -2,6 +2,7 @@ package dev.mattidragon.jsonpatcher.toolcommon.typing;
 
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
 import dev.mattidragon.jsonpatcher.docs.tag.builtin.HardcodedTypeTagProcessor;
+import dev.mattidragon.jsonpatcher.docs.tag.builtin.OptionalTagProcessor;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTree;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeNamespace;
 import dev.mattidragon.jsonpatcher.docs.tree.DocTreeObject;
@@ -74,21 +75,37 @@ public class DocTypeConverter {
     }
 
     private NamedType buildNamedType(String name, PrimitiveType superType, Collection<DocTreeProperty> docProperties) {
-        Type wildcardType = null;
-        var properties = new HashMap<String, Type>();
+        NamedType.Property wildcardProperty = null;
+        var properties = new HashMap<String, NamedType.Property>();
+
         for (var property : docProperties) {
+            var metadata = property.entry().sharedData().metadata();
+
             var propertyName = property.entry().name();
             var propertyType = getPropertyType(property.entry());
 
+            var optional = false;
+            if (metadata != null) {
+                optional = metadata.get(property.entry(), OptionalTagProcessor.OPTIONAL).orElse(false);
+            }
+
+            var propertyRecord = new NamedType.Property(propertyType, optional);
+
             if (propertyName.equals("*")) {
-                wildcardType = propertyType;
+                wildcardProperty = propertyRecord;
                 continue;
             }
-            properties.put(propertyName, propertyType);
+            properties.put(propertyName, propertyRecord);
         }
 
         // TODO: add option to declare call signature and use that
-        return new NamedType(superType, properties, Optional.ofNullable(wildcardType), Optional.empty(), name);
+        return new NamedType(
+                superType,
+                properties,
+                Optional.ofNullable(wildcardProperty),
+                Optional.empty(),
+                name
+        );
     }
 
     public Type getPropertyType(DocEntry.PropertyEntry entry) {
