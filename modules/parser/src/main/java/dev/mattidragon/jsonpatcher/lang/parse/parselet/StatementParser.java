@@ -24,6 +24,11 @@ public class StatementParser {
         var statements = new ArrayList<Statement>();
         try {
             while (parser.peek().token() != SimpleToken.END_CURLY) {
+                if (!parser.hasNext()) {
+                    // Throw proper error at EOF
+                    parser.expect(SimpleToken.END_CURLY);
+                    break; // safety
+                }
                 statements.add(parse(parser));
             }
         } catch (Parser.ParseException e) {
