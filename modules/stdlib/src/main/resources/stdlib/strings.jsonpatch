@@ -207,7 +207,7 @@ function chars(string) {
 }
 $chars = chars;
 
-#| property strings.substring: (string: string, from: number, to?: number) -> string
+#| property strings.substring: (string: string, from: number, to: number?) -> string
 #| Returns a substring from the specified start index (inclusive) to the specified end index, if specified (exclusive)
 #| @method string
 function substring(string, from, to = null) {
