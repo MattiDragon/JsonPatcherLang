@@ -5,7 +5,7 @@ import picocli.CommandLine.Command;
 
 @Command(name = "jsonpatcher",
         description = "JsonPatcher CLI Tools",
-        subcommands = {DocsCommand.class, AstCommand.class, FormatCommand.class},
+        subcommands = {DocsCommand.class, AstCommand.class, FormatCommand.class, EvalCommand.class},
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
 public class MainCommand {

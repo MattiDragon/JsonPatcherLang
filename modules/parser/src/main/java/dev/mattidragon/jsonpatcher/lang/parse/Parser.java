@@ -16,7 +16,6 @@ import dev.mattidragon.jsonpatcher.lang.parse.parselet.PostfixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.PrefixParser;
 import dev.mattidragon.jsonpatcher.lang.parse.parselet.StatementParser;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -49,9 +48,12 @@ public class Parser {
         return result;
     }
 
-    @VisibleForTesting
     public static Expression parseExpression(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics) throws ParseException {
-        var parser = new Parser(tokens, new TreeMetadata());
+        return parseExpression(tokens, diagnostics, new TreeMetadata());
+    }
+
+    public static Expression parseExpression(List<PositionedToken> tokens, DiagnosticsBuilder diagnostics, TreeMetadata treeMetadata) throws ParseException {
+        var parser = new Parser(tokens, treeMetadata);
         Expression expression = null;
         try {
             expression = parser.expression();

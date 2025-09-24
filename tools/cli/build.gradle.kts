@@ -8,7 +8,10 @@ dependencies {
     implementation(project(":formatter"))
     implementation(project(":stdlib"))
     implementation(project(":tool-common"))
+    implementation(project(":runtime"))
+    implementation(libs.gson)
     implementation(libs.picocli)
+    implementation(project(":compiler"))
     annotationProcessor(libs.picocli.codegen)
 }
 

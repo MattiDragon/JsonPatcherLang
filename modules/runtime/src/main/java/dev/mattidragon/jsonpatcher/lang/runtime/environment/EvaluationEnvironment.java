@@ -201,6 +201,8 @@ public class EvaluationEnvironment {
 
         protected ScriptClassLoader() {
             super(ScriptClassLoader.class.getClassLoader());
+            // We can't call the constructor in a modular environment without this
+            EvaluationEnvironment.class.getModule().addReads(getUnnamedModule());
         }
 
         public GeneratedProgram addScript(ProgramData data, CompilerOptions compilerOptions) {

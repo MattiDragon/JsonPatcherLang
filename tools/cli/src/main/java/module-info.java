@@ -12,9 +12,12 @@ module jsonpatcher.tools.cli {
     requires jsonpatcher.lang.parser;
     requires jsonpatcher.lang.analysis;
     requires jsonpatcher.lang.stdlib;
+    requires jsonpatcher.lang.runtime;
+    requires jsonpatcher.lang.compiler;
 
     requires info.picocli;
     requires org.commonmark;
+    requires com.google.gson;
 
     exports dev.mattidragon.jsonpatcher.cli;
     opens dev.mattidragon.jsonpatcher.cli to info.picocli;

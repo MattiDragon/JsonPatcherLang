@@ -10,9 +10,11 @@ public class VersionProvider implements CommandLine.IVersionProvider {
     static {
         try (var in = VersionProvider.class.getResourceAsStream("/version")) {
             if (in == null) {
-                throw new IllegalStateException("Version resource not found");
+                System.err.println("WARN: Version resource not found");
+                VERSION = "unknown";
+            } else {
+                VERSION = new String(in.readAllBytes());
             }
-            VERSION = new String(in.readAllBytes());
         } catch (IOException e) {
             throw new IllegalStateException("Failed to get version", e);
         }
