@@ -3,6 +3,8 @@
 #| These are not available to user code.
 #| @requires libgroup("jsonpatcher:internals")
 
+#| property _internals.internals.fakeEvalCtx: JavaObject
+
 #| property _internals.internals._throw: (any) -> never
 
 #| property _internals.internals.log: (any) -> null
@@ -12,16 +14,6 @@
 #| property _internals.internals.keys: (object) -> string[]
 
 #| property _internals.internals.defineMethods: (string, object) -> null
-
-#| property _internals.internals.bindMathFunction: (string) -> (number) -> number
-
-#| property _internals.internals.pi: () -> number
-
-#| property _internals.internals.e: () -> number
-
-#| property _internals.internals.min: (number, number) -> number
-
-#| property _internals.internals.max: (number, number) -> number
 
 #| property _internals.internals.bind: (function, any, number) -> function
 

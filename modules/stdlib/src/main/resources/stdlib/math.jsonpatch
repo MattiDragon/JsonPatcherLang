@@ -1,79 +1,100 @@
-import "@internals" as internals;
+import "@internals/reflection" as reflectionInternals;
 
 #| global library math
 #| The math library contains many functions for performing mathematical operations.
 
+val javaMath = reflectionInternals.findClass("java.lang.Math");
+val javaDouble = reflectionInternals.findClass("java.lang.Double");
+
+# @@arg fn (number) -> number
+function bindMathFn(fn) {
+    return (input) -> {
+        debug.assert(input is number, "Expected input to be number, was " + strings.asString(input));
+        return fn(input);
+    };
+}
+
 #| property math.PI: number
-$PI = internals.pi();
+$PI = javaMath.PI;
 
 #| property math.E: number
-$E = internals.e();
+$E = javaMath.E;
 
 #| property math.NaN: number
-$NaN = 0 / 0;
+$NaN = javaDouble.NaN;
 
 #| property math.POSITIVE_INFINITY: number
-$POSITIVE_INFINITY = 1 / 0;
+$POSITIVE_INFINITY = javaDouble.POSITIVE_INFINITY;
 
 #| property math.NEGATIVE_INFINITY: number
-$NEGATIVE_INFINITY = -1 / 0;
+$NEGATIVE_INFINITY = javaDouble.NEGATIVE_INFINITY;
 
 #| property math.asin: (input: number) -> number
-$asin = internals.bindMathFunction("asin");
+$asin = bindMathFn(javaMath.asin);
 
 #| property math.sin: (input: number) -> number
-$sin = internals.bindMathFunction("sin");
+$sin = bindMathFn(javaMath.sin);
 
 #| property math.sinh: (input: number) -> number
-$sinh = internals.bindMathFunction("sinh");
+$sinh = bindMathFn(javaMath.sinh);
 
 #| property math.acos: (input: number) -> number
-$acos = internals.bindMathFunction("acos");
+$acos = bindMathFn(javaMath.acos);
 
 #| property math.cos: (input: number) -> number
-$cos = internals.bindMathFunction("cos");
+$cos = bindMathFn(javaMath.cos);
 
 #| property math.cosh: (input: number) -> number
-$cosh = internals.bindMathFunction("cosh");
+$cosh = bindMathFn(javaMath.cosh);
 
 #| property math.atan: (input: number) -> number
-$atan = internals.bindMathFunction("atan");
+$atan = bindMathFn(javaMath.atan);
 
 #| property math.tan: (input: number) -> number
-$tan = internals.bindMathFunction("tan");
+$tan = bindMathFn(javaMath.tan);
 
 #| property math.tanh: (input: number) -> number
-$tanh = internals.bindMathFunction("tanh");
+$tanh = bindMathFn(javaMath.tanh);
 
 #| property math.exp: (input: number) -> number
-$exp = internals.bindMathFunction("exp");
+$exp = bindMathFn(javaMath.exp);
 
 #| property math.log: (input: number) -> number
-$log = internals.bindMathFunction("log");
+$log = bindMathFn(javaMath.log);
 
 #| property math.log10: (input: number) -> number
-$log10 = internals.bindMathFunction("log10");
+$log10 = bindMathFn(javaMath.log10);
 
 #| property math.sqrt: (input: number) -> number
-$sqrt = internals.bindMathFunction("sqrt");
+$sqrt = bindMathFn(javaMath.sqrt);
 
 #| property math.cbrt: (input: number) -> number
-$cbrt = internals.bindMathFunction("cbrt");
+$cbrt = bindMathFn(javaMath.cbrt);
 
 #| property math.ceil: (input: number) -> number
-$ceil = internals.bindMathFunction("ceil");
+$ceil = bindMathFn(javaMath.ceil);
 
 #| property math.floor: (input: number) -> number
-$floor = internals.bindMathFunction("floor");
+$floor = bindMathFn(javaMath.floor);
 
 #| property math.abs: (input: number) -> number
-$abs = internals.bindMathFunction("abs");
+$abs = bindMathFn(javaMath.'abs(D)D');
 
 #| property math.signum: (input: number) -> number
-$signum = internals.bindMathFunction("signum");
+$signum = bindMathFn(javaMath.'signum(D)D');
 
 #| property math.max: (first: number, second: number) -> number
-$min = internals.min;
+$min = (first, second) -> {
+    debug.assert(first is number, "Expected first argument to be number, got " + strings.asString(first));
+    debug.assert(second is number, "Expected first argument to be number, got " + strings.asString(second));
+
+    return javaMath.min(first, second);
+};
 
 #| property math.min: (first: number, second: number) -> number
-$min = internals.max;
+$min = (first, second) -> {
+    debug.assert(first is number, "Expected first argument to be number, got " + strings.asString(first));
+    debug.assert(second is number, "Expected first argument to be number, got " + strings.asString(second));
+
+    return javaMath.max(first, second);
+};

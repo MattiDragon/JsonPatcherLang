@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MattiDragon/JsonPatcherLang/refs/heads/2.0/tools/lang-server/jsonpatcher-workspace.schema.json",
+  "schema_version": 1,
+  "external_stdlib_needed": false,
+  "allowed_library_groups": ["default", "jsonpatcher:internals", "reflection"]
+}

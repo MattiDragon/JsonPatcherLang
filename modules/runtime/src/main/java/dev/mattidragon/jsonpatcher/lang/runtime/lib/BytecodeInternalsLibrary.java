@@ -1,15 +1,15 @@
 package dev.mattidragon.jsonpatcher.lang.runtime.lib;
 
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
+import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 import dev.mattidragon.jsonpatcher.lang.runtime.PatchException;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DisableErrorWrapping;
 import dev.mattidragon.jsonpatcher.lang.runtime.lib.builder.DontBind;
+import dev.mattidragon.jsonpatcher.lang.runtime.lib.reflection.JavaObjectValue;
 import dev.mattidragon.jsonpatcher.lang.runtime.util.PropertyHolder;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.PatchFunction;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +20,14 @@ public class BytecodeInternalsLibrary {
     private final Consumer<Value> logConsumer;
     private final PropertyHolder propertyHolder;
 
+    public final JavaObjectValue fakeEvalCtx;
+
     public BytecodeInternalsLibrary(Consumer<Value> logConsumer, PropertyHolder propertyHolder) {
         this.logConsumer = logConsumer;
         this.propertyHolder = propertyHolder;
+        this.fakeEvalCtx = new JavaObjectValue(new EvaluationContext(this.propertyHolder, name -> {
+            throw new UnsupportedOperationException("Fake eval env does not have libs");
+        }));
     }
 
     @DisableErrorWrapping
@@ -62,39 +67,6 @@ public class BytecodeInternalsLibrary {
         };
 
         defineMethods(actualType, methods.value());
-    }
-
-    public Value.FunctionValue bindMathFunction(Value.StringValue name) {
-        try {
-            var method = MethodHandles.lookup().findStatic(Math.class, name.value(), MethodType.methodType(double.class, double.class));
-            return new Value.FunctionValue((PatchFunction.BuiltInPatchFunction) (context, args) -> {
-                if (args.size() != 1) throw context.createException("Expected one argument to " + name.value() + " but got " + args);
-                if (!(args.getFirst() instanceof Value.NumberValue(var number))) throw context.createException("Expected argument to " + name.value() + " to be number, but got " + args.getFirst());
-                try {
-                    return new Value.NumberValue((Double) method.invoke(number));
-                } catch (Throwable e) {
-                    throw new IllegalStateException("Failed to call math function", e);
-                }
-            });
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new IllegalStateException("Failed to bind math function: " + name, e);
-        }
-    }
-
-    public Value.NumberValue e() {
-        return new Value.NumberValue(Math.E);
-    }
-
-    public Value.NumberValue pi() {
-        return new Value.NumberValue(Math.PI);
-    }
-
-    public Value.NumberValue max(Value.NumberValue first, Value.NumberValue second) {
-        return new Value.NumberValue(Math.max(first.value(), second.value()));
-    }
-
-    public Value.NumberValue min(Value.NumberValue first, Value.NumberValue second) {
-        return new Value.NumberValue(Math.min(first.value(), second.value()));
     }
 
     public Value.FunctionValue bind(Value.FunctionValue function, Value value, Value.NumberValue index) {

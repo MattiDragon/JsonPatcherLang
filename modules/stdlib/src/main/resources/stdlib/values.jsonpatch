@@ -1,4 +1,5 @@
 import "@internals" as internals;
+import "@internals/reflection" as reflectionInternals;
 
 #| global library values
 #| Provides utilities for working with values.
@@ -11,5 +12,26 @@ import "@internals" as internals;
 function freeze(value) {
     return internals.freeze(value);
 }
-
 $freeze = freeze;
+
+#| property values.getProperty: (value: any, property: string) -> unknown
+#| Gets a property from a value by name, even if it isn't an object.
+#| This function is fairly slow, and should only be used as a last resort.
+#| For regular objects, please use the indexing operator instead.
+function getProperty(value, property) {
+    debug.assert(property is string, "Property to get must be string");
+
+    return reflectionInternals.forceWrap(value).getProperty(property, internals.fakeEvalCtx);
+}
+$getProperty = getProperty;
+
+#| property values.setProperty: (value: any, property: string, newValue: unknown) -> null
+#| Sets a property on a value by name, even if it isn't an object.
+#| This function is fairly slow, and should only be used as a last resort.
+#| For regular objects, please use the indexing operator instead.
+function setProperty(value, property, newValue) {
+    debug.assert(property is string, "Property to set must be string");
+
+    reflectionInternals.forceWrap(value).setProperty(property, newValue, internals.fakeEvalCtx);
+}
+$setProperty = setProperty;

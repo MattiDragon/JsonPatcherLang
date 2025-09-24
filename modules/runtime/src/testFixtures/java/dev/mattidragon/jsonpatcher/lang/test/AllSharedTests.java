@@ -11,6 +11,8 @@ import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.DeleteStateme
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.ImportStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.statement.LoopStatementTests;
 import dev.mattidragon.jsonpatcher.lang.test.sharedTests.stdlib.ArraysLibTests;
+import dev.mattidragon.jsonpatcher.lang.test.sharedTests.stdlib.DebugLibTests;
+import dev.mattidragon.jsonpatcher.lang.test.sharedTests.stdlib.ValuesLibTests;
 
 public interface AllSharedTests extends
         FunctionTests,
@@ -23,6 +25,8 @@ public interface AllSharedTests extends
         VariableTests,
         ConditionalTests,
         DeleteStatementTests,
-        ArraysLibTests
+        ArraysLibTests,
+        ValuesLibTests,
+        DebugLibTests
 {
 }
