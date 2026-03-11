@@ -5,17 +5,32 @@ import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
 import java.util.List;
 
 public interface CommentHandler {
-    CommentHandler EMPTY = comments -> {};
-    
+    CommentHandler EMPTY = comments -> {
+    };
+
     static CommentHandler allOf(CommentHandler... handlers) {
-        return comments -> {
-            for (var handler : handlers) {
-                handler.acceptBlock(comments);
+        return new CommentHandler() {
+            @Override
+            public void acceptBlock(List<Comment> comments) {
+                for (var handler : handlers) {
+                    handler.acceptBlock(comments);
+                }
+            }
+
+            @Override
+            public void newFile() {
+                for (var handler : handlers) {
+                    handler.newFile();
+                }
             }
         };
     }
-    
+
     void acceptBlock(List<Comment> comments);
-    
-    record Comment(String text, SourcePos start) {}
+
+    default void newFile() {
+    }
+
+    record Comment(String text, SourcePos start) {
+    }
 }

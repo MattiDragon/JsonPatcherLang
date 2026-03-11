@@ -58,13 +58,15 @@ public class DocsIndex extends LookupIndex {
     private void addNamespaceSymbols(DocEntry entry, TreeMetadata metadata) {
         var partCount = entry.namespace().parts().size();
         metadata.get(entry, DocMetadataKeys.NAMESPACE_POSITIONS).ifPresent(namespacePositions -> {
-            if (namespacePositions.size() != partCount) {
+            if (namespacePositions.size() > partCount) {
                 throw new IllegalStateException("Namespace positions do not match namespace values");
             }
 
             var namespace = entry.namespace();
-            for (var i = partCount - 1; i >= 0; i--) {
-                var pos = namespacePositions.get(i);
+            int k = namespacePositions.size();
+            for (var i = partCount - 1; i >= partCount - k; i--) {
+                var posIndex = i - (partCount - k);
+                var pos = namespacePositions.get(posIndex);
                 var name = namespace.parts().get(i);
                 namespace = namespace.withoutLast();
                 lookup.add(pos, new IndexEntry(new DocEntrySymbol(namespace, name), false));

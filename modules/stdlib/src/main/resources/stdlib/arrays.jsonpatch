@@ -1,5 +1,7 @@
 import "@internals" as internals;
 
+# @@doc_namespace std
+
 #| global library arrays
 #| The arrays library contains functions for manipulating arrays.
 #| All of them can be used as methods on arrays.

@@ -1,12 +1,15 @@
 @libgroup "reflection";
 
+# @@doc_namespace reflect
+
 import "@internals/reflection" as internal;
 
-#| global library reflection when #reflection
+#| library reflection
 #| A library containing utilities for interacting with the parent JVM.
 #|
 #| This module can be dangerous if given to untrusted code, and is thus placed in its own library group: `reflection`
 #| Any code using this library should make sure to not allow outside code to call arbitrary java code.
+#| @requires libgroup("reflection")
 
 #| type JavaClass: special
 #| Represents a java class. Inner classes as well as static methods and fields are available as properties.

@@ -26,6 +26,7 @@ public class Lexer {
     }
 
     private Result lex() {
+        commentHandler.newFile();
         try {
             while (hasNext()) {
                 var c = next();

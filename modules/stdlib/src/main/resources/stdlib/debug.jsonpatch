@@ -1,5 +1,7 @@
 import "@internals" as internals;
 
+# @@doc_namespace std
+
 #| global library debug
 #| Provides various functions for debugging code.
 

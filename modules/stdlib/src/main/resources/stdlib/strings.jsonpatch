@@ -1,6 +1,8 @@
 import "@internals" as internals;
 import "@internals/reflection" as reflectionInternals;
 
+# @@doc_namespace std
+
 val ROOT_LOCALE = reflectionInternals.findClass("java.util.Locale").ROOT;
 val StringBuilder = reflectionInternals.findClass("java.lang.StringBuilder");
 

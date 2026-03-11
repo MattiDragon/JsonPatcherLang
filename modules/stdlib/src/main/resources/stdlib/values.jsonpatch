@@ -1,6 +1,8 @@
 import "@internals" as internals;
 import "@internals/reflection" as reflectionInternals;
 
+# @@doc_namespace std
+
 #| global library values
 #| Provides utilities for working with values.
 

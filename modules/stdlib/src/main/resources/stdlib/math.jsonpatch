@@ -1,5 +1,7 @@
 import "@internals/reflection" as reflectionInternals;
 
+# @@doc_namespace std
+
 #| global library math
 #| The math library contains many functions for performing mathematical operations.
 
