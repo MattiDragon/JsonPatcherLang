@@ -10,15 +10,23 @@ import java.util.concurrent.ExecutionException;
 
 public class LangServerMain {
     public static void main(String[] args) {
+        boolean stdio = false;
         int port = 18092;
         for (var arg : args) {
             if (arg.startsWith("--socket=")) {
                 port = Integer.parseInt(arg.substring("--socket=".length()));
+            } else if (arg.equals("--stdio")) {
+                stdio = true;
             } else {
                 System.err.println("Unexpected argument: " + arg);
             }
         }
-        
+
+        if (stdio) {
+            runServer(System.in, System.out);
+            return;
+        }
+
         try (var socket = new Socket("localhost", port)) {
             runServer(socket.getInputStream(), socket.getOutputStream());
         } catch (IOException e) {
@@ -28,7 +36,7 @@ public class LangServerMain {
         }
     }
 
-    private static void runServer(InputStream in, OutputStream out){
+    private static void runServer(InputStream in, OutputStream out) {
         var server = new JsonPatcherLanguageServer();
         var launcher = LSPLauncher.createServerLauncher(server, in, out);
         server.connect(launcher.getRemoteProxy());
