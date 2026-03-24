@@ -98,7 +98,7 @@ public class JavaValueUtil {
                     name,
                     Remapper.COMBINED.remapMethodDescToNamed(getMethodDesc(method))
             );
-            if (method.getName().equals(runtimeName)) {
+            if (method.getName().equals(runtimeName) && !method.isBridge()) {
                 ClassChild.MethodChild methodChild = new ClassChild.MethodChild(method);
                 children.add(methodChild);
             }

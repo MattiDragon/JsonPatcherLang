@@ -20,5 +20,9 @@ tasks.assemble {
 
 tasks.shadowJar {
     exclude("META-INF/maven/**")
+    exclude("META-INF/LICENSE.txt")
+    exclude("META-INF/proguard/*")
+    exclude("META-INF/versions/9/module-info.class")
     exclude("about*.html")
+    exclude("fabric.mod.json")
 }
