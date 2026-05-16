@@ -152,6 +152,13 @@ public class EvaluationEnvironment {
         libraries.put(library.name(), library);
     }
 
+    public void addGlobal(String name, Value value) {
+        if (globals.containsKey(name)) {
+            throw new IllegalArgumentException("Global " + name + " is already defined");
+        }
+        globals.put(name, value);
+    }
+
     public void enableDumping(String path) {
         enableDumping(Path.of(path));
     }
@@ -168,8 +175,8 @@ public class EvaluationEnvironment {
         return new AddedProgram(classLoader.addScript(data, compilerOptions));
     }
 
-    private Set<String> getNamesGlobal() {
-        return Set.of(Stdlib.GLOBAL_LIBRARY_NAMES);
+    private Set<String> getGlobalNames() {
+        return globals.keySet();
     }
 
     private Value.ObjectValue locateLibrary(String name, Collection<LibraryGroup> libraryGroups) {
@@ -219,7 +226,7 @@ public class EvaluationEnvironment {
                         data.program(),
                         data.metadata(),
                         compilerOptions,
-                        getNamesGlobal(),
+                        getGlobalNames(),
                         data.scriptName(),
                         className,
                         new DiagnosticsBuilder());

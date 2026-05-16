@@ -30,10 +30,7 @@ import picocli.CommandLine.Parameters;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 @Command(name = "ast",
@@ -242,32 +239,44 @@ public class AstCommand implements Callable<Integer> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(name: %s, %s)%n", name, mutable ? "mutable" : "immutable");
             }
-            case ForLoopStatement(Statement initializer, Expression condition, Statement incrementer, Statement body) -> {
+            case ForLoopStatement(var initializer, var condition, var incrementer, var body) -> {
                 childTags.put(initializer, "initializer");
                 childTags.put(condition, "condition");
                 childTags.put(incrementer, "incrementer");
                 childTags.put(body, "body");
             }
-            case ForEachLoopStatement(Expression iterable, String variableName, Statement body) -> {
+            case ForEachLoopStatement(var iterable, var variableName, var body) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(variable: %s)%n", variableName);
                 childTags.put(iterable, "iterable");
                 childTags.put(body, "body");
             }
-            case FunctionDeclarationStatement(String name, FunctionExpression value) -> {
+            case FunctionDeclarationStatement(var name, var value) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(name: %s)%n", name);
             }
-            case ImportStatement(String libraryName, String variableName) -> {
+            case ImportStatement(var libraryName, var variableName) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(library: %s, variable: %s)%n", libraryName, variableName);
             }
-            case IfStatement(Expression condition, Statement action, Statement elseAction) -> {
+            case IfStatement(var condition, var action, var elseAction) -> {
                 childTags.put(condition, "condition");
                 childTags.put(action, "if true");
                 if (elseAction != null) {
                     childTags.put(elseAction, "if false");
                 }
+            }
+            case StringInterpolationExpression(var parts, var children) -> {
+                System.out.print("  ".repeat(indent));
+                System.out.print("(format: ");
+                for (var i = 0; i < parts.size(); i++) {
+                    System.out.printf("\"%s\"", parts.get(i));
+                    if (i < children.size()) {
+                        System.out.printf(" [%s] ", i);
+                        childTags.put(children.get(i), "" + i);
+                    }
+                }
+                System.out.println(")");
             }
             default -> {}
         }
@@ -293,14 +302,30 @@ public class AstCommand implements Callable<Integer> {
         for (var entry : metadata.getAll(node).entrySet()) {
             System.out.print("  ".repeat(indent));
             System.out.print("#" + entry.getKey().name() + ": ");
-            var value = switch (entry.getValue()) {
-                case SourceSpan span -> span.format();
-                case SourcePos pos -> pos.format();
-                case Object other -> other.toString();
-            };
+            var value = formatMetadata(entry.getValue());
             printWrapping(value, indent + 1);
             System.out.println();
         }
+    }
+
+    private static String formatMetadata(Object value) {
+        return switch (value) {
+            case SourceSpan span -> span.format();
+            case SourcePos pos -> pos.format();
+            case Iterable<?> iterable -> {
+                var sb = new StringBuilder();
+                sb.append('[');
+                var first = true;
+                for (var item : iterable) {
+                    if (!first) sb.append(", ");
+                    sb.append(formatMetadata(item));
+                    first = false;
+                }
+                sb.append(']');
+                yield sb.toString();
+            }
+            case Object other -> other.toString();
+        };
     }
 
     private void printImportantMetadata(ProgramNode node, TreeMetadata metadata, int indent) {

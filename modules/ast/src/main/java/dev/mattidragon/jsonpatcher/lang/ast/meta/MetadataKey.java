@@ -30,6 +30,8 @@ public class MetadataKey<T> {
      */
     public static final MetadataKey<SourceSpan> MAIN_POS = new MetadataKey<>("MAIN_POS", KEYWORD_POS, NAME_POS, FULL_POS);
 
+    public static final MetadataKey<List<SourceSpan>> MULTI_POS = new MetadataKey<>("MULTI_POS");
+
     public static final MetadataKey<NumberStyle> NUMBER_STYLE = new MetadataKey<>("NUMBER_STYLE");
     public static final MetadataKey<ObjectInitializerExpression.KeyStyle> OBJECT_KEY_STYLE = new MetadataKey<>("OBJECT_KEY_STYLE");
 

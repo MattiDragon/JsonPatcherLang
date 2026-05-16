@@ -29,26 +29,9 @@ public class Lexer {
         commentHandler.newFile();
         try {
             while (hasNext()) {
-                var c = next();
-                if (c == ' ' || c == '\r' || c == '\n' || c == '\t') {
-                    continue;
-                }
-
-                if (c == '"' || c == '\'') {
-                    readString(c);
-                } else if (c == '#') {
-                    skipComment();
-                } else {
-                    if (c >= '0' && c <= '9') readNumber(c);
-                    else if (TokenTree.isStart(c)) readSimpleToken(c);
-                    else if (isWordStartChar(c)) readWord(c);
-                    else {
-                        var token = new Token.ErrorToken("Unexpected character: %c (0x%x)".formatted(c, (int) c));
-                        var from = new SourcePos(file, currentLine, currentColumn - 1);
-                        var to = new SourcePos(file, currentLine, currentColumn - 1);
-                        SourceSpan pos = new SourceSpan(from, to);
-                        diagnostics.addDiagnostic(new LexError(token.error(), pos.from(), LexError.UNEXPECTED_CHAR));
-                    }
+                skipWhitespace();
+                if (hasNext()) {
+                    readToken();
                 }
             }
         } catch (EofMarker e) {
@@ -56,6 +39,38 @@ public class Lexer {
         }
 
         return new Result(tokens);
+    }
+
+    private void readToken() {
+        var c = next();
+
+        if (c == '"' || c == '\'') {
+            readString(c);
+        } else if (c == '#') {
+            skipComment();
+        } else {
+            if (c >= '0' && c <= '9') readNumber(c);
+            else if (TokenTree.isStart(c)) readSimpleToken(c);
+            else if (isWordStartChar(c)) readWord(c);
+            else {
+                var token = new Token.ErrorToken("Unexpected character: %c (0x%x)".formatted(c, (int) c));
+                var from = new SourcePos(file, currentLine, currentColumn - 1);
+                var to = new SourcePos(file, currentLine, currentColumn - 1);
+                SourceSpan pos = new SourceSpan(from, to);
+                diagnostics.addDiagnostic(new LexError(token.error(), pos.from(), LexError.UNEXPECTED_CHAR));
+            }
+        }
+    }
+
+    private void skipWhitespace() {
+        while (hasNext()) {
+            var c = peek();
+            if (c == ' ' || c == '\r' || c == '\n' || c == '\t') {
+                next();
+            } else {
+                break;
+            }
+        }
     }
 
     public static Result lex(String program, String filename, DiagnosticsBuilder diagnostics) {
@@ -165,6 +180,7 @@ public class Lexer {
     private void readString(char begin) {
         var string = new StringBuilder();
         var beginPos = currentColumn - 1;
+        var interpolating = false;
 
         for (char c = next(); c != begin; c = next()) {
             switch (c) {
@@ -181,6 +197,20 @@ public class Lexer {
                         case '0' -> string.append('\0');
                         case 'x' -> string.append(readUnicodeEscape(2));
                         case 'u' -> string.append(readUnicodeEscape(4));
+                        case '{' -> {
+                            if (begin != '"') {
+                                diagnostics.addDiagnostic(error("String interpolation is only supported in double-quoted strings", 1, LexError.BAD_INTERPOLATION));
+                            }
+                            var token = new Token.StringInterpolationToken(string.toString(), interpolating ? Token.StringInterpolationToken.Kind.MIDDLE : Token.StringInterpolationToken.Kind.START);
+                            addParsedToken(token, currentColumn - beginPos);
+                            string.setLength(0);
+                            interpolating = true;
+
+                            stringInterpolationSkip();
+                            beginPos = currentColumn;
+                            // Consume ending curly
+                            next();
+                        }
                         default -> diagnostics.addDiagnostic(error("Unknown escape sequence: \\%c".formatted(escaped), 1, LexError.ILLEGAL_ESCAPE));
                     }
                 }
@@ -189,8 +219,32 @@ public class Lexer {
             }
         }
 
-        var token = begin == '"' ? new Token.StringToken(string.toString()) : new Token.WordToken(string.toString());
+        var token = interpolating
+                ? new Token.StringInterpolationToken(string.toString(), Token.StringInterpolationToken.Kind.END)
+                : begin == '"'
+                    ? new Token.StringToken(string.toString())
+                    : new Token.WordToken(string.toString());
         addParsedToken(token, currentColumn - beginPos);
+    }
+
+    private void stringInterpolationSkip() {
+        var braceCounter = 1;
+        while (true) {
+            skipWhitespace();
+            if (!hasNext()) {
+                diagnostics.addDiagnostic(error("Unexpected end of file in string interpolation", LexError.EOF));
+                return;
+            }
+            var c = peek();
+            if (braceCounter == 1 && c == '}') {
+                return;
+            }
+            switch (c) {
+                case '{' -> braceCounter++;
+                case '}' -> braceCounter--;
+            }
+            readToken();
+        }
     }
 
     private char readUnicodeEscape(int length) {
@@ -272,6 +326,7 @@ public class Lexer {
         private static final String ILLEGAL_ESCAPE = "LEX-2";
         private static final String BROKEN_SIMPLE_TOKEN = "LEX-3";
         private static final String UNEXPECTED_CHAR = "LEX-4";
+        private static final String BAD_INTERPOLATION = "LEX-5";
 
         private final SourcePos pos;
         private final String message;

@@ -12,12 +12,10 @@ import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.Types;
 import dev.mattidragon.jsonpatcher.lang.runtime.bytecode.util.VariableUtil;
 import org.objectweb.asm.*;
 
-import java.lang.invoke.CallSite;
-import java.lang.invoke.LambdaMetafactory;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.invoke.*;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ExpressionCompiler implements Opcodes {
     private final TreeMetadata metadata;
@@ -60,6 +58,7 @@ public class ExpressionCompiler implements Opcodes {
             case RootExpression e -> compileRoot(e);
             case FunctionExpression e -> compileFunction(e);
             case FunctionCallExpression e -> compileFunctionCall(e);
+            case StringInterpolationExpression e -> compileStringInterpolation(e);
             default -> throw new UnsupportedOperationException("Unsupported expression: %s".formatted(expression));
         }
     }
@@ -544,6 +543,43 @@ public class ExpressionCompiler implements Opcodes {
                         "callHook",
                         Type.getMethodDescriptor(Type.getType(CallSite.class), Type.getType(MethodHandles.Lookup.class), Type.getType(String.class), Type.getType(MethodType.class)),
                         false));
+    }
+
+    private void compileStringInterpolation(StringInterpolationExpression e) {
+        visitor.visitTypeInsn(NEW, Types.STRING_VALUE.getInternalName());
+        visitor.visitInsn(DUP);
+
+        for (var child : e.children()) {
+            compile(child);
+            visitor.visitMethodInsn(INVOKESTATIC,
+                    Types.STRING_HOOKS.getInternalName(),
+                    "asString",
+                    Type.getMethodDescriptor(Type.getType(String.class), Types.VALUE),
+                    false);
+        }
+
+        var invokerType = "(%s)%s".formatted(
+                Type.getType(String.class).getDescriptor().repeat(e.children().size()),
+                Type.getType(String.class).getDescriptor()
+        );
+
+        var bootstrapMethodArgs = new Object[e.parts().size() + 1];
+        bootstrapMethodArgs[0] = e.parts().stream().map(part -> "\2").collect(Collectors.joining("\1"));
+        for (var i = 0; i < e.parts().size(); i++) {
+            bootstrapMethodArgs[i + 1] = e.parts().get(i);
+        }
+
+        visitor.visitInvokeDynamicInsn(
+                "stringInterpolation",
+                invokerType,
+                new Handle(H_INVOKESTATIC,
+                        Type.getInternalName(StringConcatFactory.class),
+                        "makeConcatWithConstants",
+                        Type.getMethodDescriptor(Type.getType(CallSite.class), Type.getType(MethodHandles.Lookup.class), Type.getType(String.class), Type.getType(MethodType.class), Type.getType(String.class), Type.getType(Object[].class)),
+                        false),
+                bootstrapMethodArgs
+        );
+        visitor.visitMethodInsn(INVOKESPECIAL, Types.STRING_VALUE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class)), false);
     }
 
     private void compileBinaryOp(BinaryExpression.Operator op) {

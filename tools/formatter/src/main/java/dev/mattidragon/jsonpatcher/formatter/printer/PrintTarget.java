@@ -78,6 +78,25 @@ public abstract class PrintTarget {
                 writeText("\\");
             }
             case Token.EofToken.EOF -> {}
+            case Token.StringInterpolationToken(var content, var kind) -> {
+                switch (kind) {
+                    case START -> {
+                        writeText("\"");
+                        printStringContent(content, '"');
+                        writeText("\\{");
+                    }
+                    case MIDDLE -> {
+                        writeText("}");
+                        printStringContent(content, '"');
+                        writeText("\\{");
+                    }
+                    case END -> {
+                        writeText("}");
+                        printStringContent(content, '"');
+                        writeText("\"");
+                    }
+                }
+            }
         }
         return this;
     }
@@ -90,6 +109,11 @@ public abstract class PrintTarget {
 
     private void printString(String contents, char quote) {
         writeText(String.valueOf(quote));
+        printStringContent(contents, quote);
+        writeText(String.valueOf(quote));
+    }
+
+    private void printStringContent(String contents, char quote) {
         contents.codePoints().forEach(codePoint -> {
             switch (codePoint) {
                 case '\n' -> writeText("\\n");
@@ -111,7 +135,6 @@ public abstract class PrintTarget {
                 }
             }
         });
-        writeText(String.valueOf(quote));
     }
 
     private void printUnicodeEscape(int codePoint) {

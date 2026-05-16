@@ -148,6 +148,10 @@ public class TypeChecker {
             case StringExpression stringExpression -> PrimitiveType.STRING;
             case BooleanExpression booleanExpression -> PrimitiveType.BOOLEAN;
             case RootExpression rootExpression -> PrimitiveType.OBJECT; // TODO: Some special casing needed here
+            case StringInterpolationExpression interpolationExpression -> {
+                interpolationExpression.children().forEach(this::checkExpression);
+                yield PrimitiveType.STRING;
+            }
 
             case VariableAccessExpression variableAccessExpression ->
                     metadata.get(variableAccessExpression, VariableAnalyser.VARIABLE_REFERENCE)

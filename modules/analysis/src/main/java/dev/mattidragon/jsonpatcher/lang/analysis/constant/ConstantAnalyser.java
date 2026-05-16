@@ -7,11 +7,13 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * A simple analyser that finds and marks constant expressions in the AST.
  */
 public class ConstantAnalyser {
-    public static final MetadataKey<ConstantValue> CONSTANT_VALUE = new MetadataKey<>("ConstantAnalyser/CONSTANT_ConstantValue");
+    public static final MetadataKey<ConstantValue> CONSTANT_VALUE = new MetadataKey<>("ConstantAnalyser/CONSTANT_VALUE");
 
     private final TreeMetadata metadata;
 
@@ -66,6 +68,17 @@ public class ConstantAnalyser {
                 if (conditionConstantValue == null) yield null;
                 yield conditionConstantValue.asBoolean() ? trueConstantValue : falseConstantValue;
             }
+            case StringInterpolationExpression(var parts, var children) -> {
+                var interpolations = children.stream().map(this::analyseExpression).filter(Objects::nonNull).toList();
+                if (interpolations.size() != children.size()) yield null;
+
+                var result = new StringBuilder();
+                for (int i = 0; i < parts.size(); i++) {
+                    result.append(parts.get(i));
+                    if (i < interpolations.size()) result.append(asString(interpolations.get(i)));
+                }
+                yield new ConstantValue.String(result.toString());
+            }
             default -> {
                 expr.getChildren().forEach(this::analyse);
                 yield null;
@@ -73,6 +86,16 @@ public class ConstantAnalyser {
         };
         if (value != null) metadata.put(expr, CONSTANT_VALUE, value);
         return value;
+    }
+
+    private String asString(ConstantValue constantValue) {
+        return switch (constantValue) {
+            case ConstantValue.Boolean.TRUE -> "true";
+            case ConstantValue.Boolean.FALSE -> "false";
+            case ConstantValue.Null.NULL -> "null";
+            case ConstantValue.Number(var number) -> Double.toString(number);
+            case ConstantValue.String(var string) -> string;
+        };
     }
 
     private @Nullable ConstantValue computeBinary(BinaryExpression.Operator op, ConstantValue first, ConstantValue second) {

@@ -150,7 +150,7 @@ public class DocTypeConverter {
                 var requiredArgs = argTypes.stream()
                         .takeWhile(argument -> argument.kind() == FunctionDocType.Argument.Kind.REGULAR)
                         .count();
-                var varargs = !argTypes.isEmpty() && argTypes.getFirst().kind() == FunctionDocType.Argument.Kind.VARARGS;
+                var varargs = !argTypes.isEmpty() && argTypes.getLast().kind() == FunctionDocType.Argument.Kind.VARARGS;
 
                 var returnType = convert(functionDocType.returnType(), typeArgMapping);
 

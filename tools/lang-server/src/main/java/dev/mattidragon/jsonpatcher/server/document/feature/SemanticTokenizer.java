@@ -173,7 +173,7 @@ public class SemanticTokenizer {
     private void tokenize(ProgramNode node) {
         switch (node) {
             case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
-            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
+//            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
             case NumberExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Number);
             case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());

@@ -13,10 +13,7 @@ import dev.mattidragon.jsonpatcher.lang.parse.Precedence;
 import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class PrefixParser {
     private PrefixParser() {
@@ -32,6 +29,37 @@ public class PrefixParser {
         var expression = new NumberExpression(token.value());
         parser.setMetadata(expression, MetadataKey.FULL_POS, pos);
         parser.setMetadata(expression, MetadataKey.NUMBER_STYLE, token.style());
+        return expression;
+    }
+
+    private static Expression stringInterpolation(Parser parser, SourceSpan pos, String firstValue) {
+        var positions = new ArrayList<SourceSpan>();
+        positions.add(pos);
+        var stringParts = new ArrayList<String>();
+        stringParts.add(firstValue);
+        var interpolations = new ArrayList<Expression>();
+
+        Token.StringInterpolationToken.Kind kind;
+        do {
+            interpolations.add(parser.expression());
+            var positionedToken = parser.next();
+            if (!(positionedToken.token() instanceof Token.StringInterpolationToken(var value, var currentKind))
+                || currentKind == Token.StringInterpolationToken.Kind.START) {
+                throw new Parser.ParseException(new Parser.ParseDiagnostic(positionedToken.pos(),
+                        null,
+                        "Expected string interpolation part, got %s".formatted(positionedToken.token().explain()),
+                        Parser.ParseDiagnostic.Code.UNEXPECTED_TOKEN));
+            }
+
+            stringParts.add(value);
+            positions.add(positionedToken.pos());
+
+            kind = currentKind;
+        } while (kind != Token.StringInterpolationToken.Kind.END);
+
+        var expression = new StringInterpolationExpression(stringParts, interpolations);
+        parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(positions.getFirst().from(), positions.getLast().to()));
+        parser.setMetadata(expression, MetadataKey.MULTI_POS, Collections.unmodifiableList(positions));
         return expression;
     }
 
@@ -255,6 +283,10 @@ public class PrefixParser {
             case Token.StringToken stringToken -> string(parser, pos, stringToken);
             case Token.NumberToken numberToken -> number(parser, pos, numberToken);
             case Token.WordToken wordToken -> variable(parser, pos, wordToken);
+
+            case Token.StringInterpolationToken(var value, var kind)
+                when kind == Token.StringInterpolationToken.Kind.START
+                    -> stringInterpolation(parser, pos, value);
 
             case Token.KeywordToken.TRUE,
                  Token.KeywordToken.FALSE -> bool(parser, token);

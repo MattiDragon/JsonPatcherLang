@@ -3,6 +3,7 @@ package dev.mattidragon.jsonpatcher.lang.parse;
 import dev.mattidragon.jsonpatcher.lang.ast.NumberStyle;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -35,6 +36,17 @@ public sealed interface Token {
         @Override
         public String explain() {
             return "lexing error";
+        }
+    }
+
+    record StringInterpolationToken(String value, Kind kind) implements Token {
+        @Override
+        public String explain() {
+            return "string interpolation " + kind.name().toLowerCase(Locale.ROOT);
+        }
+
+        public enum Kind {
+            START, MIDDLE, END
         }
     }
 

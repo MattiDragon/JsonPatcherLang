@@ -18,6 +18,7 @@ public class Types {
     public static final Type GENERATED_PROGRAM = Type.getType("Ldev/mattidragon/jsonpatcher/lang/runtime/generated/GeneratedProgram;");
     public static final Type FUNCTION_BODY = Type.getType("Ldev/mattidragon/jsonpatcher/lang/runtime/hooks/FunctionBody;");
     public static final Type FUNCTION_HOOKS = Type.getType("Ldev/mattidragon/jsonpatcher/lang/runtime/hooks/FunctionHooks;");
+    public static final Type STRING_HOOKS = Type.getType("Ldev/mattidragon/jsonpatcher/lang/runtime/hooks/StringHooks;");
     public static final Type EVALUATION_CONTEXT = Type.getType("Ldev/mattidragon/jsonpatcher/lang/runtime/EvaluationContext;");
     public static final Type PLATFORM_CONTEXT = EVALUATION_CONTEXT;
 
