@@ -12,4 +12,5 @@ module jsonpatcher.lang.analysis {
     exports dev.mattidragon.jsonpatcher.lang.analysis.typecheck;
     exports dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type;
     exports dev.mattidragon.jsonpatcher.lang.analysis.comment;
+    exports dev.mattidragon.jsonpatcher.lang.analysis.typecheck.v2;
 }

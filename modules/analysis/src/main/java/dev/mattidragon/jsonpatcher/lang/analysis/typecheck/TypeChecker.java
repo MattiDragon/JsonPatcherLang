@@ -243,7 +243,7 @@ public class TypeChecker {
 
     private Type checkPropertyAccess(Expression parent, Expression expression, String name) {
         var parentType = checkExpression(parent);
-        var type = getPropertyType(name, parentType);
+        var type = getPropertyType(name, parentType, primitiveProperties);
         if (type == null) {
             addError(expression, "Property '" + name + "' not found on type " + format(parentType));
             return SpecialType.UNKNOWN;
@@ -252,7 +252,7 @@ public class TypeChecker {
         return type;
     }
 
-    private @Nullable Type getPropertyType(String name, Type parentType) {
+    public static @Nullable Type getPropertyType(String name, Type parentType, PrimitiveProperties primitiveProperties) {
         return switch (parentType) {
             case ObjectType(var component) -> component;
 
@@ -281,17 +281,17 @@ public class TypeChecker {
             case PrimitiveType.OBJECT, PrimitiveType.SPECIAL, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
             case SpecialType.NEVER -> SpecialType.NEVER;
 
-            case TypeArgument typeArgument -> getPropertyType(name, typeArgument.bound());
+            case TypeArgument typeArgument -> getPropertyType(name, typeArgument.bound(), primitiveProperties);
             case UnionType unionType ->
                     UnionType.union(unionType.children()
                             .stream()
-                            .map(type -> getPropertyType(name, type))
+                            .map(type -> getPropertyType(name, type, primitiveProperties))
                             .filter(Objects::nonNull)
                             .toList());
-            case HardcodedType hardcodedType -> getPropertyType(name, hardcodedType.base());
+            case HardcodedType hardcodedType -> getPropertyType(name, hardcodedType.base(), primitiveProperties);
 
             // Don't think this will actually ever happen, but it's easy to do
-            case LazyType lazyType -> getPropertyType(name, lazyType.get());
+            case LazyType lazyType -> getPropertyType(name, lazyType.get(), primitiveProperties);
         };
     }
 

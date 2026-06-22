@@ -4,10 +4,10 @@ import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.type.*;
 
 import java.util.*;
 
-class GenericTypeMatcher {
+public class GenericTypeMatcher {
     private final Map<TypeArgument, List<Type>> typeArguments;
 
-    GenericTypeMatcher(Collection<TypeArgument> activeArguments) {
+    public GenericTypeMatcher(Collection<TypeArgument> activeArguments) {
         this.typeArguments = new HashMap<>();
         for (var activeArgument : activeArguments) {
             typeArguments.put(activeArgument, new ArrayList<>());
@@ -22,11 +22,15 @@ class GenericTypeMatcher {
      * @param actual The actual type passed into the parameter
      * @return {@code true} if the actual type matches the expected type, {@code false} otherwise.
      */
-    boolean match(Type expected, Type actual) {
+    public boolean match(Type expected, Type actual) {
         return switch (expected) {
             case TypeArgument typeArgument when typeArguments.containsKey(typeArgument) -> {
                 if (TypeComparison.isSubtype(actual, typeArgument.bound())) {
-                    typeArguments.get(typeArgument).add(actual);
+                    // We don't want unknown in the union. In cases where an argument is unknown,
+                    // we skip it and just rely on unknown always being a subtype of the union anyway.
+                    if (actual != SpecialType.UNKNOWN) {
+                        typeArguments.get(typeArgument).add(actual);
+                    }
                     yield true;
                 } else {
                     yield false;
@@ -80,7 +84,7 @@ class GenericTypeMatcher {
         };
     }
 
-    Type getType(TypeArgument argument) {
+    public Type getType(TypeArgument argument) {
         if (!typeArguments.containsKey(argument)) {
             throw new NoSuchElementException(argument + " is not active in this matcher");
         }
@@ -91,7 +95,7 @@ class GenericTypeMatcher {
         return UnionType.union(types);
     }
 
-    Type fillTemplate(Type type) {
+    public Type fillTemplate(Type type) {
         return switch (type) {
             case TypeArgument typeArgument -> {
                 if (typeArguments.containsKey(typeArgument)) {

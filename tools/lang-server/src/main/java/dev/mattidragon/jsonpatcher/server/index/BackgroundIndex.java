@@ -1,7 +1,7 @@
 package dev.mattidragon.jsonpatcher.server.index;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
-import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.v2.TypeChecker2;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
@@ -28,7 +28,7 @@ public class BackgroundIndex extends AstIndex {
 
         VariableAnalyser.analyse(program, metadata, diagnostics, types.getGlobalNames());
         PreTypingPass.apply(program, metadata, types, diagnostics);
-        TypeChecker.typeCheck(program, metadata, primitiveProperties, diagnostics);
+        TypeChecker2.typeCheck(program, metadata, primitiveProperties, diagnostics);
 
         indexTree(program, metadata, primitiveProperties);
         indexMetadata(parse.metadata(), metadata);

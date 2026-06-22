@@ -13,4 +13,5 @@ dependencies {
     testFixturesImplementation(libs.jspecify)
     testFixturesApi(project(":parser"))
     testFixturesApi(project(":analysis"))
+    testFixturesApi(project(":tool-common"))
 }

@@ -5,4 +5,5 @@ plugins {
 dependencies {
     api(project(":doctool"))
     api(project(":analysis"))
+    api(project(":stdlib"))
 }

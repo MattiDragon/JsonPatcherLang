@@ -1,4 +1,4 @@
-package dev.mattidragon.jsonpatcher.cli.impl;
+package dev.mattidragon.jsonpatcher.toolcommon.typing;
 
 import dev.mattidragon.jsonpatcher.docs.DocCommentHandler;
 import dev.mattidragon.jsonpatcher.docs.data.DocEntry;
@@ -11,7 +11,6 @@ import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
 import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
-import dev.mattidragon.jsonpatcher.toolcommon.typing.DocTypeConverter;
 
 import java.util.EnumMap;
 import java.util.HashMap;

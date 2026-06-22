@@ -18,7 +18,10 @@ public record TypeCheckError(ProgramNode node, @Nullable SourceSpan pos, String 
 
     public enum Code {
         UNEXPECTED_TYPE(Kind.ERROR),
-        TYPE_WARNING(Kind.WARNING);
+        TYPE_WARNING(Kind.WARNING),
+        UNEXPECTED_PROPERTY(Kind.ERROR),
+        MISSING_PROPERTY(Kind.ERROR),
+        ARGUMENT_COUNT_MISMATCH(Kind.ERROR);
 
         private final Kind kind;
 

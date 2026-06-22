@@ -5,7 +5,7 @@ import dev.mattidragon.jsonpatcher.docs.tag.builtin.ConditionTagProcessor;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.SuppressingCommentDiagnosticFilter;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
-import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.v2.TypeChecker2;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.ast.SourceFile;
 import dev.mattidragon.jsonpatcher.lang.ast.SourcePos;
@@ -150,7 +150,7 @@ public class DocumentState {
 
             ConstantAnalyser.analyse(program, treeMetadata); // parts of type checking relies on this
             PreTypingPass.apply(program, treeMetadata, docHolder.getTypeConverter(), diagnostics);
-            TypeChecker.typeCheck(program, treeMetadata, docHolder, diagnostics);
+            TypeChecker2.typeCheck(program, treeMetadata, docHolder, diagnostics);
 
             Util.EXECUTOR.submit(() -> sendDiagnostics(diagnostics.build(diagnosticFilter)));
 

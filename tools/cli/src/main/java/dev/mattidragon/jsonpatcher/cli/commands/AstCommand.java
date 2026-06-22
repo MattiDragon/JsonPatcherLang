@@ -1,12 +1,12 @@
 package dev.mattidragon.jsonpatcher.cli.commands;
 
-import dev.mattidragon.jsonpatcher.cli.impl.PrimitivePropertiesLoader;
 import dev.mattidragon.jsonpatcher.cli.impl.VersionProvider;
 import dev.mattidragon.jsonpatcher.lang.analysis.comment.CommentAttacher;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.constant.ConstantValue;
 import dev.mattidragon.jsonpatcher.lang.analysis.poscheck.PosChecker;
 import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.TypeChecker;
+import dev.mattidragon.jsonpatcher.lang.analysis.typecheck.v2.TypeChecker2;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalyser;
 import dev.mattidragon.jsonpatcher.lang.analysis.variable.VariableAnalysisDiagnostics;
 import dev.mattidragon.jsonpatcher.lang.ast.Program;
@@ -23,6 +23,7 @@ import dev.mattidragon.jsonpatcher.lang.error.DiagnosticsBuilder;
 import dev.mattidragon.jsonpatcher.lang.parse.Lexer;
 import dev.mattidragon.jsonpatcher.lang.parse.Parser;
 import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
+import dev.mattidragon.jsonpatcher.toolcommon.typing.PrimitivePropertiesLoader;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -30,7 +31,10 @@ import picocli.CommandLine.Parameters;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 @Command(name = "ast",
@@ -415,6 +419,12 @@ public class AstCommand implements Callable<Integer> {
             @Override
             void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
                 TypeChecker.typeCheck(ast, metadata, PrimitivePropertiesLoader.PROPERTIES, diagnostics);
+            }
+        },
+        TYPE_CHECK_V2 {
+            @Override
+            void run(Program ast, TreeMetadata metadata, DiagnosticsBuilder diagnostics, CommentAttacher commentAttacher) {
+                TypeChecker2.typeCheck(ast, metadata, PrimitivePropertiesLoader.PROPERTIES, diagnostics);
             }
         },
         COMMENT_ATTACHER {

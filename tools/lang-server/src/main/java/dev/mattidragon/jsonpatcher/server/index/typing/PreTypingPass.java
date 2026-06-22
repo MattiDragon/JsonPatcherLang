@@ -88,6 +88,7 @@ public class PreTypingPass {
                 node.getChildren().forEach(this::type);
             }
             case FunctionDeclarationStatement statement -> {
+                // TODO: consider supporting type comments as well
                 metadata.get(statement, CommentAttacher.ATTACHED_COMMENT)
                         .map(this::parseFunctionArgsFromComment)
                         .ifPresent(args -> {
