@@ -15,7 +15,7 @@ dependencies {
     annotationProcessor(libs.picocli.codegen)
 }
 
-val genVersionFile: Task by tasks.creating {
+val genVersionFile by tasks.registering {
     val outputFile = project.layout.buildDirectory.file("generated-files/version")
     outputs.file(outputFile)
     doLast {
@@ -29,7 +29,7 @@ tasks.compileJava {
 
 tasks.processResources {
     dependsOn(genVersionFile)
-    from(genVersionFile.outputs)
+    from(genVersionFile.get().outputs)
 }
 
 application {

@@ -6,7 +6,7 @@ lsp4j = "0.23.1"
 asm = "9.7.1" # Fabric mixin uses this version, meaning that it will be available in minecraft without us having to bundle it
 jspecify = "1.0.0"
 picocli = "4.7.7"
-shadow = "8.3.6"
+shadow = "9.4.2"
 gson = "2.13.2"
 
 [libraries]
