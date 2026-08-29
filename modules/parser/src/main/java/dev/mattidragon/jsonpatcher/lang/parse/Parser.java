@@ -68,9 +68,9 @@ public class Parser {
         var start = hasNext() ? peek().from() : null;
         while (hasNext(Token.SimpleToken.AT_SIGN)) {
             try {
-                next();
+                var atPos = next().pos();
                 var id = expectWord().value();
-                metadata.add(id, this);
+                metadata.add(id, atPos, this);
                 expect(Token.SimpleToken.SEMICOLON);
             } catch (ParseException e) {
                 addError(e.diagnostic());

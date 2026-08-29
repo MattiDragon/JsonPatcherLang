@@ -49,9 +49,12 @@ class JsonParser {
         var map = new HashMap<String, MetadataElement>();
         while (parser.hasNext() && parser.peek().token() != Token.SimpleToken.END_CURLY) {
             var key = parser.expectString().value();
+            var namePos = parser.previous().pos();
+
             parser.expect(Token.SimpleToken.COLON);
             var value = parse();
-
+            parser.setMetadata(value, MetadataKey.MAIN_POS, parser.getMetadata(value, MetadataKey.FULL_POS).orElseThrow());
+            parser.setMetadata(value, MetadataKey.NAME_POS, namePos);
             map.put(key, value);
 
             PositionedToken positionedToken = parser.peek();

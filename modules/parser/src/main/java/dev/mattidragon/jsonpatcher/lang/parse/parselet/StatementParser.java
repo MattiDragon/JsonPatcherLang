@@ -65,8 +65,10 @@ public class StatementParser {
         parser.expect(SimpleToken.END_PAREN);
         var action = parse(parser);
         Statement elseAction = null;
+        SourceSpan elsePos = null;
         if (parser.hasNext(KeywordToken.ELSE)) {
             parser.next();
+            elsePos = parser.previous().pos();
             elseAction = parse(parser);
         }
         var endPos = parser.previous().to();
@@ -74,6 +76,9 @@ public class StatementParser {
         var statement = new IfStatement(condition, action, elseAction);
         parser.setMetadata(statement, MetadataKey.KEYWORD_POS, keywordPos);
         parser.setMetadata(statement, MetadataKey.FULL_POS, new SourceSpan(keywordPos.from(), endPos));
+        if (elseAction != null) {
+            parser.setMetadata(statement, MetadataKey.SECONDARY_KEYWORD_POS, elsePos);
+        }
         return statement;
     }
 

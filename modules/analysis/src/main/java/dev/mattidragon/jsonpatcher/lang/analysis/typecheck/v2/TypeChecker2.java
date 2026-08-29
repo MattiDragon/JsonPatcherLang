@@ -371,6 +371,13 @@ public class TypeChecker2 {
                 yield genericMatcher.fillTemplate(functionType.returnType());
             }
 
+            case ErrorExpression expression -> {
+                if (expression.child() != null) {
+                    checkExpressionIfApply(expression.child(), expected, apply);
+                }
+                yield SpecialType.UNKNOWN;
+            }
+
             default -> throw new IllegalStateException("Unexpected value: " + e);
         };
 

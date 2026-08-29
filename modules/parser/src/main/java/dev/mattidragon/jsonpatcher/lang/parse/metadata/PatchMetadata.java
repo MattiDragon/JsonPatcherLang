@@ -12,7 +12,7 @@ import java.util.Map;
 public class PatchMetadata {
     private final Map<String, MetadataElement> values = new LinkedHashMap<>();
 
-    public void add(String key, Parser parser) {
+    public void add(String key, SourceSpan atPos, Parser parser) {
         var namePos = parser.previous().pos();
 
         MetadataElement element;
@@ -22,8 +22,10 @@ public class PatchMetadata {
             element = new JsonParser(parser).parse();
         }
 
+        parser.setMetadata(element, MetadataKey.MAIN_POS, parser.getMetadata(element, MetadataKey.FULL_POS).orElseThrow());
+        parser.setMetadata(element, MetadataKey.KEYWORD_POS, atPos);
         parser.setMetadata(element, MetadataKey.NAME_POS, namePos);
-        parser.setMetadata(element, MetadataKey.FULL_POS, SourceSpan.between(namePos, parser.previous().pos()));
+        parser.setMetadata(element, MetadataKey.FULL_POS, SourceSpan.between(atPos, parser.previous().pos()));
         values.put(key, element);
     }
 

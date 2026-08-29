@@ -12,16 +12,11 @@ import dev.mattidragon.jsonpatcher.lang.ast.expression.*;
 import dev.mattidragon.jsonpatcher.lang.ast.function.FunctionArgument;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.MetadataKey;
 import dev.mattidragon.jsonpatcher.lang.ast.meta.TreeMetadata;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.ForEachLoopStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.FunctionDeclarationStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.ImportStatement;
-import dev.mattidragon.jsonpatcher.lang.ast.statement.VariableCreationStatement;
+import dev.mattidragon.jsonpatcher.lang.ast.statement.*;
+import dev.mattidragon.jsonpatcher.lang.parse.metadata.*;
 import dev.mattidragon.jsonpatcher.server.document.DocumentData;
 import dev.mattidragon.jsonpatcher.server.workspace.DocHolder;
-import org.eclipse.lsp4j.SemanticTokenModifiers;
-import org.eclipse.lsp4j.SemanticTokenTypes;
-import org.eclipse.lsp4j.SemanticTokens;
-import org.eclipse.lsp4j.SemanticTokensLegend;
+import org.eclipse.lsp4j.*;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -73,17 +68,55 @@ public class SemanticTokenizer {
     private final DataBuilder builder = new DataBuilder();
     private final TreeMetadata metadata;
     private final DocHolder docHolder;
+    private final SemanticTokensCapabilities clientCapabilities;
 
-    private SemanticTokenizer(DocumentData documentData, DocHolder docHolder) {
+    private SemanticTokenizer(DocumentData documentData, DocHolder docHolder, SemanticTokensCapabilities clientCapabilities) {
         metadata = documentData.treeMetadata();
         this.docHolder = docHolder;
+        this.clientCapabilities = clientCapabilities;
     }
 
-    public static SemanticTokens getTokens(DocumentData documentData, DocHolder docHolder) {
-        var tokenizer = new SemanticTokenizer(documentData, docHolder);
+    public static SemanticTokens getTokens(DocumentData documentData, DocHolder docHolder, SemanticTokensCapabilities clientCapabilities) {
+        var tokenizer = new SemanticTokenizer(documentData, docHolder, clientCapabilities);
+        tokenizer.tokenizeMetadata(documentData.patchMetadata());
         tokenizer.tokenizeDocs(documentData.docs());
         tokenizer.tokenize(documentData.program());
         return new SemanticTokens(tokenizer.builder.build());
+    }
+
+    private void tokenizeMetadata(PatchMetadata patchMetadata) {
+        for (var element : patchMetadata.getAll().values()) {
+            var atPos = metadata.get(element, MetadataKey.KEYWORD_POS);
+            var namePos = metadata.get(element, MetadataKey.NAME_POS);
+            var pos = atPos.flatMap(a -> namePos.map(b -> SourceSpan.between(a, b)));
+            if (pos.isPresent() && pos.get().from().row() != pos.get().to().row()) {
+                // If the decorator is multiline, just use the name position instead
+                pos = namePos;
+            }
+            builder.addToken(pos, SemanticTokenTypes.Decorator);
+
+            tokenizeMetadataElement(element);
+        }
+    }
+
+    private void tokenizeMetadataElement(MetadataElement element) {
+        switch (element) {
+            case MetadataObject metadataObject -> {
+                for (var child : metadataObject.values().values()) {
+                    builder.addToken(metadata.get(child, MetadataKey.NAME_POS), SemanticTokenTypes.Property, SemanticTokenModifiers.Declaration);
+                    tokenizeMetadataElement(child);
+                }
+            }
+            case MetadataArray metadataArray -> metadataArray.values().forEach(this::tokenizeMetadataElement);
+            case MetadataBoolean metadataBoolean -> builder.addToken(metadata.get(metadataBoolean, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
+            case MetadataNull metadataNull -> builder.addToken(metadata.get(metadataNull, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
+            case MetadataNumber metadataNumber -> builder.addToken(metadata.get(metadataNumber, MetadataKey.MAIN_POS), SemanticTokenTypes.Number);
+            case MetadataString metadataString -> {
+                if (clientCapabilities.getAugmentsSyntaxTokens() == Boolean.FALSE) {
+                    builder.addToken(metadata.get(metadataString, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
+                }
+            }
+        }
     }
 
     private void tokenizeDocs(List<DocEntry> entries) {
@@ -173,8 +206,57 @@ public class SemanticTokenizer {
     private void tokenize(ProgramNode node) {
         switch (node) {
             case RootExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
-//            case StringExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
+            case StringExpression expression -> {
+                if (clientCapabilities.getAugmentsSyntaxTokens() == Boolean.FALSE) {
+                    builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.String);
+                }
+            }
             case NumberExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Number);
+            case BooleanExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
+            case NullExpression expression -> builder.addToken(metadata.get(expression, MetadataKey.MAIN_POS), SemanticTokenTypes.Keyword);
+
+            case StringInterpolationExpression expression -> {
+                if (clientCapabilities.getAugmentsSyntaxTokens() == Boolean.FALSE) {
+                    metadata.get(expression, MetadataKey.MULTI_POS).ifPresent(positions -> {
+                        for (var pos : positions) {
+                            builder.addToken(pos, SemanticTokenTypes.String);
+                        }
+                    });
+                }
+                tokenize(expression.getChildren());
+            }
+
+            case UnaryModificationExpression expression -> {
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.target());
+            }
+            case UnaryExpression expression -> {
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.input());
+            }
+            case BinaryExpression expression -> {
+                tokenize(expression.first());
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.second());
+            }
+            case ShortedBinaryExpression expression -> {
+                tokenize(expression.first());
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.second());
+            }
+            case AssignmentExpression expression -> {
+                tokenize(expression.target());
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.value());
+            }
+            case TernaryExpression expression -> {
+                tokenize(expression.condition());
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.ifTrue());
+                builder.addToken(metadata.get(expression, MetadataKey.SECONDARY_KEYWORD_POS), SemanticTokenTypes.Operator);
+                tokenize(expression.ifFalse());
+            }
+
             case FunctionCallExpression(PropertyAccessExpression function, var args) -> {
                 tokenize(function.parent());
                 builder.addToken(metadata.get(function, MetadataKey.NAME_POS), SemanticTokenTypes.Function);
@@ -228,6 +310,7 @@ public class SemanticTokenizer {
             }
             case IsInstanceExpression expression -> {
                 tokenize(expression.input());
+                builder.addToken(metadata.get(expression, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
                 builder.addToken(metadata.get(expression, MetadataKey.IS_TYPE_POS), SemanticTokenTypes.Type);
             }
             
@@ -235,6 +318,7 @@ public class SemanticTokenizer {
                 var modifiers = statement.mutable() 
                         ? new String[] { SemanticTokenModifiers.Declaration } 
                         : new String[] { SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration };
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
                 builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, modifiers);
                 tokenize(statement.initializer());
             }
@@ -243,14 +327,48 @@ public class SemanticTokenizer {
                 argument.defaultValue().ifPresent(this::tokenize);
             }
             case FunctionDeclarationStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
                 builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Function, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 tokenize(statement.getChildren());
             }
-            case ImportStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+            case ImportStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                builder.addToken(metadata.get(statement, MetadataKey.SECONDARY_KEYWORD_POS), SemanticTokenTypes.Keyword);
+                builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Namespace, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
+            }
             case ForEachLoopStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
                 builder.addToken(metadata.get(statement, MetadataKey.NAME_POS), SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly, SemanticTokenModifiers.Declaration);
                 tokenize(statement.getChildren());
             }
+
+            case ForLoopStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case WhileLoopStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case IfStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                builder.addToken(metadata.get(statement, MetadataKey.SECONDARY_KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case ApplyStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case ReturnStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case DeleteStatement statement -> {
+                builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+                tokenize(statement.getChildren());
+            }
+            case ContinueStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
+            case BreakStatement statement -> builder.addToken(metadata.get(statement, MetadataKey.KEYWORD_POS), SemanticTokenTypes.Keyword);
 
             case ProgramNode other -> tokenize(other.getChildren());
         }

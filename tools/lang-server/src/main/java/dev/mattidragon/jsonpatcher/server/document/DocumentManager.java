@@ -19,6 +19,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
     private final WorkspaceManager workspace;
     private final GlobalEventBus eventBus;
     private @Nullable LanguageClient client;
+    private TextDocumentClientCapabilities clientCapabilities = new TextDocumentClientCapabilities();
 
     public DocumentManager(WorkspaceManager workspace, GlobalEventBus eventBus) {
         this.workspace = workspace;
@@ -30,6 +31,10 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         this.client = client;
     }
 
+    public void setClientCapabilities(TextDocumentClientCapabilities clientCapabilities) {
+        this.clientCapabilities = clientCapabilities;
+    }
+
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
         if (client == null) {
@@ -38,7 +43,7 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         var document = params.getTextDocument();
         var name = document.getUri();
 
-        var state = new DocumentState(name, client, workspace, eventBus);
+        var state = new DocumentState(name, client, clientCapabilities, workspace, eventBus);
         state.updateContent(document.getText());
         documents.put(name, state);
     }

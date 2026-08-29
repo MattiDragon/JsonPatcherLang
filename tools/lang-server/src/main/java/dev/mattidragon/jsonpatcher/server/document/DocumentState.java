@@ -53,6 +53,7 @@ public class DocumentState {
     // A URI that has passed through java.net.URI#toASCIIString for compatibility with workspace
     private final String internalName;
     private final LanguageClient client;
+    private final TextDocumentClientCapabilities clientCapabilities;
     private final DocumentEventBus eventBus;
     private final List<EventHandlerKey> eventHandlerKeys = new ArrayList<>();
 
@@ -69,10 +70,11 @@ public class DocumentState {
 
     private CompletableFuture<DocumentData> data = CompletableFuture.failedFuture(new IllegalStateException("Not ready yet"));
 
-    public DocumentState(String name, LanguageClient client, WorkspaceManager workspace, GlobalEventBus globalEventBus) {
+    public DocumentState(String name, LanguageClient client, TextDocumentClientCapabilities clientCapabilities, WorkspaceManager workspace, GlobalEventBus globalEventBus) {
         this.externalName = name;
         this.internalName = getInternalName(name);
         this.client = client;
+        this.clientCapabilities = clientCapabilities;
         this.eventBus = new DocumentEventBus(globalEventBus, new DocumentEventContext(this));
 
         this.docHolder = workspace.getDocFileManager().getHolder();
@@ -193,7 +195,7 @@ public class DocumentState {
     }
 
     public CompletableFuture<SemanticTokens> getSemanticTokens() {
-        return data.thenApplyAsync(documentData -> SemanticTokenizer.getTokens(documentData, docHolder), Util.EXECUTOR);
+        return data.thenApplyAsync(documentData -> SemanticTokenizer.getTokens(documentData, docHolder, clientCapabilities.getSemanticTokens()), Util.EXECUTOR);
     }
 
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> getDefinitions(Position position) {

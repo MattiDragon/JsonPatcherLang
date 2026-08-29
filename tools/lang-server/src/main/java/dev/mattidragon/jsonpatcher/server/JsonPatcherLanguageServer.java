@@ -33,6 +33,7 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
                         .getDidChangeWatchedFiles()
                         .getDynamicRegistration())
                 .orElse(false);
+        documentService.setClientCapabilities(initializeParams.getCapabilities().getTextDocument());
         
         var workspaceFolders = initializeParams.getWorkspaceFolders();
         if (workspaceFolders != null) {

@@ -161,10 +161,12 @@ public class PostfixParser {
         var leftPos = getLeftStartPos(parser, left);
         var middle = parser.expression();
         parser.expect(Token.SimpleToken.COLON);
+        var colonPos = parser.previous().pos();
         var right = parser.expression();
         var expression = new TernaryExpression(left, middle, right);
         parser.setMetadata(expression, MetadataKey.FULL_POS, new SourceSpan(leftPos, parser.previous().to()));
         parser.setMetadata(expression, MetadataKey.KEYWORD_POS, token.pos());
+        parser.setMetadata(expression, MetadataKey.SECONDARY_KEYWORD_POS, colonPos);
         return expression;
     }
     
