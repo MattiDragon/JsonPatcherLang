@@ -16,6 +16,33 @@ function freeze(value) {
 }
 $freeze = freeze;
 
+#| property values.shallowClone: <$T>(value: $T) -> $T
+#| Creates a shallow clone of a value. For objects and arrays this function returns a new object or array respectively with the same properties or elements.
+#| Numbers, strings, booleans, functions and null are passed through as is.
+#| Special values will throw an error.
+function shallowClone(value) {
+    if (value is object) {
+        # @@type object
+        val new = {};
+        foreach (key in objects.keys(values)) {
+            new[key] = value[key];
+        }
+        return new;
+    } else if (value is array) {
+        # @@type array
+        val new = [null] * value.length;
+        for (var i = 0; i < value.length; i++) {
+            new[i] = value[i];
+        }
+        return new;
+    } else if (value is special) {
+        debug.throw("Cannot shallow clone special value");
+    } else {
+        return value;
+    }
+}
+$shallowClone = shallowClone;
+
 #| property values.getProperty: (value: any, property: string) -> unknown
 #| Gets a property from a value by name, even if it isn't an object.
 #| This function is fairly slow, and should only be used as a last resort.
