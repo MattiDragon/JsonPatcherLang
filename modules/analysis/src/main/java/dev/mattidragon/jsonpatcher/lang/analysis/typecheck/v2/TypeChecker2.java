@@ -78,6 +78,8 @@ public class TypeChecker2 {
                 metadata.put(statement, TypeChecker.TYPE, finalVariableType);
                 metadata.get(statement, VariableAnalyser.VARIABLE_REFERENCE)
                         .ifPresent(variable -> metadata.put(variable, TypeChecker.TYPE, finalVariableType));
+
+                typeCheck(statement.body(), apply);
             }
             case FunctionDeclarationStatement statement -> {
                 var type = checkExpression(statement.value(), SpecialType.ANY, apply);
@@ -149,7 +151,7 @@ public class TypeChecker2 {
                 var expectedComponent = getArrayComponentTypeOrUnknown(expected);
                 var types = contents.stream().map(child -> checkExpression(child, expectedComponent, apply)).toList();
                 if (types.isEmpty()) {
-                    yield expected;
+                    yield new ArrayType(expectedComponent);
                 } else {
                     yield new ArrayType(UnionType.union(types));
                 }
@@ -299,6 +301,9 @@ public class TypeChecker2 {
                 returnTypeConsumers.push(new ReturnTypeConsumer(returnTypes::add, inferredType.map(FunctionType::returnType).orElse(SpecialType.UNKNOWN)));
                 typeCheck(body, apply);
                 returnTypeConsumers.pop();
+                if (body instanceof BlockStatement(List<Statement> statements) && (statements.isEmpty() || !(statements.getLast() instanceof ReturnStatement))) {
+                    returnTypes.add(PrimitiveType.NULL);
+                }
                 var returnType = UnionType.union(returnTypes);
 
                 // TODO: maybe also infer from variable comments on args
@@ -446,7 +451,7 @@ public class TypeChecker2 {
             }
 
             case PLUS -> {
-                var union = UnionType.union(PrimitiveType.NUMBER, PrimitiveType.STRING, SpecialType.ANY);
+                var union = UnionType.union(PrimitiveType.NUMBER, PrimitiveType.STRING, PrimitiveType.ARRAY, PrimitiveType.OBJECT, SpecialType.ANY);
                 var firstType = checkExpression(first, union, apply);
                 var secondType = checkExpression(second, union, apply);
 
@@ -455,11 +460,19 @@ public class TypeChecker2 {
                     // TODO: Allow concat for non-string once supported
                 } else if (isAssignable(PrimitiveType.STRING, firstType) && isAssignable(PrimitiveType.STRING, secondType)) {
                     yield PrimitiveType.STRING;
+                } else if (isAssignable(PrimitiveType.ARRAY, firstType) && isAssignable(PrimitiveType.ARRAY, secondType)) {
+                    var firstComponent = getArrayComponentTypeOrUnknown(firstType);
+                    var secondComponent = getArrayComponentTypeOrUnknown(secondType);
+                    yield new ArrayType(UnionType.union(firstComponent, secondComponent));
+                } else if (isAssignable(PrimitiveType.OBJECT, firstType) && isAssignable(PrimitiveType.OBJECT, secondType)) {
+                    var firstComponent = getObjectComponentTypeOrUnknown(firstType);
+                    var secondComponent = getObjectComponentTypeOrUnknown(secondType);
+                    yield new ObjectType(UnionType.union(firstComponent, secondComponent));
                 } else {
                     if (apply) {
                         diagnostics.addDiagnostic(new TypeCheckError(e,
                                 metadata.get(e, MetadataKey.FULL_POS).orElse(null),
-                                "Expected both sides of + to be either number or string",
+                                "Expected both sides of + to be valid and same, got " + TypeFormatter.format(firstType) + " and " + TypeFormatter.format(secondType),
                                 TypeCheckError.Code.UNEXPECTED_TYPE));
                     }
                     yield union;
@@ -502,7 +515,7 @@ public class TypeChecker2 {
                 if (!isAssignable(firstType, secondType) && !isAssignable(secondType, firstType) && apply) {
                     diagnostics.addDiagnostic(new TypeCheckError(e,
                             metadata.get(e, MetadataKey.FULL_POS).orElse(null),
-                            "Comparing values of type " + firstType + " and " + secondType + " will always be " + (op != BinaryExpression.Operator.EQUALS),
+                            "Comparing values of type " + TypeFormatter.format(firstType) + " and " + TypeFormatter.format(secondType) + " will always be " + (op != BinaryExpression.Operator.EQUALS),
                             TypeCheckError.Code.TYPE_WARNING));
                 }
                 yield PrimitiveType.BOOLEAN;

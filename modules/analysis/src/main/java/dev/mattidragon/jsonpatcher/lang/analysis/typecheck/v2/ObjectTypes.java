@@ -13,7 +13,7 @@ public class ObjectTypes {
             case LazyType lazyType -> resolveObjectTypes(lazyType.get());
             case NamedType namedType -> List.of(ofNamedType(namedType));
             case ObjectType objectType -> List.of(ofObjectType(objectType));
-            case PrimitiveType.OBJECT, SpecialType.UNKNOWN, SpecialType.ANY -> List.of(genericOf(type));
+            case PrimitiveType.OBJECT, SpecialType.UNKNOWN, SpecialType.ANY -> List.of(generic());
             case PrimitiveType primitiveType -> List.of();
             case SpecialType.NEVER -> List.of();
             case TypeArgument typeArgument -> resolveObjectTypes(typeArgument.bound());
@@ -21,8 +21,8 @@ public class ObjectTypes {
         };
     }
 
-    private static ResolvedType genericOf(Type type) {
-        return new ResolvedType(type, Map.of(), Optional.of(SpecialType.UNKNOWN));
+    private static ResolvedType generic() {
+        return new ResolvedType(PrimitiveType.OBJECT, Map.of(), Optional.of(SpecialType.UNKNOWN));
     }
 
     private static ResolvedType ofObjectType(ObjectType objectType) {
