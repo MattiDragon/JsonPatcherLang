@@ -551,10 +551,10 @@ public class ExpressionCompiler implements Opcodes {
 
         for (var child : e.children()) {
             compile(child);
-            visitor.visitMethodInsn(INVOKESTATIC,
-                    Types.STRING_HOOKS.getInternalName(),
-                    "asString",
-                    Type.getMethodDescriptor(Type.getType(String.class), Types.VALUE),
+            visitor.visitMethodInsn(INVOKEVIRTUAL,
+                    Type.getInternalName(Object.class),
+                    "toString",
+                    Type.getMethodDescriptor(Type.getType(String.class)),
                     false);
         }
 

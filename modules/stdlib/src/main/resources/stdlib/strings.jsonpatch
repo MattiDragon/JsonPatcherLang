@@ -4,15 +4,10 @@ import "@internals/reflection" as reflectionInternals;
 # @@doc_namespace std
 
 val ROOT_LOCALE = reflectionInternals.findClass("java.util.Locale").ROOT;
-val StringBuilder = reflectionInternals.findClass("java.lang.StringBuilder");
 
 function _unwrap(s) {
     debug.assert(s is string, "Expected first argument to string function to be string");
     return reflectionInternals.unwrapValue(s);
-}
-
-function sbAppend(sb, value) {
-    return sb.'append(Ljava/lang/CharSequence;)Ljava/lang/StringBuilder;'(value);
 }
 
 #| global library strings
@@ -21,35 +16,6 @@ function sbAppend(sb, value) {
 #| property strings.asString: (value: any) -> string
 #| Converts any value to a string
 function asString(value) {
-    if (value is string) return value;
-    if (value is number) return reflectionInternals.unwrapValue(value).'toString()Ljava/lang/String;'();
-    if (value == true) return "true";
-    if (value == false) return "false";
-    if (value == null) return "null";
-    if (value is array) {
-        val out = StringBuilder();
-        sbAppend(out, "[");
-        for (var i = 0; i < value.length; i++) {
-            if (i > 0) sbAppend(out, ", ");
-            sbAppend(out, asString(value[i]));
-        }
-        sbAppend(out, "]");
-        return out.toString();
-    }
-    if (value is object) {
-        val out = StringBuilder();
-        sbAppend(out, "{");
-        var first = true;
-        foreach (key in objects.keys(value)) {
-            if (!first) sbAppend(out, ", ");
-            first = false;
-            sbAppend(out, asString(key));
-            sbAppend(out, ": ");
-            sbAppend(out, asString(value[key]));
-        }
-        sbAppend(out, "}");
-        return out.toString();
-    }
     return reflectionInternals.forceWrap(value).'toString()Ljava/lang/String;'();
 }
 $asString = asString;

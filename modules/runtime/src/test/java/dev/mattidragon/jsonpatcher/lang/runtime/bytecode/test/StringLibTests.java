@@ -179,11 +179,12 @@ public class StringLibTests {
     @Test
     public void testAsString() {
         TestUtils.testCode(runner, """
-                debug.assertEquals(strings.asString(123), "123.0");
+                debug.assertEquals(strings.asString(123), "123");
+                debug.assertEquals(strings.asString(1.23), "1.23");
                 debug.assertEquals(strings.asString(true), "true");
                 debug.assertEquals(strings.asString(null), "null");
-                debug.assertEquals(strings.asString([1, 2, 3]), "[1.0, 2.0, 3.0]");
-                debug.assertEquals(strings.asString({a: 1, b: 2}), "{a: 1.0, b: 2.0}");
+                debug.assertEquals(strings.asString([1, 2, 3]), "[1, 2, 3]");
+                debug.assertEquals(strings.asString({a: 1, b: 2}), "{a: 1, b: 2}");
                 """);
     }
 
@@ -191,7 +192,7 @@ public class StringLibTests {
     public void testJoin() {
         TestUtils.testCode(runner, """
                 debug.assertEquals(strings.join(["a", "b", "c"], ","), "a,b,c");
-                debug.assertEquals(strings.join([1, 2, 3], "-"), "1.0-2.0-3.0");
+                debug.assertEquals(strings.join([1, 2, 3], "-"), "1-2-3");
                 """);
     }
 

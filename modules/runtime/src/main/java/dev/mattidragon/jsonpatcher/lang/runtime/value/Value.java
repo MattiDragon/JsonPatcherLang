@@ -3,6 +3,8 @@ package dev.mattidragon.jsonpatcher.lang.runtime.value;
 import dev.mattidragon.jsonpatcher.lang.ast.ValueType;
 import dev.mattidragon.jsonpatcher.lang.runtime.EvaluationContext;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -159,7 +161,15 @@ public sealed interface Value {
             if (TO_STRING_RECURSION_TRACKER.get().contains(this)) return "{...}";
             try {
                 TO_STRING_RECURSION_TRACKER.get().add(this);
-                return value.toString();
+                var builder = new StringBuilder("{");
+                var first = true;
+                for (var entry : value.entrySet()) {
+                    if (!first) builder.append(", ");
+                    first = false;
+                    builder.append(entry.getKey()).append(": ").append(entry.getValue());
+                }
+                builder.append("}");
+                return builder.toString();
             } finally {
                 TO_STRING_RECURSION_TRACKER.get().remove(this);
             }
@@ -240,7 +250,15 @@ public sealed interface Value {
             if (TO_STRING_RECURSION_TRACKER.get().contains(this)) return "[...]";
             try {
                 TO_STRING_RECURSION_TRACKER.get().add(this);
-                return value.toString();
+                var builder = new StringBuilder("[");
+                var first = true;
+                for (var entry : value) {
+                    if (!first) builder.append(", ");
+                    first = false;
+                    builder.append(entry);
+                }
+                builder.append("]");
+                return builder.toString();
             } finally {
                 TO_STRING_RECURSION_TRACKER.get().remove(this);
             }
@@ -304,6 +322,13 @@ public sealed interface Value {
     }
 
     record NumberValue(double value) implements Primitive {
+        private static final DecimalFormat FORMAT;
+
+        static {
+            FORMAT = new DecimalFormat("0.###############################", DecimalFormatSymbols.getInstance(Locale.ROOT));
+            FORMAT.setMaximumFractionDigits(340);
+        }
+
         @Override
         public boolean asBoolean() {
             return value != 0;
@@ -316,7 +341,7 @@ public sealed interface Value {
 
         @Override
         public String toString() {
-            return String.valueOf(value);
+            return FORMAT.format(value);
         }
     }
 
