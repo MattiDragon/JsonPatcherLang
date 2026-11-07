@@ -24,11 +24,11 @@ public final class StaticCombinedIndex implements Index {
 
     @Override
     public Stream<SourceSpan> find(IndexEntry entry) {
-        return children.stream().flatMap(index -> index.find(entry));
+        return children.stream().flatMap(index -> index.find(entry)).distinct();
     }
 
     @Override
     public Stream<IndexEntry> lookupEntries(SourcePos pos) {
-        return children.stream().flatMap(index -> index.lookupEntries(pos));
+        return children.stream().flatMap(index -> index.lookupEntries(pos)).distinct();
     }
 }

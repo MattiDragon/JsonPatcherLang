@@ -104,8 +104,10 @@ public class DefinitionFinder {
             return combinedIndex.lookupEntries(pos)
                     .flatMap(entry -> Stream.concat(
                             combinedIndex.find(new IndexEntry(entry.symbol(), false))
+                                    .filter(span -> span.from().file().name().equals(data.sourceFile().name()))
                                     .map(span -> new DocumentHighlight(DocumentState.spanToRange(span), DocumentHighlightKind.Read)),
                             combinedIndex.find(new IndexEntry(entry.symbol(), true))
+                                    .filter(span -> span.from().file().name().equals(data.sourceFile().name()))
                                     .map(span -> new DocumentHighlight(DocumentState.spanToRange(span), DocumentHighlightKind.Write))
                     ))
                     .toList();

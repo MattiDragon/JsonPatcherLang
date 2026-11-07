@@ -34,6 +34,7 @@ import dev.mattidragon.jsonpatcher.server.workspace.config.WorkspaceConfigManage
 import dev.mattidragon.jsonpatcher.server.workspace.settings.SettingsManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.Either3;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.jspecify.annotations.Nullable;
 
@@ -61,6 +62,7 @@ public class DocumentState {
     private final AutoCompleteHelper autoCompleteHelper;
     private final InlayHintProvider inlayHintProvider;
     private final FormattingProvider formattingProvider;
+    private final RenameHandler renameHandler;
 
     private final DocHolder docHolder;
     private final SettingsManager settingsManager;
@@ -85,6 +87,7 @@ public class DocumentState {
         this.autoCompleteHelper = new AutoCompleteHelper(docHolder, () -> data);
         this.inlayHintProvider = new InlayHintProvider(() -> data, () -> settingsManager.settings().inlayTypesEnabled());
         this.formattingProvider = new FormattingProvider(() -> data, settingsManager);
+        this.renameHandler = new RenameHandler(() -> data, workspace);
 
         eventHandlerKeys.add(globalEventBus.listenWorkspace(DocHolderRebuildEvent.class, (event, context) -> updateContent(lastContent)));
         eventHandlerKeys.add(globalEventBus.listenWorkspace(WorkspaceConfigChangedEvent.class, (event, context) -> {
@@ -224,6 +227,14 @@ public class DocumentState {
 
     public CompletableFuture<@Nullable List<? extends TextEdit>> formatDocument(FormattingOptions options) {
         return formattingProvider.format(options);
+    }
+
+    public CompletableFuture<@Nullable WorkspaceEdit> doRename(Position position, String newName) {
+        return renameHandler.doRename(position, newName);
+    }
+
+    public CompletableFuture<@Nullable Either3<Range, PrepareRenameResult, PrepareRenameDefaultBehavior>> prepareRename(Position position) {
+        return renameHandler.prepare(position);
     }
 
     public static Position posToPosition(SourcePos pos) {

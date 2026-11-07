@@ -49,6 +49,7 @@ public class JsonPatcherLanguageServer implements LanguageServer, LanguageClient
         capabilities.setInlayHintProvider(true);
         capabilities.setDocumentHighlightProvider(true);
         capabilities.setDocumentFormattingProvider(true);
+        capabilities.setRenameProvider(new RenameOptions(true));
         
         var syncOptions = new TextDocumentSyncOptions();
         syncOptions.setChange(TextDocumentSyncKind.Full);

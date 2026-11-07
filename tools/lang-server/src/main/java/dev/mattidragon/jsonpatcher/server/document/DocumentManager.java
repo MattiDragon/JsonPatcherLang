@@ -4,6 +4,7 @@ import dev.mattidragon.jsonpatcher.server.event.GlobalEventBus;
 import dev.mattidragon.jsonpatcher.server.workspace.WorkspaceManager;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.Either3;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.TextDocumentService;
@@ -139,6 +140,24 @@ public class DocumentManager implements TextDocumentService, LanguageClientAware
         var state = documents.get(params.getTextDocument().getUri());
         if (state != null) {
             return state.formatDocument(params.getOptions());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<@Nullable WorkspaceEdit> rename(RenameParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.doRename(params.getPosition(), params.getNewName());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<@Nullable Either3<Range, PrepareRenameResult, PrepareRenameDefaultBehavior>> prepareRename(PrepareRenameParams params) {
+        var state = documents.get(params.getTextDocument().getUri());
+        if (state != null) {
+            return state.prepareRename(params.getPosition());
         }
         return CompletableFuture.completedFuture(null);
     }
