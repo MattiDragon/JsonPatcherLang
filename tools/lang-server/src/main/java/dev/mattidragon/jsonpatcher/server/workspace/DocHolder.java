@@ -17,9 +17,11 @@ import dev.mattidragon.jsonpatcher.lang.stdlib.Stdlib;
 import dev.mattidragon.jsonpatcher.server.Util;
 import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
 import dev.mattidragon.jsonpatcher.server.event.workspace.DocHolderRebuildEvent;
+import dev.mattidragon.jsonpatcher.server.event.workspace.WorkspaceConfigChangedEvent;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.DynamicCombinedIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
+import dev.mattidragon.jsonpatcher.server.workspace.config.WorkspaceConfigManager;
 import dev.mattidragon.jsonpatcher.toolcommon.typing.DocTypeConverter;
 
 import java.io.IOException;
@@ -48,12 +50,15 @@ public class DocHolder implements PrimitivePropertyAccess {
     private final DynamicCombinedIndex docIndex = new DynamicCombinedIndex();
 
     private final WorkspaceEventBus eventBus;
+    private final WorkspaceConfigManager configManager;
 
     private DocTypeConverter typeConverter = new DocTypeConverter();
 
-    public DocHolder(WorkspaceEventBus eventBus) {
+    public DocHolder(WorkspaceEventBus eventBus, WorkspaceConfigManager configManager) {
         this.eventBus = eventBus;
+        this.configManager = configManager;
         loadStdlib().thenRun(this::rebuildLookups);
+        eventBus.listen(WorkspaceConfigChangedEvent.class, (event, context) -> rebuildLookups());
     }
 
     /**
@@ -146,7 +151,9 @@ public class DocHolder implements PrimitivePropertyAccess {
     public synchronized void clear() {
         files.clear();
         docIndex.clear();
-        stdlibFiles.forEach((name, file) -> files.put("stdlib::" + name, file));
+        if (configManager.externalStdlibNeeded()) {
+            stdlibFiles.forEach((name, file) -> files.put("stdlib::" + name, file));
+        }
         files.values().forEach(file -> docIndex.addChild(file.index));
         rebuildLookups();
     }

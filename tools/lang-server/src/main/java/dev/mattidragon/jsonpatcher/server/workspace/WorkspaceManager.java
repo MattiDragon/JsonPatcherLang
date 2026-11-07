@@ -28,10 +28,10 @@ public class WorkspaceManager implements WorkspaceService {
 
     public WorkspaceManager(GlobalEventBus globalEventBus) {
         this.eventBus = new WorkspaceEventBus(globalEventBus, new WorkspaceEventContext(this));
-        docFileManager = new DocFileManager(eventBus);
+        workspaceConfigManager = new WorkspaceConfigManager(eventBus);
+        docFileManager = new DocFileManager(eventBus, workspaceConfigManager);
         settingsManager = new SettingsManager(eventBus);
         backgroundIndexManager = new BackgroundIndexManager(eventBus);
-        workspaceConfigManager = new WorkspaceConfigManager(eventBus);
 
         combinedIndex = new StaticCombinedIndex(docFileManager.getHolder().getIndex(), backgroundIndexManager.getIndex());
     }

@@ -87,16 +87,8 @@ public class WorkspaceConfigManager extends WorkspaceFileManager {
         return LangVersion.CURRENT;
     }
 
-    public boolean externalStdlibNeeded(String uri) {
-        var active = getActiveEntries(uri);
-
-        for (var entry : active) {
-            var externalStdlibNeeded = entry.config().externalStdlibNeeded();
-            if (externalStdlibNeeded != null) {
-                return externalStdlibNeeded;
-            }
-        }
-        return true;
+    public boolean externalStdlibNeeded() {
+        return configs.values().stream().anyMatch(entry -> Boolean.TRUE.equals(entry.config().externalStdlibNeeded()));
     }
 
     public List<String> allowedLibraryGroups(String uri) {

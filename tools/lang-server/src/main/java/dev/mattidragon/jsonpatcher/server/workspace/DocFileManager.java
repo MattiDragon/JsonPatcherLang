@@ -11,6 +11,7 @@ import dev.mattidragon.jsonpatcher.server.event.WorkspaceEventBus;
 import dev.mattidragon.jsonpatcher.server.index.DocsIndex;
 import dev.mattidragon.jsonpatcher.server.index.EmptyIndex;
 import dev.mattidragon.jsonpatcher.server.index.Index;
+import dev.mattidragon.jsonpatcher.server.workspace.config.WorkspaceConfigManager;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -25,8 +26,8 @@ public class DocFileManager extends WorkspaceFileManager {
     private final Map<Path, Entry> entries = new HashMap<>();
     private final DocHolder docHolder;
 
-    public DocFileManager(WorkspaceEventBus eventBus) {
-        docHolder = new DocHolder(eventBus);
+    public DocFileManager(WorkspaceEventBus eventBus, WorkspaceConfigManager configManager) {
+        docHolder = new DocHolder(eventBus, configManager);
     }
 
     @Override
