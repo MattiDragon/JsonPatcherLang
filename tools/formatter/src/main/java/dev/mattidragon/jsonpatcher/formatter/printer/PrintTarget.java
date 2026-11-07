@@ -9,7 +9,6 @@ import dev.mattidragon.jsonpatcher.lang.parse.Token;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 public abstract class PrintTarget extends StringPrinter {
     private static final Map<NumberStyle, DecimalFormat> NUMBER_FORMATS = Map.of(
