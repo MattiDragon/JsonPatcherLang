@@ -15,7 +15,7 @@ public class DocTypeWriter {
                     -> writeFunction(functionDocType);
             case ReferenceDocType(var name)
                     -> name;
-            case TypeArgumentDocType(FunctionDocType.TypeArgument(var name, var bound))
+            case TypeArgumentDocType(FunctionDocType.TypeArgument(var name, _))
                     -> "$" + name;
             case UnionDocType unionDocType
                     -> writeUnion(unionDocType);

@@ -15,7 +15,7 @@ dependencies {
     annotationProcessor(libs.picocli.codegen)
 }
 
-val genVersionFile by tasks.registering {
+val genVersionFile = tasks.register("genVersionFile") {
     val outputFile = project.layout.buildDirectory.file("generated-files/version")
     outputs.file(outputFile)
     doLast {

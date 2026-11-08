@@ -103,7 +103,7 @@ public class ExpressionPrinter {
                 };
                 printBinaryOp(expression, ref, value, token, target);
             }
-            case PropertyAccessExpression(RootExpression root, var name) -> {
+            case PropertyAccessExpression(RootExpression _, var name) -> {
                 target.write(SimpleToken.DOLLAR);
                 PrintUtils.printAllContainedComments(expression, target, true, true);
                 target.write(new WordToken(name));
@@ -254,13 +254,13 @@ public class ExpressionPrinter {
 
     private static int precedence(Expression expression) {
         return (switch (expression) {
-            case AssignmentExpression e -> Precedence.ASSIGNMENT;
-            case TernaryExpression e -> Precedence.ASSIGNMENT;
-            case ShortedBinaryExpression(var first, var second, var op) -> switch (op) {
+            case AssignmentExpression _ -> Precedence.ASSIGNMENT;
+            case TernaryExpression _ -> Precedence.ASSIGNMENT;
+            case ShortedBinaryExpression(_, _, var op) -> switch (op) {
                 case AND -> Precedence.AND;
                 case OR -> Precedence.OR;
             };
-            case BinaryExpression(var first, var second, var op) -> switch (op) {
+            case BinaryExpression(_, _, var op) -> switch (op) {
                 case PLUS, MINUS -> Precedence.SUM;
                 case MULTIPLY, MODULO, DIVIDE -> Precedence.PRODUCT;
                 case EXPONENT -> Precedence.EXPONENT;
@@ -270,23 +270,23 @@ public class ExpressionPrinter {
                 case EQUALS, NOT_EQUALS -> Precedence.EQUALITY;
                 case LESS_THAN, ASSIGN, IN, GREATER_THAN_EQUAL, LESS_THAN_EQUAL, GREATER_THAN -> Precedence.COMPARISON;
             };
-            case IsInstanceExpression e -> Precedence.COMPARISON;
-            case UnaryExpression e -> Precedence.PREFIX;
-            case UnaryModificationExpression(var postfix, var target, var op) ->
+            case IsInstanceExpression _ -> Precedence.COMPARISON;
+            case UnaryExpression _ -> Precedence.PREFIX;
+            case UnaryModificationExpression(var postfix, _, _) ->
                     postfix ? Precedence.POSTFIX : Precedence.PREFIX;
-            case PropertyAccessExpression e -> Precedence.POSTFIX;
-            case IndexExpression e -> Precedence.POSTFIX;
-            case FunctionCallExpression e -> Precedence.POSTFIX;
-            case BooleanExpression e -> Precedence.ATOM;
-            case NumberExpression e -> Precedence.ATOM;
-            case StringExpression e -> Precedence.ATOM;
-            case NullExpression e -> Precedence.ATOM;
-            case VariableAccessExpression e -> Precedence.ATOM;
-            case ObjectInitializerExpression e -> Precedence.ATOM;
-            case ArrayInitializerExpression e -> Precedence.ATOM;
-            case RootExpression e -> Precedence.ATOM;
-            case ErrorExpression e -> Precedence.ATOM;
-            case FunctionExpression e -> Precedence.PREFIX;
+            case PropertyAccessExpression _ -> Precedence.POSTFIX;
+            case IndexExpression _ -> Precedence.POSTFIX;
+            case FunctionCallExpression _ -> Precedence.POSTFIX;
+            case BooleanExpression _ -> Precedence.ATOM;
+            case NumberExpression _ -> Precedence.ATOM;
+            case StringExpression _ -> Precedence.ATOM;
+            case NullExpression _ -> Precedence.ATOM;
+            case VariableAccessExpression _ -> Precedence.ATOM;
+            case ObjectInitializerExpression _ -> Precedence.ATOM;
+            case ArrayInitializerExpression _ -> Precedence.ATOM;
+            case RootExpression _ -> Precedence.ATOM;
+            case ErrorExpression _ -> Precedence.ATOM;
+            case FunctionExpression _ -> Precedence.PREFIX;
             default -> throw new UnsupportedOperationException("Don't know precedence of " + expression.getClass().getSimpleName());
         }).ordinal();
     }

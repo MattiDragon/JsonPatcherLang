@@ -7,14 +7,14 @@ import java.util.*;
 public class ObjectTypes {
     public static List<ResolvedType> resolveObjectTypes(Type type) {
         return switch (type) {
-            case ArrayType arrayType -> List.of();
-            case FunctionType functionType -> List.of();
+            case ArrayType _ -> List.of();
+            case FunctionType _ -> List.of();
             case HardcodedType hardcodedType -> resolveObjectTypes(hardcodedType.base());
             case LazyType lazyType -> resolveObjectTypes(lazyType.get());
             case NamedType namedType -> List.of(ofNamedType(namedType));
             case ObjectType objectType -> List.of(ofObjectType(objectType));
             case PrimitiveType.OBJECT, SpecialType.UNKNOWN, SpecialType.ANY -> List.of(generic());
-            case PrimitiveType primitiveType -> List.of();
+            case PrimitiveType _ -> List.of();
             case SpecialType.NEVER -> List.of();
             case TypeArgument typeArgument -> resolveObjectTypes(typeArgument.bound());
             case UnionType unionType -> unionType.children().stream().map(ObjectTypes::resolveObjectTypes).flatMap(List::stream).toList();

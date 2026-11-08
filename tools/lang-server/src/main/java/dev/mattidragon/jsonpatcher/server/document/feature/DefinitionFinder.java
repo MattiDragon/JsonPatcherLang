@@ -165,7 +165,7 @@ public class DefinitionFinder {
         code.setInfo("jsonpatcher");
         var builder = new StringBuilder();
         switch (variable.definition()) {
-            case FunctionDeclarationStatement statement -> {
+            case FunctionDeclarationStatement _ -> {
                 builder.append("function ");
                 builder.append(variable.name());
                 if (type != SpecialType.UNKNOWN) {
@@ -179,7 +179,7 @@ public class DefinitionFinder {
                 builder.append("\" as ");
                 builder.append(variableName);
             }
-            case FunctionArgument(var target, var defaultValue) -> {
+            case FunctionArgument(_, var defaultValue) -> {
                 builder.append("param ");
                 builder.append(variable.name());
                 if (defaultValue.isPresent()) {

@@ -5,11 +5,11 @@ import dev.mattidragon.jsonpatcher.lang.runtime.hooks.FunctionHooks;
 import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 
 public class FunctionTester {
-    public static void main(String[] args) {
+    static void main(String[] args) {
         var fun = FunctionHooks.createFunction((FunctionBody.F3) (a, b, c) -> {
             throw new RuntimeException();
         }, 2, 3, true);
         var function = (FunctionHooks.DefinedFunction) fun.function();
-        System.out.println(function.call(new Value.NumberValue(10), new Value.NumberValue(10)));
+        IO.println(function.call(new Value.NumberValue(10), new Value.NumberValue(10)));
     }
 }

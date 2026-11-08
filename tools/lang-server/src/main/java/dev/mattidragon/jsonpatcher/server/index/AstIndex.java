@@ -79,7 +79,7 @@ abstract class AstIndex extends LookupIndex {
                             });
                 }
             }
-            case ImportStatement(var libraryName, var variableName) -> {
+            case ImportStatement(var libraryName, _) -> {
                 var entry = new IndexEntry(new LibrarySymbol(libraryName), false);
                 metadata.get(node, MetadataKey.IMPORT_LOCATION_POS)
                         .ifPresent(pos -> lookup.add(pos, entry));

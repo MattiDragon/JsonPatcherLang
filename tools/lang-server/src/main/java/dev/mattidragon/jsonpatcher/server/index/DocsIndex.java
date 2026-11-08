@@ -24,31 +24,27 @@ public class DocsIndex extends LookupIndex {
         }
 
         switch (entry) {
-            case DocEntry.GlobalLibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1)) -> {
+            case DocEntry.GlobalLibraryEntry(DocEntry.SharedData(_, var name, _, _, _)) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.GlobalValueEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var type) -> {
+            case DocEntry.GlobalValueEntry(DocEntry.SharedData(_, var name, _, _, _), _) -> {
                 var symbol = new GlobalSymbol(name);
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.LibraryEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var location) -> {
+            case DocEntry.LibraryEntry(DocEntry.SharedData(_, var name, _, _, _), var location) -> {
                 var symbol = new LibrarySymbol(location.orElse(name));
                 addSymbol(entry, new IndexEntry(symbol, true), metadata, MetadataKey.IMPORT_LOCATION_POS);
             }
-            case DocEntry.MetadataEntry metadataEntry -> {
+            case DocEntry.MetadataEntry _ -> {
                 var symbol = new MetadataSymbol(entry.name());
                 addSymbol(entry, new IndexEntry(symbol, true), metadata);
             }
-            case DocEntry.NamespaceEntry namespaceEntry -> {
-            }
-            case DocEntry.PropertyEntry(DocEntry.SharedData(var namespace, var name, var body, var tags, var metadata1), var owner, var type) -> {
+            case DocEntry.PropertyEntry(DocEntry.SharedData(var namespace, var name, _, _, _), var owner, _) -> {
                 addSymbol(entry, new IndexEntry(new DocEntrySymbol(namespace, owner), false), metadata, DocMetadataKeys.PROPERTY_OWNER_POS);
                 addSymbol(entry, new IndexEntry(new PropertySymbol(namespace, owner, name), true), metadata);
             }
-            case DocEntry.TypeAliasEntry typeAliasEntry -> {
-            }
-            case DocEntry.TypeDeclarationEntry typeDeclarationEntry -> {
+            case DocEntry.NamespaceEntry _, DocEntry.TypeAliasEntry _, DocEntry.TypeDeclarationEntry _ -> {
             }
         }
 

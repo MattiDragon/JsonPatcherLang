@@ -50,7 +50,7 @@ public class ClassCompiler {
     }
 
     public void compileStart() {
-        classWriter.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", new String[]{Types.GENERATED_PROGRAM.getInternalName()});
+        classWriter.visit(Opcodes.V25, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", new String[]{Types.GENERATED_PROGRAM.getInternalName()});
         classWriter.visitSource(scriptName, null);
         classWriter.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "context", Types.EVALUATION_CONTEXT.getDescriptor(), null, null);
         addConstructor();

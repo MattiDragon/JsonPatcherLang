@@ -46,9 +46,9 @@ public class GenericTypeMatcher {
                 if (actualComponent == null) yield false;
                 yield match(expectedComponent, actualComponent);
             }
-            case FunctionType(var expectedTypeArgs, var expectedArgs, var expectedRequiredArgs,
-                              var expectedVarargs, var expectedReturnType)
-                    when actual instanceof FunctionType(var actualTypeArgs, var actualArgs, var actualRequiredArgs,
+            case FunctionType(_, var expectedArgs, var expectedRequiredArgs,
+                              _, var expectedReturnType)
+                    when actual instanceof FunctionType(_, var actualArgs, var actualRequiredArgs,
                                                         var actualVarargs, var actualReturnType) -> {
 
                 // Do some matching for easy cases here

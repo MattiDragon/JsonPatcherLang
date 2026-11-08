@@ -149,7 +149,7 @@ public class AstCommand implements Callable<Integer> {
         System.out.println(node.getClass().getSimpleName());
 
         switch (node) {
-            case UnaryModificationExpression(var postfix, var target, var operator) -> {
+            case UnaryModificationExpression(var postfix, _, var operator) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(operator: %s, %s)%n", operator, postfix ? "postfix" : "prefix");
             }
@@ -160,7 +160,7 @@ public class AstCommand implements Callable<Integer> {
                     childTags.put(child, "inner expression");
                 }
             }
-            case PropertyAccessExpression(var parent, var name) -> {
+            case PropertyAccessExpression(_, var name) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(name: %s)%n", name);
             }
@@ -172,11 +172,11 @@ public class AstCommand implements Callable<Integer> {
                 childTags.put(target, "target");
                 childTags.put(index, "index");
             }
-            case ShortedBinaryExpression(var first, var second, var op) -> {
+            case ShortedBinaryExpression(_, _, var op) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(operator: %s)%n", op);
             }
-            case BinaryExpression(var first, var second, var op) -> {
+            case BinaryExpression(_, _, var op) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(operator: %s)%n", op);
             }
@@ -191,11 +191,11 @@ public class AstCommand implements Callable<Integer> {
                 childTags.put(ifTrue, "if true");
                 childTags.put(ifFalse, "if false");
             }
-            case UnaryExpression(var input, var op) -> {
+            case UnaryExpression(_, var op) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(operator: %s)%n", op);
             }
-            case IsInstanceExpression(var input, var type) -> {
+            case IsInstanceExpression(_, var type) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(type: %s)%n", type);
             }
@@ -219,7 +219,7 @@ public class AstCommand implements Callable<Integer> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(%s)%n", value);
             }
-            case FunctionArguments(var arguments, var varargs) -> {
+            case FunctionArguments(_, var varargs) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(%s)%n", varargs ? "varargs" : "no varargs");
             }
@@ -239,7 +239,7 @@ public class AstCommand implements Callable<Integer> {
                 childTags.put(root, "root");
                 childTags.put(action, "action");
             }
-            case VariableCreationStatement(var name, var initializer, var mutable) -> {
+            case VariableCreationStatement(var name, _, var mutable) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(name: %s, %s)%n", name, mutable ? "mutable" : "immutable");
             }
@@ -255,7 +255,7 @@ public class AstCommand implements Callable<Integer> {
                 childTags.put(iterable, "iterable");
                 childTags.put(body, "body");
             }
-            case FunctionDeclarationStatement(var name, var value) -> {
+            case FunctionDeclarationStatement(var name, _) -> {
                 System.out.print("  ".repeat(indent));
                 System.out.printf("(name: %s)%n", name);
             }

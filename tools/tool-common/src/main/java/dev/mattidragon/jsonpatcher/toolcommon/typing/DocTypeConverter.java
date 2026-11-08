@@ -35,12 +35,12 @@ public class DocTypeConverter {
                         getOrComputeType(fullName).set(type);
                         libraries.put(libraryEntry.location().orElse(libraryEntry.name()), type);
                     }
-                    case DocEntry.MetadataEntry metadataEntry -> {
+                    case DocEntry.MetadataEntry _ -> {
                         // Metadata will get type checking later
                     }
-                    case DocEntry.NamespaceEntry namespaceEntry ->
+                    case DocEntry.NamespaceEntry _ ->
                             throw new IllegalStateException("Namespaces are not doc objects");
-                    case DocEntry.PropertyEntry propertyEntry ->
+                    case DocEntry.PropertyEntry _ ->
                             throw new IllegalStateException("Properties are not doc objects");
                     case DocEntry.TypeAliasEntry typeAliasEntry ->
                             getOrComputeType(fullName).set(convert(typeAliasEntry.definition()));
@@ -173,7 +173,7 @@ public class DocTypeConverter {
             case TypeArgumentDocType(var owner) ->
                     Objects.requireNonNull(typeArgMapping.get(owner), "Unexpected type argument usage");
             case UnionDocType(var first, var second) -> UnionType.union(convert(first, typeArgMapping), convert(second, typeArgMapping));
-            case ErrorDocType errorDocType -> SpecialType.UNKNOWN;
+            case ErrorDocType _ -> SpecialType.UNKNOWN;
         };
     }
 

@@ -1,7 +1,5 @@
 package dev.mattidragon.jsonpatcher.docs.data;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +26,7 @@ public record NamespaceDescription(List<String> parts) implements Comparable<Nam
     }
 
     @Override
-    public int compareTo(@NotNull NamespaceDescription o) {
+    public int compareTo(NamespaceDescription o) {
         for (int i = 0; i < Math.min(parts.size(), o.parts.size()); i++) {
             var part = parts.get(i);
             var otherPart = o.parts.get(i);

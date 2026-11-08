@@ -12,7 +12,6 @@ import org.commonmark.node.Heading;
 import org.commonmark.node.Node;
 import org.commonmark.node.Text;
 import org.commonmark.parser.Parser;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,7 +61,7 @@ public class DocWriter {
         node.appendChild(heading);
     }
 
-    private static DocEntry.@NotNull NamespaceEntry getEntry(DocTreeNamespace namespace) {
+    private static DocEntry.NamespaceEntry getEntry(DocTreeNamespace namespace) {
         var namespaceEntry = namespace.entry();
         if (namespaceEntry != null) {
             return namespaceEntry;

@@ -7,7 +7,5 @@ import dev.mattidragon.jsonpatcher.lang.runtime.value.Value;
 import java.util.Map;
 
 public interface TestRunner {
-    String name();
-    
     void executeCode(Program program, TreeMetadata metadata, Map<String, Value.ObjectValue> libraries);
 }

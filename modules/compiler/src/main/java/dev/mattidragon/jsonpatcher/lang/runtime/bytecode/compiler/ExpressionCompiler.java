@@ -467,12 +467,7 @@ public class ExpressionCompiler implements Opcodes {
         if (capturesRoot) {
             targetType.append(Types.OBJECT_VALUE.getDescriptor());
         }
-        for (var argument : expression.args().arguments()) {
-            switch (argument.target()) {
-                case FunctionArgument.Target.Root.INSTANCE -> targetType.append(Types.VALUE.getDescriptor());
-                case FunctionArgument.Target.Variable variable -> targetType.append(Types.VALUE.getDescriptor());
-            }
-        }
+        targetType.repeat(Types.VALUE.getDescriptor(), expression.args().arguments().size());
         targetType.append(")").append(Types.VALUE.getDescriptor());
 
         var invokerType = new StringBuilder("(");

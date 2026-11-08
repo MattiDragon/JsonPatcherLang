@@ -1,7 +1,6 @@
 package dev.mattidragon.jsonpatcher.lang.analysis.variable;
 
 import dev.mattidragon.jsonpatcher.lang.ast.expression.FunctionExpression;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -65,7 +64,6 @@ public final class FunctionScope implements MutableScope {
     }
 
     @Override
-    @NonNull
     public Scope parent() {
         return parent;
     }

@@ -146,7 +146,7 @@ public class EvalCommand implements Callable<Integer> {
                     .stream()
                     .map(EvalCommand::convertFromJson)
                     .toList());
-            case JsonNull jsonNull -> Value.NullValue.NULL;
+            case JsonNull _ -> Value.NullValue.NULL;
             case JsonPrimitive primitive when primitive.isBoolean() -> Value.BooleanValue.of(primitive.getAsBoolean());
             case JsonPrimitive primitive when primitive.isNumber() -> new Value.NumberValue(primitive.getAsDouble());
             case JsonPrimitive primitive when primitive.isString() -> new Value.StringValue(primitive.getAsString());

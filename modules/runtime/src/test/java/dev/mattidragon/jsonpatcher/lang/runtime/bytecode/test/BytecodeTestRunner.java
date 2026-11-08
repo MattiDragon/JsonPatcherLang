@@ -28,11 +28,6 @@ public class BytecodeTestRunner implements TestRunner {
         this.testNameProvider = testNameProvider;
     }
 
-    @Override
-    public String name() {
-        return "bytecode compiler";
-    }
-
     public EvaluationEnvironment environment() {
         return environment;
     }

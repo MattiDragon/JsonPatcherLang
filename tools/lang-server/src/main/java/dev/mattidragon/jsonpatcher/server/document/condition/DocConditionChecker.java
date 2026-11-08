@@ -39,7 +39,7 @@ public class DocConditionChecker {
             case Pair(MetadataString a, MetadataString e) -> a.value().equals(e.value());
             case Pair(MetadataNumber a, MetadataNumber e) -> a.value() == e.value();
             case Pair(MetadataBoolean a, MetadataBoolean e) -> a.value() == e.value();
-            case Pair(MetadataNull a, MetadataNull e) -> true;
+            case Pair(MetadataNull _, MetadataNull _) -> true;
             case Pair(MetadataArray a, MetadataArray e) -> {
                 if (a.values().size() != e.values().size()) {
                     yield false;

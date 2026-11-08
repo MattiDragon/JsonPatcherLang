@@ -31,8 +31,8 @@ public class JavaObjectValue implements Value.SpecialValue {
         }
 
         Supplier<Value> supplier = switch (JavaValueUtil.resolveClassChild(object.getClass(), property)) {
-            case JavaValueUtil.ClassChild.ConstructorChild(var constructor) -> throw context.createException("Cannot use constructor on existing instances");
-            case JavaValueUtil.ClassChild.InnerClass(var innerClass) -> throw context.createException("Cannot access inner classes of instances");
+            case JavaValueUtil.ClassChild.ConstructorChild(_) -> throw context.createException("Cannot use constructor on existing instances");
+            case JavaValueUtil.ClassChild.InnerClass(_) -> throw context.createException("Cannot access inner classes of instances");
             case JavaValueUtil.ClassChild.FieldChild(var field) -> {
                 if (field.accessFlags().contains(AccessFlag.STATIC)) {
                     throw context.createException("Cannot reference static field on instance");

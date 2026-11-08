@@ -53,9 +53,9 @@ public class TypeComparison {
             case SpecialType.ANY -> false;
 
             // Specialized types are subtypes of their generic variants
-            case ArrayType arrayType when superType == PrimitiveType.ARRAY -> true;
-            case FunctionType functionType when superType == PrimitiveType.FUNCTION -> true;
-            case ObjectType objectType when superType == PrimitiveType.OBJECT -> true;
+            case ArrayType _ when superType == PrimitiveType.ARRAY -> true;
+            case FunctionType _ when superType == PrimitiveType.FUNCTION -> true;
+            case ObjectType _ when superType == PrimitiveType.OBJECT -> true;
 
             // We treat arrays and maps as covariant, even though they really aren't,
             // because it eliminates the need for usage to impact type
@@ -71,12 +71,12 @@ public class TypeComparison {
                     isFunctionSubtype(equalTypeArgs, functionType, superFunctionType);
 
             // If no matching supertype, we fail the check.
-            case ArrayType arrayType -> false;
-            case ObjectType objectType -> false;
-            case FunctionType functionType -> false;
+            case ArrayType _ -> false;
+            case ObjectType _ -> false;
+            case FunctionType _ -> false;
 
             // Primitive types don't have any valid supertypes except themselves and any
-            case PrimitiveType primitiveType -> false;
+            case PrimitiveType _ -> false;
 
             // Type arguments are considered equal if in this map
             case TypeArgument typeArgument when superType instanceof TypeArgument superTypeArgument -> equalTypeArgs.isEqual(typeArgument, superTypeArgument);
@@ -84,13 +84,13 @@ public class TypeComparison {
 
             case UnionType(var children) -> children.stream().anyMatch(child -> isSubtype(child, superType, equalTypeArgs));
 
-            case NamedType(var namedSuperType, var properties, var wildcardProperty, var callSignature, var name) -> {
+            case NamedType(var namedSuperType, _, _, var callSignature, _) -> {
                 if (isSubtype(namedSuperType, superType, equalTypeArgs)) {
                     yield true;
                 }
                 yield callSignature.isPresent() && isSubtype(callSignature.get(), superType);
             }
-            case HardcodedType(var base, var kind) -> isSubtype(base, superType, equalTypeArgs);
+            case HardcodedType(var base, _) -> isSubtype(base, superType, equalTypeArgs);
         };
     }
 
@@ -179,10 +179,10 @@ public class TypeComparison {
             case ArrayType(var component) -> component;
             case PrimitiveType.ARRAY, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
             case SpecialType.NEVER -> SpecialType.NEVER;
-            case FunctionType functionType -> null;
-            case NamedType namedType -> null;
-            case ObjectType objectType -> null;
-            case PrimitiveType primitiveType -> null;
+            case FunctionType _ -> null;
+            case NamedType _ -> null;
+            case ObjectType _ -> null;
+            case PrimitiveType _ -> null;
             case TypeArgument typeArgument -> getArrayComponent(typeArgument.bound());
             case LazyType lazyType -> getArrayComponent(lazyType.get());
             case UnionType unionType -> UnionType.union(
@@ -200,10 +200,10 @@ public class TypeComparison {
             case ObjectType(var component) -> component;
             case PrimitiveType.OBJECT, SpecialType.ANY, SpecialType.UNKNOWN -> SpecialType.UNKNOWN;
             case SpecialType.NEVER -> SpecialType.NEVER;
-            case FunctionType functionType -> null;
-            case NamedType namedType -> null;
-            case ArrayType arrayType -> null;
-            case PrimitiveType primitiveType -> null;
+            case FunctionType _ -> null;
+            case NamedType _ -> null;
+            case ArrayType _ -> null;
+            case PrimitiveType _ -> null;
             case TypeArgument typeArgument -> getObjectComponent(typeArgument.bound());
             case LazyType lazyType -> getObjectComponent(lazyType.get());
             case UnionType unionType -> UnionType.union(

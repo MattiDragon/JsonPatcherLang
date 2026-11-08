@@ -87,12 +87,12 @@ public class AutoCompleteHelper {
         return switch (type) {
             case PrimitiveType.STRING -> " \"$1\"";
             case PrimitiveType.ARRAY -> " [$1]";
-            case ArrayType arrayType -> " [$1]";
+            case ArrayType _ -> " [$1]";
             case PrimitiveType.OBJECT -> " {$1}";
-            case ObjectType objectType -> " {$1}";
+            case ObjectType _ -> " {$1}";
             case PrimitiveType.NULL -> "";
-            case PrimitiveType primitiveType -> " $1";
-            case SpecialType specialType -> " $1";
+            case PrimitiveType _ -> " $1";
+            case SpecialType _ -> " $1";
             case LazyType lazyType -> getValueTemplate(lazyType.get());
             case NamedType namedType -> {
                 var s = new StringBuilder(" {");
@@ -106,8 +106,8 @@ public class AutoCompleteHelper {
             }
             case UnionType unionType -> TypeComparison.isSubtype(PrimitiveType.NULL, unionType) ? "" : " $1";
             // Should never be used for metadata
-            case TypeArgument typeArgument -> "";
-            case FunctionType functionType -> "";
+            case TypeArgument _ -> "";
+            case FunctionType _ -> "";
             case HardcodedType hardcodedType -> getValueTemplate(hardcodedType.base());
         };
     }

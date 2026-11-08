@@ -93,38 +93,38 @@ public class RenameHandler {
         return switch (symbol) {
             case VariableSymbol(var variable) -> {
                 var formattedName = stringFormatter.format(newName);
-                if (declaration && variable.definition() instanceof ImportStatement importStatement) {
+                if (declaration && variable.definition() instanceof ImportStatement) {
                     // TODO: split the import statement if the new name is different from the imported name
                     throw renameError("Library symbol renaming is not yet supported");
                 } else {
                     yield new FileEdit(span.from().file().name(), new TextEdit(DocumentState.spanToRange(span), formattedName));
                 }
             }
-            case TypeArgumentSymbol(var typeArgument) -> {
+            case TypeArgumentSymbol _ -> {
                 var cleanedName = newName.startsWith("$") ? newName.substring(1) : newName;
                 validateDocName(cleanedName, "Invalid type argument name");
                 yield new FileEdit(span.from().file().name(), new TextEdit(DocumentState.spanToRange(
                         new SourceSpan(span.from().offset(1), span.to())
                 ), cleanedName));
             }
-            case MetadataSymbol(var metadata) -> {
+            case MetadataSymbol _ -> {
                 var formattedName = stringFormatter.format(newName);
                 // If the metadata isn't documented, we can rename it despite cursed names,
                 // but if it is documented, we need to match the doc identifier rules
                 if (declaration) validateDocName(formattedName, "Invalid metadata name");
                 yield new FileEdit(span.from().file().name(), new TextEdit(DocumentState.spanToRange(span), formattedName));
             }
-            case GlobalSymbol(var global) -> {
+            case GlobalSymbol _ -> {
                 var formattedName = stringFormatter.format(newName);
                 validateDocName(formattedName, "Invalid global name");
                 yield new FileEdit(span.from().file().name(), new TextEdit(DocumentState.spanToRange(span), formattedName));
             }
-            case PropertySymbol(var namespace, var owner, var property) -> {
+            case PropertySymbol _ -> {
                 var formattedName = stringFormatter.format(newName);
                 validateDocName(formattedName, "Invalid property name");
                 yield new FileEdit(span.from().file().name(), new TextEdit(DocumentState.spanToRange(span), formattedName));
             }
-            case LibrarySymbol(var library) -> {
+            case LibrarySymbol _ -> {
                 // TODO: split the import statement if the new name is different from the imported name
                 throw renameError("Library symbol renaming is not yet supported");
             }

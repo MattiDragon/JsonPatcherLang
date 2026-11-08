@@ -74,8 +74,8 @@ public interface Diagnostic {
                     .substring(rowBegin, rowEnd - 1)
                     .replace("\t", "    "));
             codeHighlight.append("\n| ");
-            codeHighlight.append(" ".repeat(from.column() - 1));
-            codeHighlight.append("^".repeat(to.column() - from.column() + 1));
+            codeHighlight.repeat(" ", from.column() - 1);
+            codeHighlight.repeat("^", to.column() - from.column() + 1);
             codeHighlight.append(" here");
         }
         return codeHighlight;

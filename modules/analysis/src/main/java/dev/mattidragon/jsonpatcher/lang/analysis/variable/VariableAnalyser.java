@@ -205,8 +205,8 @@ public class VariableAnalyser {
     // Side effect: marks mutated variables
     private void verifyMutations(ProgramNode node) {
         switch (node) {
-            case AssignmentExpression(VariableAccessExpression accessExpression, var value, var op) -> checkMutation(accessExpression);
-            case UnaryModificationExpression(var postfix, VariableAccessExpression accessExpression, var op) -> checkMutation(accessExpression);
+            case AssignmentExpression(VariableAccessExpression accessExpression, _, _) -> checkMutation(accessExpression);
+            case UnaryModificationExpression(_, VariableAccessExpression accessExpression, _) -> checkMutation(accessExpression);
             default -> {}
         }
         node.getChildren().forEach(this::verifyMutations);

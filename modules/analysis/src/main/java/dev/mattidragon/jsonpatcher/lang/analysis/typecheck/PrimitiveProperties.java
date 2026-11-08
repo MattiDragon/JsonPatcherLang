@@ -16,7 +16,7 @@ public interface PrimitiveProperties {
                 .get(property);
         // When in order to bind properly, we have to lose the hardcoded type
         // Doesn't really matter as it won't type check correctly anyway
-        if (propertyType instanceof HardcodedType(var base, var kind)) {
+        if (propertyType instanceof HardcodedType(var base, _)) {
             propertyType = base;
         }
         // Remove self argument from functions
@@ -44,15 +44,15 @@ public interface PrimitiveProperties {
                 case FUNCTION -> ValueType.FUNCTION;
                 case NULL -> ValueType.NULL;
             };
-            case NamedType namedType -> ValueType.OBJECT;
-            case SpecialType specialType -> ValueType.SPECIAL;
+            case NamedType _ -> ValueType.OBJECT;
+            case SpecialType _ -> ValueType.SPECIAL;
 
-            case ArrayType arrayType -> ValueType.ARRAY;
-            case FunctionType functionType -> ValueType.FUNCTION;
+            case ArrayType _ -> ValueType.ARRAY;
+            case FunctionType _ -> ValueType.FUNCTION;
             case LazyType lazyType -> convertType(lazyType.get());
-            case ObjectType objectType -> ValueType.OBJECT;
+            case ObjectType _ -> ValueType.OBJECT;
             case TypeArgument typeArgument -> convertType(typeArgument.bound());
-            case UnionType unionType -> null;
+            case UnionType _ -> null;
             case HardcodedType hardcodedType -> convertType(hardcodedType.base());
         };
     }

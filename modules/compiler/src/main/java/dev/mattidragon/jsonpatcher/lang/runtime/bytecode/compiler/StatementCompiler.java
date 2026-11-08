@@ -44,13 +44,13 @@ public class StatementCompiler implements Opcodes {
         switch (statement) {
             case ExpressionStatement s -> compileExpression(s);
             case ReturnStatement s -> compileReturn(s);
-            case EmptyStatement s -> {}
+            case EmptyStatement _ -> {}
             case BlockStatement s -> compileBlock(s, s.statements());
             case ForLoopStatement s -> compileFor(s);
             case WhileLoopStatement s -> compileWhile(s);
             case ForEachLoopStatement s -> compileForEach(s);
-            case ContinueStatement s -> compileContinue();
-            case BreakStatement s -> compileBreak();
+            case ContinueStatement _ -> compileContinue();
+            case BreakStatement _ -> compileBreak();
             case IfStatement s -> compileIf(s);
             case VariableCreationStatement s -> compileVariableCreation(s);
             case ApplyStatement s -> compileApply(s);
@@ -241,7 +241,7 @@ public class StatementCompiler implements Opcodes {
 
     private void compileDelete(DeleteStatement statement) {
         switch (statement.target()) {
-            case VariableAccessExpression e -> throw new UnsupportedOperationException("Variable deletion is no longer supported");
+            case VariableAccessExpression _ -> throw new UnsupportedOperationException("Variable deletion is no longer supported");
             case PropertyAccessExpression(var parent, var name) -> {
                 functionCompiler.compileExpression(parent);
                 visitor.visitLdcInsn(name);

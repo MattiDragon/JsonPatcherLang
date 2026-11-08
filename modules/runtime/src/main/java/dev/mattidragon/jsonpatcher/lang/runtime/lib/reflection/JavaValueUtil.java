@@ -140,7 +140,7 @@ public class JavaValueUtil {
 
     private static String getMethodDesc(Executable m) {
         var returnType = switch (m) {
-            case Constructor<?> c -> void.class;
+            case Constructor<?> _ -> void.class;
             case Method method -> method.getReturnType();
         };
         StringBuilder builder = new StringBuilder();
@@ -306,7 +306,7 @@ public class JavaValueUtil {
         return switch (value) {
             case Value.StringValue(var s) when clazz.isAssignableFrom(String.class) -> clazz.cast(s);
             case Value.BooleanValue booleanValue when clazz == boolean.class || clazz == Boolean.class -> (T) (Boolean) booleanValue.value();
-            case Value.NullValue nullValue when !clazz.isPrimitive() -> null;
+            case Value.NullValue _ when !clazz.isPrimitive() -> null;
 
             // We need to do unchecked casts as primitive classes don't support casts from wrappers :annoyed:
             case Value.NumberValue(var n) when clazz == long.class || clazz == Long.class -> (T) (Long) (long) n;

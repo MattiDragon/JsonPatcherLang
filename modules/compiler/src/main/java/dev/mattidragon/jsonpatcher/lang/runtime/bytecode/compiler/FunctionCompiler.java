@@ -127,7 +127,7 @@ public class FunctionCompiler implements Opcodes {
             boolean needsBoxing;
             int varIndex;
             switch (argument.target()) {
-                case FunctionArgument.Target.Root root -> {
+                case FunctionArgument.Target.Root _ -> {
                     varIndex = getOrAllocateRoot(metadata.get(argument, VariableAnalyser.ROOT_REFERENCE).orElseThrow());
                     needsBoxing = false;
                     visitor.visitParameter("$", 0);

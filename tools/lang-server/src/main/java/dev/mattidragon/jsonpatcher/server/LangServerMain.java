@@ -9,7 +9,7 @@ import java.net.Socket;
 import java.util.concurrent.ExecutionException;
 
 public class LangServerMain {
-    public static void main(String[] args) {
+    static void main(String[] args) {
         boolean stdio = false;
         int port = 18092;
         for (var arg : args) {

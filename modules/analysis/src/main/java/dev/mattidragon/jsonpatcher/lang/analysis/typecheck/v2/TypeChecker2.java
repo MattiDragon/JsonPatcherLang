@@ -121,14 +121,14 @@ public class TypeChecker2 {
      */
     private Type checkExpression(Expression e, Type expected, boolean apply) {
         var type = switch (e) {
-            case NumberExpression numberExpression -> PrimitiveType.NUMBER;
-            case StringExpression stringExpression -> PrimitiveType.STRING;
-            case BooleanExpression booleanExpression -> PrimitiveType.BOOLEAN;
-            case NullExpression nullExpression -> PrimitiveType.NULL;
+            case NumberExpression _ -> PrimitiveType.NUMBER;
+            case StringExpression _ -> PrimitiveType.STRING;
+            case BooleanExpression _ -> PrimitiveType.BOOLEAN;
+            case NullExpression _ -> PrimitiveType.NULL;
             // TODO: make root variables hold types and read here
-            case RootExpression rootExpression -> PrimitiveType.OBJECT;
+            case RootExpression _ -> PrimitiveType.OBJECT;
 
-            case UnaryModificationExpression(var postfix, var target, var op) -> checkUnary(target, op, apply);
+            case UnaryModificationExpression(_, var target, var op) -> checkUnary(target, op, apply);
             case UnaryExpression(var input, var op) -> checkUnary(input, op, apply);
 
             case BinaryExpression(var first, var second, var op) -> checkBinary(e, expected, first, second, op, apply);
@@ -141,7 +141,7 @@ public class TypeChecker2 {
                 yield UnionType.union(trueType, falseType);
             }
 
-            case ShortedBinaryExpression(var first, var second, var op) -> {
+            case ShortedBinaryExpression(var first, var second, _) -> {
                 var firstType = checkExpression(first, SpecialType.ANY, apply);
                 var secondType = checkExpression(second, SpecialType.ANY, apply);
                 yield UnionType.union(firstType, secondType);
@@ -169,12 +169,12 @@ public class TypeChecker2 {
                 yield best.realType();
             }
 
-            case IsInstanceExpression(var input, var valueType) -> {
+            case IsInstanceExpression(var input, _) -> {
                 checkExpressionIfApply(input, SpecialType.ANY, apply);
                 yield PrimitiveType.BOOLEAN;
             }
 
-            case StringInterpolationExpression(List<String> parts, List<Expression> children) -> {
+            case StringInterpolationExpression(_, List<Expression> children) -> {
                 for (var child : children) {
                     checkExpressionIfApply(child, SpecialType.ANY, apply);
                 }
@@ -402,14 +402,14 @@ public class TypeChecker2 {
 
     private Optional<FunctionType> inferFunctionType(Type expected) {
         return switch (expected) {
-            case ArrayType arrayType -> Optional.empty();
+            case ArrayType _ -> Optional.empty();
             case FunctionType functionType -> Optional.of(functionType);
             case HardcodedType hardcodedType -> inferFunctionType(hardcodedType.base());
             case LazyType lazyType -> inferFunctionType(lazyType.get());
             case NamedType namedType -> namedType.callSignature();
-            case ObjectType objectType -> Optional.empty();
-            case PrimitiveType primitiveType -> Optional.empty();
-            case SpecialType specialType -> Optional.empty();
+            case ObjectType _ -> Optional.empty();
+            case PrimitiveType _ -> Optional.empty();
+            case SpecialType _ -> Optional.empty();
             case TypeArgument typeArgument -> inferFunctionType(typeArgument.bound());
             case UnionType unionType -> unionType.children().stream()
                     .map(this::inferFunctionType)

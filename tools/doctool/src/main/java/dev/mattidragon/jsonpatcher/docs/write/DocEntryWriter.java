@@ -95,15 +95,15 @@ public class DocEntryWriter {
 
     private static String entryType(DocEntry entry) {
         return switch (entry) {
-            case DocEntry.GlobalLibraryEntry globalLibraryEntry -> "Global library";
-            case DocEntry.GlobalValueEntry globalValueEntry -> "Global variable";
-            case DocEntry.LibraryEntry libraryEntry -> "Library";
-            case DocEntry.MetadataEntry metadataEntry -> "Metadata tag";
-            case DocEntry.NamespaceEntry namespaceEntry -> "Namespace";
+            case DocEntry.GlobalLibraryEntry _ -> "Global library";
+            case DocEntry.GlobalValueEntry _ -> "Global variable";
+            case DocEntry.LibraryEntry _ -> "Library";
+            case DocEntry.MetadataEntry _ -> "Metadata tag";
+            case DocEntry.NamespaceEntry _ -> "Namespace";
             case DocEntry.PropertyEntry propertyEntry ->
                     propertyEntry.type() instanceof FunctionDocType ? "Function" : "Property";
-            case DocEntry.TypeAliasEntry typeAliasEntry -> "Type alias";
-            case DocEntry.TypeDeclarationEntry typeDeclarationEntry -> "Type";
+            case DocEntry.TypeAliasEntry _ -> "Type alias";
+            case DocEntry.TypeDeclarationEntry _ -> "Type";
         };
     }
 

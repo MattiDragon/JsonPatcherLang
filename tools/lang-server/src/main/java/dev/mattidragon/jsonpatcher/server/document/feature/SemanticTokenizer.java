@@ -283,10 +283,10 @@ public class SemanticTokenizer {
                         modifiers.add(SemanticTokenModifiers.DefaultLibrary);
                     }
                     type = switch (variable.definition()) {
-                        case ImportStatement __ -> SemanticTokenTypes.Namespace;
-                        case FunctionDeclarationStatement __ -> SemanticTokenTypes.Function;
-                        case FunctionArgument __ -> SemanticTokenTypes.Parameter;
-                        case Program __ -> {
+                        case ImportStatement _ -> SemanticTokenTypes.Namespace;
+                        case FunctionDeclarationStatement _ -> SemanticTokenTypes.Function;
+                        case FunctionArgument _ -> SemanticTokenTypes.Parameter;
+                        case Program _ -> {
                             var globalDocData = docHolder.getGlobal(variable.name()).orElse(null);
                             if (globalDocData != null && globalDocData.entry() instanceof DocEntry.GlobalLibraryEntry) {
                                 yield SemanticTokenTypes.Namespace;

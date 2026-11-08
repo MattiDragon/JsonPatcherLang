@@ -179,7 +179,7 @@ public class PostfixParser {
 
     public static @Nullable Expression get(Parser parser, Precedence precedence, Expression left) {
         var token = parser.peek();
-        if (token instanceof PositionedToken(var pos, Token.KeywordToken keywordToken) && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
+        if (token instanceof PositionedToken(_, Token.KeywordToken keywordToken) && precedence.ordinal() <= Precedence.COMPARISON.ordinal()) {
             if (keywordToken == Token.KeywordToken.IS) {
                 return parseIsInstance(parser, left, parser.next());
             }

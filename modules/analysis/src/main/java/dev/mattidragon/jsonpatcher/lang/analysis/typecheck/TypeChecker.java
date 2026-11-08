@@ -143,11 +143,11 @@ public class TypeChecker {
         }
 
         var result = switch (expression) {
-            case NullExpression nullExpression -> PrimitiveType.NULL;
-            case NumberExpression numberExpression -> PrimitiveType.NUMBER;
-            case StringExpression stringExpression -> PrimitiveType.STRING;
-            case BooleanExpression booleanExpression -> PrimitiveType.BOOLEAN;
-            case RootExpression rootExpression -> PrimitiveType.OBJECT; // TODO: Some special casing needed here
+            case NullExpression _ -> PrimitiveType.NULL;
+            case NumberExpression _ -> PrimitiveType.NUMBER;
+            case StringExpression _ -> PrimitiveType.STRING;
+            case BooleanExpression _ -> PrimitiveType.BOOLEAN;
+            case RootExpression _ -> PrimitiveType.OBJECT; // TODO: Some special casing needed here
             case StringInterpolationExpression interpolationExpression -> {
                 interpolationExpression.children().forEach(this::checkExpression);
                 yield PrimitiveType.STRING;
@@ -169,7 +169,7 @@ public class TypeChecker {
                 }
                 yield newType;
             }
-            case IndexExpression(var parent, var index) -> {
+            case IndexExpression(var parent, _) -> {
                 var parentType = checkExpression(parent);
 
                 yield switch (parentType) {
@@ -178,7 +178,7 @@ public class TypeChecker {
                     default -> SpecialType.UNKNOWN;
                 };
             }
-            case IsInstanceExpression(var input, var type) -> {
+            case IsInstanceExpression(var input, _) -> {
                 checkExpression(input);
                 yield PrimitiveType.BOOLEAN;
             }
@@ -187,12 +187,12 @@ public class TypeChecker {
 
             case BinaryExpression(var first, var second, var op) ->
                     checkBinaryOp(expression, op, checkExpression(first), checkExpression(second));
-            case ShortedBinaryExpression(var first, var second, var op) ->
+            case ShortedBinaryExpression(var first, var second, _) ->
                     // Shorted and/or always returns either the first or the second value
                     UnionType.union(checkExpression(first), checkExpression(second));
             case UnaryExpression(var input, var op) ->
                     checkUnary(input, op);
-            case UnaryModificationExpression(var postfix, var target, var op) ->
+            case UnaryModificationExpression(_, var target, var op) ->
                     checkUnary(target, op);
             case TernaryExpression(var condition, var ifTrue, var ifFalse) -> {
                 checkExpression(condition);
@@ -256,17 +256,17 @@ public class TypeChecker {
         return switch (parentType) {
             case ObjectType(var component) -> component;
 
-            case ArrayType(var component) -> primitiveProperties.getPrimitivePropertyType(ValueType.ARRAY, name);
+            case ArrayType(_) -> primitiveProperties.getPrimitivePropertyType(ValueType.ARRAY, name);
             case PrimitiveType.ARRAY -> primitiveProperties.getPrimitivePropertyType(ValueType.ARRAY, name);
             case PrimitiveType.NUMBER -> primitiveProperties.getPrimitivePropertyType(ValueType.NUMBER, name);
             case PrimitiveType.STRING -> primitiveProperties.getPrimitivePropertyType(ValueType.STRING, name);
             case PrimitiveType.BOOLEAN -> primitiveProperties.getPrimitivePropertyType(ValueType.BOOLEAN, name);
-            case FunctionType functionType -> primitiveProperties.getPrimitivePropertyType(ValueType.FUNCTION, name);
+            case FunctionType _ -> primitiveProperties.getPrimitivePropertyType(ValueType.FUNCTION, name);
             case PrimitiveType.FUNCTION -> primitiveProperties.getPrimitivePropertyType(ValueType.FUNCTION, name);
 
             case PrimitiveType.NULL, SpecialType.ANY -> null;
 
-            case NamedType(var supertype, var properties, var wildcardPropertyType, var callSignature, var typeName) -> {
+            case NamedType(_, var properties, var wildcardPropertyType, _, _) -> {
                 var property = properties.get(name);
                 if (property != null) {
                     yield property.type();
@@ -480,7 +480,7 @@ public class TypeChecker {
                 if (!(actualArgTypes.getFirst() instanceof FunctionType(var typeArguments, var args, var requiredArgs, var varargs, var returnType))) {
                     yield PrimitiveType.FUNCTION;
                 }
-                if (!(actualArgTypes.get(1) instanceof FunctionType(var typeArguments2, var args2, var requiredArgs2, var varargs2, var returnType2))) {
+                if (!(actualArgTypes.get(1) instanceof FunctionType(var typeArguments2, var args2, var requiredArgs2, _, var returnType2))) {
                     yield PrimitiveType.FUNCTION;
                 }
 

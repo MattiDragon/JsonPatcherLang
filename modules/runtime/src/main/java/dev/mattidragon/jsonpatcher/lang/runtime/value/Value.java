@@ -19,7 +19,6 @@ public sealed interface Value {
         return switch (new Pair(value1, value2)) {
             case Pair(NumberValue(var first), NumberValue(var second)) -> first == second;
             case Pair(StringValue(var first), StringValue(var second)) -> first.equals(second);
-            case Pair(BooleanValue first, BooleanValue second) -> first == second;
             case Pair(ArrayValue first, ArrayValue second) ->
                     first.value.size() == second.value.size() && IntStream.range(0, first.value.size())
                             .allMatch(i -> isEqual(first.value.get(i), second.value.get(i)));
