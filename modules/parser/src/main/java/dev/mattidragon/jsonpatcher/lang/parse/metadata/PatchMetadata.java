@@ -18,11 +18,13 @@ public class PatchMetadata {
         MetadataElement element;
         if (parser.hasNext(Token.SimpleToken.SEMICOLON)) {
             element = new MetadataNull();
+            // If the metadata is just a key with no value, we set the main position to the semicolon
+            parser.setMetadata(element, MetadataKey.MAIN_POS, parser.peek().pos());
         } else {
             element = new JsonParser(parser).parse();
+            parser.setMetadata(element, MetadataKey.MAIN_POS, parser.getMetadata(element, MetadataKey.FULL_POS).orElseThrow());
         }
 
-        parser.setMetadata(element, MetadataKey.MAIN_POS, parser.getMetadata(element, MetadataKey.FULL_POS).orElseThrow());
         parser.setMetadata(element, MetadataKey.KEYWORD_POS, atPos);
         parser.setMetadata(element, MetadataKey.NAME_POS, namePos);
         parser.setMetadata(element, MetadataKey.FULL_POS, SourceSpan.between(atPos, parser.previous().pos()));
